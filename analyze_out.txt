@@ -1,0 +1,54 @@
+Analyzing ball_single...                                        
+
+   info • The constant name 'ARENA_WIDTH' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:1:11 • constant_identifier_names
+   info • The constant name 'ARENA_HEIGHT' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:2:11 • constant_identifier_names
+   info • The constant name 'TICK_RATE' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:4:11 • constant_identifier_names
+   info • The constant name 'TICK_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:5:11 • constant_identifier_names
+   info • The constant name 'MAX_PLAYERS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:7:11 • constant_identifier_names
+   info • The constant name 'MAX_LIVES' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:8:11 • constant_identifier_names
+   info • The constant name 'VICTORY_STAGE' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:9:11 • constant_identifier_names
+   info • The constant name 'BASE_HP' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:11:14 • constant_identifier_names
+   info • The constant name 'BASE_ATK' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:12:14 • constant_identifier_names
+   info • The constant name 'BASE_DEF' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:13:14 • constant_identifier_names
+   info • The constant name 'BASE_SPEED' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:14:14 • constant_identifier_names
+   info • The constant name 'MAX_SPEED' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:15:14 • constant_identifier_names
+   info • The constant name 'PLAYER_RADIUS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:16:14 • constant_identifier_names
+   info • The constant name 'FOOD_MAX_COUNT' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:18:11 • constant_identifier_names
+   info • The constant name 'FOOD_SPAWN_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:19:11 • constant_identifier_names
+   info • The constant name 'FOOD_SMALL_GOLD' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:20:14 • constant_identifier_names
+   info • The constant name 'FOOD_BIG_GOLD' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:21:14 • constant_identifier_names
+   info • The constant name 'FOOD_BIG_CHANCE' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:22:14 • constant_identifier_names
+   info • The constant name 'LEVEL_BASE_XP' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:24:11 • constant_identifier_names
+   info • The constant name 'LEVEL_XP_GROWTH' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:25:11 • constant_identifier_names
+   info • The constant name 'LEVEL_HEAL_AMOUNT' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:26:11 • constant_identifier_names
+   info • The constant name 'LEVEL_CHOICE_COUNT' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:27:11 • constant_identifier_names
+   info • The constant name 'UPGRADE_ASSAULT_ATK_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:29:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_GUARD_DEF_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:30:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_GUARD_HP_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:31:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_HASTE_SPEED_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:32:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_VITALITY_HP_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:33:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_VITALITY_HEAL' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:34:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_MASTERY_ATK_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:35:14 • constant_identifier_names
+   info • The constant name 'UPGRADE_MASTERY_POWER_GAIN' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:36:14 • constant_identifier_names
+   info • The constant name 'ROUND_RESTART_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:38:11 • constant_identifier_names
+   info • The constant name 'POISON_DROP_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:40:11 • constant_identifier_names
+   info • The constant name 'POISON_DURATION_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:41:11 • constant_identifier_names
+   info • The constant name 'POISON_RADIUS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:42:14 • constant_identifier_names
+   info • The constant name 'GUNNER_FIRE_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:44:11 • constant_identifier_names
+   info • The constant name 'GUNNER_RANGE' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:45:14 • constant_identifier_names
+   info • The constant name 'BULLET_SPEED' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:46:14 • constant_identifier_names
+   info • The constant name 'BULLET_RADIUS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:47:14 • constant_identifier_names
+   info • The constant name 'BLADE_ATTACK_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:49:11 • constant_identifier_names
+   info • The constant name 'BLADE_RANGE' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:50:14 • constant_identifier_names
+   info • The constant name 'BLADE_EFFECT_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:51:11 • constant_identifier_names
+   info • The constant name 'MINER_DROP_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:53:11 • constant_identifier_names
+   info • The constant name 'MINE_DURATION_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:54:11 • constant_identifier_names
+   info • The constant name 'MINE_RADIUS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:55:14 • constant_identifier_names
+   info • The constant name 'LASER_FIRE_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:57:11 • constant_identifier_names
+   info • The constant name 'LASER_RANGE' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:58:14 • constant_identifier_names
+   info • The constant name 'LASER_DURATION_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:59:11 • constant_identifier_names
+   info • The constant name 'LASER_DAMAGE_TICK_MS' isn't a lowerCamelCase identifier • lib/game/auto_battle/engine/constants.dart:60:11 • constant_identifier_names
+   info • Use 'const' with the constructor to improve performance • lib/game/auto_battle/engine/game_engine.dart:39:28 • prefer_const_constructors
+warning • Unused import: 'dart:math' • lib/game/auto_battle/engine/types.dart:1:8 • unused_import
+warning • The asset file '.env' doesn't exist • pubspec.yaml:99:7 • asset_does_not_exist
+

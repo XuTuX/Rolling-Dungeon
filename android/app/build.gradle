@@ -1,0 +1,97 @@
+plugins {
+    id "com.android.application"
+    id "kotlin-android"
+    // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
+    id "dev.flutter.flutter-gradle-plugin"
+}
+
+def keystoreProperties = new Properties()
+def keystorePropertiesFile = rootProject.file('key.properties')
+if (keystorePropertiesFile.exists()) {
+    keystoreProperties.load(new FileInputStream(keystorePropertiesFile))
+}
+
+def requestedTasks = gradle.startParameter.taskNames.collect { it.toLowerCase() }
+def isReleaseBuildRequested = requestedTasks.any {
+    it.contains("release") || it.contains("bundle") || it.contains("publish")
+}
+def requiredSigningKeys = ["storeFile", "storePassword", "keyAlias", "keyPassword"]
+def missingSigningKeys = requiredSigningKeys.findAll { !keystoreProperties[it] }
+def releaseStoreFilePath = keystoreProperties['storeFile']
+def releaseStoreFile = releaseStoreFilePath ? rootProject.file(releaseStoreFilePath) : null
+def hasReleaseSigning = missingSigningKeys.isEmpty() && releaseStoreFile?.exists()
+
+
+android {
+    namespace = "com.neoreo.circlewar"
+    compileSdk = flutter.compileSdkVersion
+    ndkVersion = flutter.ndkVersion
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_1_8
+        targetCompatibility = JavaVersion.VERSION_1_8
+    }
+
+    kotlinOptions {
+        jvmTarget = JavaVersion.VERSION_1_8
+    }
+
+    defaultConfig {
+        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
+        applicationId = "com.neoreo.circlewar"
+        // You can update the following values to match your application needs.
+        // For more information, see: https://flutter.dev/to/review-gradle-config.
+        minSdk = flutter.minSdkVersion
+        targetSdk = flutter.targetSdkVersion
+        versionCode = flutter.versionCode
+        versionName = flutter.versionName
+    }
+
+    signingConfigs {
+        if (hasReleaseSigning) {
+            release {
+                keyAlias = keystoreProperties['keyAlias']
+                keyPassword = keystoreProperties['keyPassword']
+                storeFile = releaseStoreFile
+                storePassword = keystoreProperties['storePassword']
+            }
+        }
+    }
+
+
+    buildTypes {
+        release {
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.release
+            }
+
+            ndk {
+                debugSymbolLevel = 'FULL'
+            }
+        }
+    }
+}
+
+flutter {
+    source = "../.."
+}
+
+if (isReleaseBuildRequested && !hasReleaseSigning) {
+    def problems = []
+
+    if (!keystorePropertiesFile.exists()) {
+        problems << "android/key.properties file is missing"
+    }
+    if (!missingSigningKeys.isEmpty()) {
+        problems << "missing keys: ${missingSigningKeys.join(', ')}"
+    }
+    if (releaseStoreFilePath && !releaseStoreFile?.exists()) {
+        problems << "keystore file not found at: ${releaseStoreFilePath}"
+    }
+
+    throw new GradleException(
+        "Release signing is not configured correctly. " +
+        "${problems.join('; ')}. " +
+        "Update android/key.properties with a valid keystore path and credentials."
+    )
+}

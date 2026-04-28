@@ -1,0 +1,9 @@
+# User Rules
+
+1. **Design Alignment**: Always design according to the existing application's character and style.
+2. **Scope Separation**: When working on design, do NOT modify functional code.
+3. **Core Mechanics Protection**: Do NOT modify the game's core rules or mechanics.
+4. **Modification Protocol**: If functional changes are necessary, you **MUST** first ask for permission in **Korean** explaining why the change is needed.
+5. **Device Specific Design**: Treat iPhone and iPad designs separately. Do not assume a design for one fits the other; handle them as distinct considerations.
+6. **Language Consistency**: Use **English** for Buttons, Headers, and Short Labels (e.g., PLAY, RANKING, SCORE). Use **Korean** for descriptive text, dialog messages, and warnings.
+7. **Button Style Consistency**: Action buttons (AppBar, Profile, etc.) must follow the circular design: 40x40 size, white background, 2px black border, and (2,2) black shadow (no blur).
