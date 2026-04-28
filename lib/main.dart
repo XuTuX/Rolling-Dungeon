@@ -21,7 +21,7 @@ class CircleWarApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return GetMaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'circle-war',
+      title: 'Rolling Dungeon',
       navigatorKey: Get.key,
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(

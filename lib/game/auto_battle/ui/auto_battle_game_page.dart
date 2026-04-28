@@ -3,10 +3,14 @@ import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/models/game_snapshot.dart';
 import 'package:circle_war/game/auto_battle/models/player_snapshot.dart';
 import 'package:circle_war/game/auto_battle/services/local_game_service.dart';
-import 'package:circle_war/game/auto_battle/ui/character_info_panel.dart';
+import 'package:circle_war/game/auto_battle/engine/types.dart';
+import 'package:circle_war/game/auto_battle/engine/physics.dart';
+import 'package:circle_war/controllers/game_progress_controller.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
-
+import 'package:get/get.dart';
+import 'package:circle_war/screens/home_screen.dart';
+import 'package:circle_war/screens/upgrade_select_screen.dart';
 class AutoBattleGamePage extends StatefulWidget {
   const AutoBattleGamePage({super.key});
 
@@ -25,11 +29,49 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
   @override
   void initState() {
     super.initState();
+    final controller = Get.find<GameProgressController>();
+    final player = PlayerData(
+      id: 'p1',
+      characterType: controller.characterType.value,
+      hp: controller.playerCurrentHp.value,
+      maxHp: controller.playerMaxHp.value,
+      atk: controller.playerAtk.value,
+      def: controller.playerDef.value,
+      speed: controller.playerSpd.value,
+      abilityPower: controller.playerAbilityPower.value,
+      gold: controller.gold.value.toDouble(),
+      totalGold: controller.gold.value.toDouble(),
+      pendingUpgradeCount: 0,
+      upgradeChoices: [],
+      kills: 0,
+      damageDealt: 0,
+      damageTaken: 0,
+      pos: Vec2(x: 250, y: 250),
+      vel: normalize(Vec2(x: 1, y: 0.1)),
+      radius: 16.0,
+      activeEffects: [],
+      color: '#4F8CFF',
+      alive: true,
+      lives: controller.lives.value,
+      maxLives: 3,
+      lastCollisionAt: {},
+      lastPoisonDropAt: 0,
+      lastShotAt: 0,
+      lastBladeAt: 0,
+      lastMineDropAt: 0,
+    );
+
     _game = AutoBattleGame();
     _localService = LocalGameService()
-      ..connect()
-      ..onConnectionChanged((c) => setState(() => _connected = c))
-      ..onPlayerAssigned((id) => setState(() => _myId = id))
+      ..connect(controller.currentStage.value, player)
+      ..onConnectionChanged((c) {
+        if (!mounted) return;
+        setState(() => _connected = c);
+      })
+      ..onPlayerAssigned((id) {
+        if (!mounted) return;
+        setState(() => _myId = id);
+      })
       ..onGameUpdate((s) {
         if (!mounted) return;
         setState(() => _snapshot = s);
@@ -161,11 +203,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
               ),
             ),
           if (_snapshot != null && myPlayer != null)
-            CharacterInfoPanel(
-              player: myPlayer,
-              roundState: _snapshot!.roundState,
-              onUpgradeSelected: _localService.sendUpgrade,
-            ),
+            const SizedBox.shrink(),
           if (_snapshot?.roundState == 'ended' ||
               _snapshot?.roundState == 'gameover' ||
               _snapshot?.roundState == 'victory')
@@ -227,161 +265,106 @@ class _SketchTopBar extends StatelessWidget {
       padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
       alignment: Alignment.bottomCenter,
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          // Connection (Compact)
-          Flexible(
-            flex: 2,
-            child: Container(
-              margin: EdgeInsets.only(bottom: bottomMargin),
-              padding: EdgeInsets.symmetric(
-                horizontal: compact ? 6 : 8,
-                vertical: compact ? 5 : 6,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: AutoBattlePalette.ink, width: 2),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: connected
-                          ? AutoBattlePalette.mint
-                          : AutoBattlePalette.primary,
-                      border:
-                          Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  if (!compact) ...[
-                    const SizedBox(width: 6),
-                    Flexible(
-                      child: Text(
-                        connected ? 'ON' : 'OFF',
-                        style: const TextStyle(
-                            color: AutoBattlePalette.ink,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w900),
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ],
-              ),
-            ),
-          ),
-
-          const Spacer(),
-
           // Stage Indicator (Center)
-          Flexible(
-            flex: 4,
-            child: Container(
-              margin: EdgeInsets.only(bottom: bottomMargin),
-              padding: EdgeInsets.symmetric(
-                horizontal: compact ? 12 : 16,
-                vertical: compact ? 5 : 6,
-              ),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(
-                    color: AutoBattlePalette.ink, width: borderWidth),
-                boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
-                ],
-              ),
-              child: FittedBox(
-                fit: BoxFit.scaleDown,
-                child: Text(
-                  'STAGE $stage',
-                  style: TextStyle(
-                      color: AutoBattlePalette.ink,
-                      fontSize: stageFontSize,
-                      fontWeight: FontWeight.w900),
-                  textAlign: TextAlign.center,
-                ),
+          Container(
+            margin: EdgeInsets.only(bottom: bottomMargin),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 12 : 16,
+              vertical: compact ? 5 : 6,
+            ),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(
+                  color: AutoBattlePalette.ink, width: borderWidth),
+              boxShadow: const [
+                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
+              ],
+            ),
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                'STAGE $stage',
+                style: TextStyle(
+                    color: AutoBattlePalette.ink,
+                    fontSize: stageFontSize,
+                    fontWeight: FontWeight.w900),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
 
-          const Spacer(),
+          const SizedBox(width: 20),
 
           // Gold & Lives (Grouped)
-          Flexible(
-            flex: 5,
-            child: Container(
-              margin: EdgeInsets.only(bottom: bottomMargin),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Gold
-                  Flexible(
-                    child: Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: compact ? 7 : 10,
-                        vertical: compact ? 5 : 6,
+          Container(
+            margin: EdgeInsets.only(bottom: bottomMargin),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Gold
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 7 : 10,
+                    vertical: compact ? 5 : 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AutoBattlePalette.gold,
+                    border:
+                        Border.all(color: AutoBattlePalette.ink, width: 2),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.monetization_on,
+                          color: Colors.white, size: compact ? 14 : 16),
+                      SizedBox(width: compact ? 2 : 4),
+                      Text(
+                        '${myPlayer?.gold.toInt() ?? 0}',
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontSize: compact ? 12 : 14,
+                            fontWeight: FontWeight.w900),
                       ),
-                      decoration: BoxDecoration(
-                        color: AutoBattlePalette.gold,
-                        border:
-                            Border.all(color: AutoBattlePalette.ink, width: 2),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.monetization_on,
-                              color: Colors.white, size: compact ? 14 : 16),
-                          SizedBox(width: compact ? 2 : 4),
-                          Text(
-                            '${myPlayer?.gold.toInt() ?? 0}',
-                            style: TextStyle(
-                                color: Colors.white,
-                                fontSize: compact ? 12 : 14,
-                                fontWeight: FontWeight.w900),
-                          ),
-                        ],
-                      ),
+                    ],
+                  ),
+                ),
+                // Lives
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: compact ? 4 : 6,
+                    vertical: compact ? 5 : 6,
+                  ),
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    border: Border(
+                      top: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                      bottom:
+                          BorderSide(color: AutoBattlePalette.ink, width: 2),
+                      right:
+                          BorderSide(color: AutoBattlePalette.ink, width: 2),
                     ),
                   ),
-                  // Lives
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 4 : 6,
-                      vertical: compact ? 5 : 6,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: AutoBattlePalette.ink, width: 2),
-                        bottom:
-                            BorderSide(color: AutoBattlePalette.ink, width: 2),
-                        right:
-                            BorderSide(color: AutoBattlePalette.ink, width: 2),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(5, (i) {
-                        final hasLife = myPlayer != null && i < myPlayer!.lives;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 0.5),
-                          child: Icon(
-                            hasLife ? Icons.favorite : Icons.favorite_border,
-                            color: hasLife
-                                ? AutoBattlePalette.primary
-                                : AutoBattlePalette.ink.withValues(alpha: 0.2),
-                            size: compact ? 12 : 14,
-                          ),
-                        );
-                      }),
-                    ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: List.generate(3, (i) {
+                      final hasLife = myPlayer != null && i < myPlayer!.lives;
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 0.5),
+                        child: Icon(
+                          hasLife ? Icons.favorite : Icons.favorite_border,
+                          color: hasLife
+                              ? AutoBattlePalette.primary
+                              : AutoBattlePalette.ink.withValues(alpha: 0.2),
+                          size: compact ? 12 : 14,
+                        ),
+                      );
+                    }),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
         ],
@@ -498,24 +481,31 @@ class _SketchResultOverlay extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final win = snapshot.winnerId == myId;
-    final isGameOver = snapshot.roundState == 'gameover';
-    final isVictory = snapshot.roundState == 'victory';
+    final ctrl = Get.find<GameProgressController>();
+    final win = snapshot.roundState == 'victory'; // all enemies dead
+    final dead = snapshot.roundState == 'gameover'; // player dead
+    final isFinalClear = win && ctrl.isFinalStage;
 
-    String title =
-        snapshot.winnerId == null ? 'DRAW' : (win ? 'VICTORY' : 'DEFEAT');
-    Color bgColor = win ? AutoBattlePalette.gold : AutoBattlePalette.primary;
+    // Determine title and color
+    String title;
+    Color bgColor;
 
-    if (isGameOver) {
+    if (isFinalClear) {
+      title = 'FINAL VICTORY!';
+      bgColor = AutoBattlePalette.mint;
+    } else if (win) {
+      title = 'STAGE CLEAR!';
+      bgColor = AutoBattlePalette.gold;
+    } else if (dead && ctrl.lives.value <= 1) {
       title = 'GAME OVER';
       bgColor = AutoBattlePalette.primary;
-    } else if (isVictory) {
-      title = 'FINAL VICTORY';
-      bgColor = AutoBattlePalette.mint;
+    } else {
+      title = 'DEFEAT';
+      bgColor = AutoBattlePalette.primary;
     }
 
     return Container(
-      color: Colors.white.withValues(alpha: 0.8),
+      color: Colors.white.withValues(alpha: 0.85),
       alignment: Alignment.center,
       child: LayoutBuilder(
         builder: (context, constraints) {
@@ -528,9 +518,6 @@ class _SketchResultOverlay extends StatelessWidget {
               (constraints.maxWidth * 0.07).clamp(28.0, 60.0).toDouble();
           final verticalPadding =
               (constraints.maxHeight * 0.07).clamp(16.0, 30.0).toDouble();
-          final playerIndex = snapshot.players.indexWhere((p) => p.id == myId);
-          final lives =
-              playerIndex == -1 ? 0 : snapshot.players[playerIndex].lives;
 
           return Padding(
             padding: const EdgeInsets.all(24),
@@ -539,6 +526,7 @@ class _SketchResultOverlay extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
+                  // ── Big Title Banner ──
                   Container(
                     padding: EdgeInsets.symmetric(
                       horizontal: horizontalPadding,
@@ -564,18 +552,98 @@ class _SketchResultOverlay extends StatelessWidget {
                       ),
                     ),
                   ),
-                  if (!isGameOver && !isVictory)
+
+                  // ── Subtitle ──
+                  if (win && !isFinalClear)
                     Padding(
-                      padding: EdgeInsets.only(top: compact ? 14 : 20),
+                      padding: EdgeInsets.only(top: compact ? 12 : 18),
                       child: Text(
-                        win ? 'CHOOSE YOUR AUGMENT' : 'LIVES REMAINING: $lives',
+                        'STAGE ${ctrl.currentStage.value} COMPLETED',
                         style: TextStyle(
                           color: AutoBattlePalette.ink,
-                          fontSize: compact ? 15 : 18,
-                          fontWeight: FontWeight.bold,
+                          fontSize: compact ? 14 : 18,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
                     ),
+                  if (dead && ctrl.lives.value > 1)
+                    Padding(
+                      padding: EdgeInsets.only(top: compact ? 12 : 18),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'LIVES:  ',
+                            style: TextStyle(
+                              color: AutoBattlePalette.ink,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          ...List.generate(ctrl.lives.value - 1, (_) {
+                            return const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 2),
+                              child: Icon(Icons.favorite,
+                                  color: AutoBattlePalette.primary,
+                                  size: 18),
+                            );
+                          }),
+                        ],
+                      ),
+                    ),
+
+                  // ── Action Button ──
+                  Padding(
+                    padding: EdgeInsets.only(top: compact ? 20 : 32),
+                    child: GestureDetector(
+                      onTap: () {
+                        if (isFinalClear) {
+                          // Final victory → main menu
+                          Get.offAll(() => const HomeScreen());
+                        } else if (win) {
+                          // Stage clear → upgrade select
+                          Get.off(() => const UpgradeSelectScreen());
+                        } else if (dead && ctrl.lives.value > 1) {
+                          // Still have lives → retry
+                          ctrl.loseLife();
+                          Get.off(() => const AutoBattleGamePage(),
+                              preventDuplicates: false);
+                        } else {
+                          // Total game over → main menu
+                          Get.offAll(() => const HomeScreen());
+                        }
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 28, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          border: Border.all(
+                              color: AutoBattlePalette.ink, width: 3),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: AutoBattlePalette.ink,
+                                offset: Offset(5, 5)),
+                          ],
+                        ),
+                        child: Text(
+                          isFinalClear
+                              ? 'MAIN MENU'
+                              : win
+                                  ? 'CONTINUE'
+                                  : (dead && ctrl.lives.value > 1)
+                                      ? 'RETRY'
+                                      : 'MAIN MENU',
+                          style: const TextStyle(
+                            color: AutoBattlePalette.ink,
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

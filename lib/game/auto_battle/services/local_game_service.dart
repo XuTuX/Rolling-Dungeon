@@ -1,5 +1,6 @@
 import '../engine/game_engine.dart';
 import '../models/game_snapshot.dart';
+import '../engine/types.dart';
 
 class LocalGameService {
   GameEngine? _engine;
@@ -7,8 +8,10 @@ class LocalGameService {
   Function(bool)? _onConnectionChanged;
   Function(String)? _onPlayerAssigned;
 
-  void connect() {
+  void connect(int stage, PlayerData player) {
     _engine = GameEngine(
+      currentStage: stage,
+      initialPlayer: player,
       onUpdate: (snapshot) {
         _onGameUpdate?.call(snapshot);
       },
@@ -26,10 +29,6 @@ class LocalGameService {
     _engine?.stop();
     _engine = null;
     _onConnectionChanged?.call(false);
-  }
-
-  void sendUpgrade(String type) {
-    _engine?.handleUpgrade(type);
   }
 
   void onGameUpdate(Function(GameSnapshot) callback) {

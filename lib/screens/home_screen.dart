@@ -1,6 +1,6 @@
 import 'dart:math' as math;
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
-import 'package:circle_war/game/auto_battle/ui/auto_battle_game_page.dart';
+import 'package:circle_war/screens/character_select_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -67,15 +67,17 @@ class HomeScreen extends StatelessWidget {
                               ),
                               child: FittedBox(
                                 fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'AUTO BATTLE',
-                                  style: TextStyle(
-                                    color: AutoBattlePalette.ink,
-                                    fontSize: logoFontSize,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: -1,
+                                  child: Text(
+                                    'ROLLING\nDUNGEON',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(
+                                      color: AutoBattlePalette.ink,
+                                      fontSize: logoFontSize,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -1,
+                                      height: 1.1,
+                                    ),
                                   ),
-                                ),
                               ),
                             ),
 
@@ -84,7 +86,7 @@ class HomeScreen extends StatelessWidget {
                             // Action Button
                             GestureDetector(
                               onTap: () =>
-                                  Get.to(() => const AutoBattleGamePage()),
+                                  Get.to(() => const CharacterSelectScreen()),
                               child: Container(
                                 width: buttonWidth,
                                 height: buttonHeight,
@@ -101,7 +103,7 @@ class HomeScreen extends StatelessWidget {
                                 ),
                                 child: Center(
                                   child: Text(
-                                    'ENTER ARENA',
+                                    'START ADVENTURE',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: (buttonHeight * 0.31)
@@ -121,7 +123,7 @@ class HomeScreen extends StatelessWidget {
                                     .toDouble()),
 
                             const Text(
-                              'VERSION 3.0 // SKETCH MODE',
+                              'VERSION 4.0 // 굴러굴러 던전',
                               style: TextStyle(
                                 color: AutoBattlePalette.inkSubtle,
                                 fontSize: 12,

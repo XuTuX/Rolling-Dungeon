@@ -20,15 +20,19 @@ class GameEngine {
   int lastFoodSpawnAt = 0;
   
   String roundState = 'waiting';
-  int currentStage = 1;
+  int currentStage;
   String? winnerId;
   int? roundEndsAt;
   int idSeq = 0;
 
   final math.Random _rand = math.Random();
 
-  GameEngine({required this.onUpdate}) {
-    players.add(_createPlayer());
+  GameEngine({
+    required this.onUpdate,
+    required this.currentStage,
+    required PlayerData initialPlayer,
+  }) {
+    players.add(initialPlayer);
     _spawnEnemiesForStage(currentStage);
     _fillFoods();
   }
@@ -49,26 +53,6 @@ class GameEngine {
     timer = null;
   }
 
-  void handleUpgrade(String type) {
-    final player = _getPlayer('p1');
-    if (player == null || player.pendingUpgradeCount <= 0) return;
-
-    final selected = player.upgradeChoices.cast<UpgradeOptionData?>().firstWhere(
-      (c) => c?.type == type,
-      orElse: () => null,
-    );
-    if (selected == null) return;
-
-    _applyUpgrade(player, selected);
-    player.pendingUpgradeCount -= 1;
-    
-    if (player.pendingUpgradeCount > 0) {
-      player.upgradeChoices = _createUpgradeChoices(player);
-    } else {
-      player.upgradeChoices = [];
-    }
-  }
-
   void _tick(int dt) {
     final now = DateTime.now().millisecondsSinceEpoch;
     final p1 = _getPlayer('p1');
@@ -77,20 +61,6 @@ class GameEngine {
 
     if (roundState == 'waiting') {
       roundState = 'running';
-    }
-
-    if (roundState == 'ended') {
-      if (roundEndsAt != null && now >= roundEndsAt!) {
-        _resetRound(now);
-      }
-      _broadcastSnapshot();
-      return;
-    }
-
-    if (roundState == 'upgrading') {
-      _checkUpgradingStatus(now);
-      _broadcastSnapshot();
-      return;
     }
 
     if (roundState == 'gameover' || roundState == 'victory') {
@@ -108,19 +78,6 @@ class GameEngine {
     _cleanupEffects(now);
     _checkRoundEnd(now);
     _broadcastSnapshot();
-  }
-
-  void _checkUpgradingStatus(int now) {
-    final stillUpgrading = players.any((p) => p.pendingUpgradeCount > 0);
-    
-    if (!stillUpgrading) {
-      for (final p in players) {
-        p.pendingUpgradeCount = 0;
-        p.upgradeChoices = [];
-      }
-      roundState = 'ended';
-      roundEndsAt = now + ROUND_RESTART_MS;
-    }
   }
 
   void _updatePlayers(double dt, int now) {
@@ -153,75 +110,6 @@ class GameEngine {
     return null;
   }
 
-  PlayerData _createPlayer() {
-    return PlayerData(
-      id: 'p1',
-      characterType: 'none',
-      hp: BASE_HP,
-      maxHp: BASE_HP,
-      atk: BASE_ATK,
-      def: BASE_DEF,
-      speed: BASE_SPEED,
-      abilityPower: 1,
-      gold: 0,
-      totalGold: 0,
-      pendingUpgradeCount: 0,
-      upgradeChoices: [],
-      kills: 0,
-      damageDealt: 0,
-      damageTaken: 0,
-      pos: Vec2(x: 250, y: 250),
-      vel: normalize(Vec2(x: 1, y: 0.1)),
-      radius: PLAYER_RADIUS,
-      activeEffects: [],
-      color: '#4F8CFF',
-      alive: true,
-      lives: MAX_LIVES,
-      maxLives: MAX_LIVES,
-      lastCollisionAt: {},
-      lastPoisonDropAt: 0,
-      lastShotAt: 0,
-      lastBladeAt: 0,
-      lastMineDropAt: 0,
-    );
-  }
-
-  void _resetPlayerForNextRound(PlayerData player, int now) {
-    player.hp = player.maxHp;
-    player.pos = Vec2(x: 250, y: 250);
-    player.vel = normalize(Vec2(x: 1, y: 0.1));
-    player.alive = true;
-    player.lastCollisionAt = {};
-    player.lastPoisonDropAt = now;
-    player.lastShotAt = now;
-    player.lastBladeAt = now;
-    player.lastMineDropAt = now;
-    player.activeEffects = [];
-  }
-
-  void _resetRound(int now) {
-    final player = _getPlayer('p1');
-    if (player == null) return;
-
-    if (winnerId == player.id) {
-      currentStage += 1;
-    }
-
-    players = [player];
-    _resetPlayerForNextRound(player, now);
-    _spawnEnemiesForStage(currentStage);
-
-    foods.clear();
-    projectiles.clear();
-    hazards.clear();
-    attacks.clear();
-    roundState = 'running';
-    winnerId = null;
-    roundEndsAt = null;
-    lastFoodSpawnAt = now;
-    _fillFoods();
-  }
-
   void _spawnEnemiesForStage(int stage) {
     final List<Map<String, dynamic>> enemiesToSpawn = [];
     if (stage == 1) {
@@ -229,7 +117,7 @@ class GameEngine {
     } else if (stage == 2) {
       enemiesToSpawn.add({'type': 'basic', 'count': 5});
     } else if (stage == 3) {
-      enemiesToSpawn.add({'type': 'basic', 'count': 1});
+      enemiesToSpawn.add({'type': 'basic', 'count': 7});
     } else if (stage == 4) {
       enemiesToSpawn.add({'type': 'fast', 'count': 3});
       enemiesToSpawn.add({'type': 'basic', 'count': 2});
@@ -245,7 +133,7 @@ class GameEngine {
       enemiesToSpawn.add({'type': 'fast', 'count': 4});
       enemiesToSpawn.add({'type': 'tank', 'count': 4});
     } else if (stage == 9) {
-      enemiesToSpawn.add({'type': 'basic', 'count': 10});
+      enemiesToSpawn.add({'type': 'basic', 'count': 12});
     } else if (stage >= 10) {
       enemiesToSpawn.add({'type': 'final_boss', 'count': 1});
     }
@@ -367,18 +255,6 @@ class GameEngine {
         foods.removeAt(i);
         _addGold(player, food.gold);
       }
-    }
-  }
-
-  void _triggerUpgrades() {
-    final p1 = _getPlayer('p1');
-    if (p1 != null && winnerId == p1.id) {
-      p1.pendingUpgradeCount = 1;
-      p1.upgradeChoices = _createUpgradeChoices(p1);
-      roundState = 'upgrading';
-    } else {
-      roundState = 'ended';
-      roundEndsAt = DateTime.now().millisecondsSinceEpoch + ROUND_RESTART_MS;
     }
   }
 
@@ -529,25 +405,15 @@ class GameEngine {
     if (p1 == null) return;
 
     if (!p1.alive) {
-      p1.lives -= 1;
-      if (p1.lives <= 0) {
-        roundState = 'gameover';
-      } else {
-        roundState = 'ended';
-        winnerId = 'enemy';
-        roundEndsAt = now + ROUND_RESTART_MS;
-      }
+      roundState = 'gameover';
+      winnerId = 'enemy';
       return;
     }
 
     final aliveEnemies = players.where((p) => p.isEnemy && p.alive).toList();
     if (aliveEnemies.isEmpty) {
       winnerId = p1.id;
-      if (currentStage >= VICTORY_STAGE) {
-        roundState = 'victory';
-      } else {
-        _triggerUpgrades();
-      }
+      roundState = 'victory';
     }
   }
 
@@ -577,83 +443,6 @@ class GameEngine {
     final val = amount.roundToDouble();
     player.gold += val;
     player.totalGold += val;
-  }
-
-  void _applyUpgrade(PlayerData player, UpgradeOptionData option) {
-    final type = option.type;
-    final rarity = option.rarity;
-    final mult = rarity == 'epic' ? 2.5 : rarity == 'rare' ? 1.6 : 1.0;
-    switch (type) {
-      case 'assault': player.atk += (UPGRADE_ASSAULT_ATK_GAIN * mult).round(); break;
-      case 'guard': player.def += (UPGRADE_GUARD_DEF_GAIN * mult).round(); player.maxHp += (UPGRADE_GUARD_HP_GAIN * mult).round(); player.hp = math.min(player.maxHp, player.hp + 14); break;
-      case 'haste': player.speed = math.min(MAX_SPEED, player.speed + UPGRADE_HASTE_SPEED_GAIN * mult); break;
-      case 'vitality': player.maxHp += (UPGRADE_VITALITY_HP_GAIN * mult).round(); player.hp = math.min(player.maxHp, player.hp + (UPGRADE_VITALITY_HEAL * mult).round()); break;
-      case 'mastery': player.atk += (UPGRADE_MASTERY_ATK_GAIN * mult).round(); player.abilityPower += UPGRADE_MASTERY_POWER_GAIN * mult; break;
-      case 'weapon_gun': player.characterType = 'gunner'; break;
-      case 'weapon_blade': player.characterType = 'blade'; break;
-      case 'weapon_mine': player.characterType = 'miner'; break;
-      case 'weapon_laser': player.characterType = 'laser'; break;
-    }
-  }
-
-  List<UpgradeOptionData> _createUpgradeChoices(PlayerData player) {
-    final choices = <UpgradeOptionData>[];
-    if (player.characterType == 'none') {
-      final weapons = ['weapon_gun', 'weapon_blade', 'weapon_mine', 'weapon_laser'];
-      for (final t in weapons) {
-        String title = '', desc = '';
-        switch (t) {
-          case 'weapon_gun': title = '원거리 사격 (총)'; desc = '멀리서 총을 쏴서 적을 공격합니다.'; break;
-          case 'weapon_blade': title = '근접 베기 (칼)'; desc = '주변의 적을 강력하게 베어버립니다.'; break;
-          case 'weapon_mine': title = '지뢰 매설'; desc = '바닥에 지뢰를 깔아 밟은 적에게 피해를 줍니다.'; break;
-          case 'weapon_laser': title = '정밀 레이저'; desc = '가장 가까운 적에게 지속적인 레이저를 쏩니다.'; break;
-        }
-        choices.add(UpgradeOptionData(type: t, rarity: 'epic', title: title, description: desc, statPreview: 'WEAPON UNLOCK'));
-      }
-      choices.shuffle(_rand);
-      return choices.sublist(0, 3);
-    }
-    final types = ['assault', 'guard', 'haste', 'vitality', 'mastery'];
-    types.shuffle(_rand);
-    final selected = types.sublist(0, LEVEL_CHOICE_COUNT);
-    for (final t in selected) {
-      final roll = _rand.nextDouble();
-      final rar = roll < 0.1 ? 'epic' : roll < 0.3 ? 'rare' : 'common';
-      final mult = rar == 'epic' ? 2.5 : rar == 'rare' ? 1.6 : 1.0;
-      String title = '', desc = '', stat = '';
-      switch (t) {
-        case 'assault': title = rar == 'epic' ? '광폭화 공격' : rar == 'rare' ? '강력한 공격' : '공격 강화'; desc = '공격력을 대폭 올립니다.'; stat = 'ATK +${(UPGRADE_ASSAULT_ATK_GAIN * mult).round()}'; break;
-        case 'guard': title = rar == 'epic' ? '철벽 방어' : rar == 'rare' ? '단단한 가드' : '방어 강화'; desc = '방어력과 체력을 높입니다.'; stat = 'DEF +${(UPGRADE_GUARD_DEF_GAIN * mult).round()}'; break;
-        case 'haste': title = rar == 'epic' ? '광속 이동' : rar == 'rare' ? '빠른 몸놀림' : '속도 강화'; desc = '이동 속도가 빨라집니다.'; stat = 'SPD +${(UPGRADE_HASTE_SPEED_GAIN * mult).toStringAsFixed(2)}'; break;
-        case 'vitality': title = rar == 'epic' ? '무한한 생명' : rar == 'rare' ? '강인한 생명력' : '생존 본능'; desc = '최대 체력을 키우고 회복합니다.'; stat = 'HP +${(UPGRADE_VITALITY_HP_GAIN * mult).round()}'; break;
-        case 'mastery': title = _getMasteryTitle(player.characterType, rar); desc = _getMasteryDescription(player.characterType); stat = 'PWR +${(UPGRADE_MASTERY_POWER_GAIN * mult).toStringAsFixed(1)}'; break;
-      }
-      choices.add(UpgradeOptionData(type: t, rarity: rar, title: title, description: desc, statPreview: stat));
-    }
-    return choices;
-  }
-
-  String _getMasteryTitle(String t, String r) {
-    final s = r == 'epic' ? ' 극의' : r == 'rare' ? ' 숙련' : ' 강화';
-    switch (t) {
-      case 'poison': return '독성$s';
-      case 'gunner': return '탄도$s';
-      case 'blade': return '검술$s';
-      case 'miner': return '설계$s';
-      case 'laser': return '광학$s';
-      default: return '숙련$s';
-    }
-  }
-
-  String _getMasteryDescription(String t) {
-    switch (t) {
-      case 'poison': return '독 피해를 키웁니다.';
-      case 'gunner': return '총알 피해를 키웁니다.';
-      case 'blade': return '베기 피해를 키웁니다.';
-      case 'miner': return '지뢰 피해를 키웁니다.';
-      case 'laser': return '레이저 대미지를 키웁니다.';
-      default: return '능력을 강화합니다.';
-    }
   }
 
   double _getAbilityCooldown(PlayerData p, int base) {

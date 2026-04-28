@@ -7,7 +7,7 @@ const int TICK_RATE = 30;
 const int TICK_MS = 1000 ~/ TICK_RATE;
 
 const int MAX_PLAYERS = 2;
-const int MAX_LIVES = 5;
+const int MAX_LIVES = 3;
 const int VICTORY_STAGE = 10;
 
 const double BASE_HP = 200.0;
