@@ -60,3 +60,44 @@ const int LASER_FIRE_MS = 1200;
 const double LASER_RANGE = 300.0;
 const int LASER_DURATION_MS = 400;
 const int LASER_DAMAGE_TICK_MS = 100;
+
+// ── Stage Scaling ──
+// Player radius scales per stage: big early, shrinks late
+const double PLAYER_RADIUS_STAGE_1 = 22.0;
+const double PLAYER_RADIUS_STAGE_10 = 11.0;
+
+// Enemy radius multiplier per stage (1.0 = default)
+const double ENEMY_RADIUS_MULT_STAGE_1 = 1.5;
+const double ENEMY_RADIUS_MULT_STAGE_10 = 0.7;
+
+// Enemy HP multiplier for early game (lower = faster kills)
+const double ENEMY_HP_MULT_STAGE_1 = 0.4;
+const double ENEMY_HP_MULT_STAGE_10 = 1.0;
+
+// Multi-shot: how many bullets per shot (gunner)
+const int GUNNER_SHOTS_STAGE_1 = 1;
+const int GUNNER_SHOTS_STAGE_10 = 4;
+
+// Spread angle for multi-shot (radians)
+const double GUNNER_SPREAD_STAGE_1 = 0.0;
+const double GUNNER_SPREAD_STAGE_10 = 0.6;
+
+// Bullet bounce/reflect count (0 = no reflect)
+const int BULLET_REFLECT_STAGE_1 = 0;
+const int BULLET_REFLECT_STAGE_10 = 2;
+
+// Fire rate speed-up multiplier (lower = faster cooldown)
+const double FIRE_RATE_MULT_STAGE_1 = 1.0;
+const double FIRE_RATE_MULT_STAGE_10 = 0.45;
+
+// Blade range growth
+const double BLADE_RANGE_MULT_STAGE_1 = 0.9;
+const double BLADE_RANGE_MULT_STAGE_10 = 1.6;
+
+// Laser width growth
+const double LASER_WIDTH_STAGE_1 = 1.0;
+const double LASER_WIDTH_STAGE_10 = 3.0;
+
+// Miner: mine count per drop
+const int MINE_COUNT_STAGE_1 = 1;
+const int MINE_COUNT_STAGE_10 = 3;

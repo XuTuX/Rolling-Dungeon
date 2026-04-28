@@ -142,30 +142,46 @@ class AutoBattleGame extends FlameGame {
     for (final h in _snapshot!.hazards) {
       final pos = _toScreen(h.x, h.y);
       final r = h.radius * _arenaScale;
-      final color =
-          h.type == 'mine' ? AutoBattlePalette.primary : AutoBattlePalette.mint;
-
-      // Sketchy Hazard Circle
-      canvas.drawCircle(pos, r, Paint()..color = color.withValues(alpha: 0.2));
-      canvas.drawCircle(
-          pos,
-          r,
-          Paint()
-            ..color = AutoBattlePalette.ink
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
 
       if (h.type == 'mine') {
-        // Mine Core
-        canvas.drawCircle(
-            pos, r * 0.4, Paint()..color = AutoBattlePalette.primary);
-        canvas.drawCircle(
-            pos,
-            r * 0.4,
+        // Sketch Mine – bold circles with spikes
+        canvas.drawCircle(pos, r, Paint()..color = AutoBattlePalette.primary.withValues(alpha: 0.15));
+        canvas.drawCircle(pos, r,
+            Paint()
+              ..color = AutoBattlePalette.ink
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 3);
+        // Spike lines
+        for (var i = 0; i < 8; i++) {
+          final angle = i * math.pi / 4;
+          canvas.drawLine(
+            pos + Offset(math.cos(angle) * r * 0.7, math.sin(angle) * r * 0.7),
+            pos + Offset(math.cos(angle) * r * 1.2, math.sin(angle) * r * 1.2),
+            Paint()
+              ..color = AutoBattlePalette.ink
+              ..strokeWidth = 2.5
+              ..strokeCap = StrokeCap.round,
+          );
+        }
+        // Core
+        canvas.drawCircle(pos, r * 0.35, Paint()..color = AutoBattlePalette.primary);
+        canvas.drawCircle(pos, r * 0.35,
             Paint()
               ..color = AutoBattlePalette.ink
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2);
+        // Blink light
+        canvas.drawCircle(pos, r * 0.15, Paint()..color = const Color(0xFFFFD43B));
+      } else {
+        // Poison cloud – sketchy with bubbles
+        canvas.drawCircle(pos, r, Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.18));
+        canvas.drawCircle(pos, r,
+            Paint()
+              ..color = AutoBattlePalette.ink
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2);
+        // Skull indicator
+        canvas.drawCircle(pos, r * 0.3, Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.5));
       }
     }
 
@@ -175,44 +191,100 @@ class AutoBattleGame extends FlameGame {
         final pos = _toScreen(a.x, a.y);
         final r = a.radius * _arenaScale * 1.5;
 
-        // Draw Arc
-        final arcPaint = Paint()
-          ..color = AutoBattlePalette.ink
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 6
-          ..strokeCap = StrokeCap.round;
+        // Outer glow arc
+        canvas.drawArc(
+          Rect.fromCircle(center: pos, radius: r + 4),
+          a.angle - 0.9,
+          1.8,
+          false,
+          Paint()
+            ..color = const Color(0xFF4ADE80).withValues(alpha: 0.25)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 10
+            ..strokeCap = StrokeCap.round,
+        );
 
+        // Main blade arc – thick ink
         canvas.drawArc(
           Rect.fromCircle(center: pos, radius: r),
           a.angle - 0.8,
           1.6,
           false,
-          arcPaint,
+          Paint()
+            ..color = AutoBattlePalette.ink
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 6
+            ..strokeCap = StrokeCap.round,
         );
+
+        // Inner white highlight arc
+        canvas.drawArc(
+          Rect.fromCircle(center: pos, radius: r - 2),
+          a.angle - 0.6,
+          1.2,
+          false,
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.6)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..strokeCap = StrokeCap.round,
+        );
+
+        // Slash impact lines
+        for (var i = 0; i < 3; i++) {
+          final slashAngle = a.angle - 0.5 + i * 0.5;
+          final slashStart = pos + Offset(math.cos(slashAngle) * r * 0.6, math.sin(slashAngle) * r * 0.6);
+          final slashEnd = pos + Offset(math.cos(slashAngle) * r * 1.15, math.sin(slashAngle) * r * 1.15);
+          canvas.drawLine(
+            slashStart,
+            slashEnd,
+            Paint()
+              ..color = AutoBattlePalette.ink.withValues(alpha: 0.4)
+              ..strokeWidth = 2
+              ..strokeCap = StrokeCap.round,
+          );
+        }
       } else if (a.type == 'laser') {
         final pos = _toScreen(a.x, a.y);
         final r = a.radius * _arenaScale;
+        final beamWidth = 4 * a.scale;
+        final endPos = pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r);
 
-        // Sketchy Laser Beam
-        final beamPaint = Paint()
-          ..color = AutoBattlePalette.primary
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 4;
-
+        // Outer glow beam
         canvas.drawLine(
           pos,
-          pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r),
-          beamPaint,
-        );
-
-        // Laser Core (White line)
-        canvas.drawLine(
-          pos,
-          pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r),
+          endPos,
           Paint()
-            ..color = Colors.white
-            ..strokeWidth = 1,
+            ..color = AutoBattlePalette.primary.withValues(alpha: 0.2)
+            ..strokeWidth = beamWidth * 3
+            ..strokeCap = StrokeCap.round,
         );
+
+        // Main beam – vibrant red
+        canvas.drawLine(
+          pos,
+          endPos,
+          Paint()
+            ..color = AutoBattlePalette.primary
+            ..strokeWidth = beamWidth
+            ..strokeCap = StrokeCap.round,
+        );
+
+        // Core beam – white hot center
+        canvas.drawLine(
+          pos,
+          endPos,
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.85)
+            ..strokeWidth = beamWidth * 0.35
+            ..strokeCap = StrokeCap.round,
+        );
+
+        // Impact burst at end
+        canvas.drawCircle(endPos, beamWidth * 1.5,
+            Paint()..color = AutoBattlePalette.primary.withValues(alpha: 0.35));
+        canvas.drawCircle(endPos, beamWidth * 0.8,
+            Paint()..color = Colors.white.withValues(alpha: 0.6));
       }
     }
 
@@ -221,23 +293,56 @@ class AutoBattleGame extends FlameGame {
       final pos = _toScreen(p.x, p.y);
       final r = p.radius * _arenaScale;
 
-      // Bullet with motion lines
       final angle = math.atan2(p.vy, p.vx);
+      final canReflect = p.reflectsRemaining > 0;
       canvas.save();
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(angle);
 
-      // Motion Lines
-      final linePaint = Paint()
-        ..color = AutoBattlePalette.ink
-        ..strokeWidth = 2;
-      canvas.drawLine(Offset(-r * 2, -r), Offset(-r * 4, -r), linePaint);
-      canvas.drawLine(Offset(-r * 2, r), Offset(-r * 4, r), linePaint);
+      // Motion trail lines
+      final trailPaint = Paint()
+        ..color = AutoBattlePalette.ink.withValues(alpha: 0.4)
+        ..strokeWidth = 1.5
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(Offset(-r * 2.5, -r * 0.6), Offset(-r * 5, -r * 0.6), trailPaint);
+      canvas.drawLine(Offset(-r * 2, 0), Offset(-r * 4.5, 0), trailPaint);
+      canvas.drawLine(Offset(-r * 2.5, r * 0.6), Offset(-r * 5, r * 0.6), trailPaint);
 
-      // Bullet Body
+      // Bullet body – elongated with bright color
+      final bulletColor = canReflect
+          ? const Color(0xFF38BDF8) // Blue for reflecting bullets
+          : AutoBattlePalette.ink;
       canvas.drawOval(
-          Rect.fromCenter(center: Offset.zero, width: r * 3, height: r * 1.5),
-          Paint()..color = AutoBattlePalette.ink);
+        Rect.fromCenter(center: Offset.zero, width: r * 3.5, height: r * 1.8),
+        Paint()..color = bulletColor,
+      );
+      // Ink outline
+      canvas.drawOval(
+        Rect.fromCenter(center: Offset.zero, width: r * 3.5, height: r * 1.8),
+        Paint()
+          ..color = AutoBattlePalette.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2,
+      );
+
+      // Bright tip
+      canvas.drawCircle(
+        Offset(r * 1.2, 0),
+        r * 0.6,
+        Paint()..color = canReflect
+            ? const Color(0xFF7DD3FC)
+            : const Color(0xFFFFD43B),
+      );
+
+      // Reflect glow
+      if (canReflect) {
+        canvas.drawCircle(
+          Offset.zero,
+          r * 2.2,
+          Paint()..color = const Color(0xFF38BDF8).withValues(alpha: 0.15),
+        );
+      }
+
       canvas.restore();
     }
   }
@@ -306,16 +411,38 @@ class AutoBattleGame extends FlameGame {
 
   void _renderWeaponDecoration(
       Canvas canvas, Offset pos, double r, String type) {
-    final paint = Paint()
+    final ink = Paint()
       ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
+      ..strokeWidth = 2.5
+      ..strokeCap = StrokeCap.round;
     if (type == 'gunner') {
-      canvas.drawRect(Rect.fromLTWH(pos.dx + r - 5, pos.dy - 3, 15, 6),
-          Paint()..color = AutoBattlePalette.ink);
+      // Mini gun barrel
+      canvas.drawRect(Rect.fromLTWH(pos.dx + r - 4, pos.dy - 3, 16, 6),
+          Paint()..color = const Color(0xFF374151));
+      canvas.drawRect(Rect.fromLTWH(pos.dx + r - 4, pos.dy - 3, 16, 6), ink);
+      // Muzzle dot
+      canvas.drawCircle(Offset(pos.dx + r + 14, pos.dy),
+          3, Paint()..color = const Color(0xFFFFD43B));
     } else if (type == 'blade') {
-      canvas.drawLine(pos + Offset(r - 5, -r + 5),
-          pos + Offset(r + 15, -r - 15), paint..strokeWidth = 4);
+      // Mini sword
+      canvas.drawLine(pos + Offset(r - 4, -r + 4),
+          pos + Offset(r + 16, -r - 16), ink..strokeWidth = 4);
+      // Guard
+      canvas.drawLine(pos + Offset(r - 2, -r + 8),
+          pos + Offset(r + 6, -r), Paint()..color = const Color(0xFFEAB308)..strokeWidth = 3..strokeCap = StrokeCap.round);
+    } else if (type == 'miner') {
+      // Mini TNT
+      canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5,
+          Paint()..color = const Color(0xFFEF4444));
+      canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5, ink);
+    } else if (type == 'laser') {
+      // Mini laser indicator
+      canvas.drawLine(pos + Offset(r - 2, 0),
+          pos + Offset(r + 14, 0),
+          Paint()..color = AutoBattlePalette.primary..strokeWidth = 3..strokeCap = StrokeCap.round);
+      canvas.drawCircle(pos + Offset(r + 14, 0), 3,
+          Paint()..color = Colors.white.withValues(alpha: 0.8));
     }
   }
 

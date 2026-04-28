@@ -25,6 +25,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
   GameSnapshot? _snapshot;
   String? _myId;
   bool _connected = false;
+  bool _navigating = false;
 
   @override
   void initState() {
@@ -59,24 +60,38 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       lastShotAt: 0,
       lastBladeAt: 0,
       lastMineDropAt: 0,
+      lastAttackAt: 0,
+      targetAngle: 0,
     );
 
     _game = AutoBattleGame();
     _localService = LocalGameService()
       ..connect(controller.currentStage.value, player)
       ..onConnectionChanged((c) {
-        if (!mounted) return;
+        if (!mounted || _navigating) return;
         setState(() => _connected = c);
       })
       ..onPlayerAssigned((id) {
-        if (!mounted) return;
+        if (!mounted || _navigating) return;
         setState(() => _myId = id);
       })
       ..onGameUpdate((s) {
-        if (!mounted) return;
+        if (!mounted || _navigating) return;
         setState(() => _snapshot = s);
         _game.applySnapshot(s);
       });
+  }
+
+  /// Stop engine and prevent further callbacks before navigating.
+  void _stopAndNavigate(Widget Function() pageBuilder, {bool offAll = false}) {
+    if (_navigating) return;
+    _navigating = true;
+    _localService.disconnect();
+    if (offAll) {
+      Get.offAll(pageBuilder);
+    } else {
+      Get.off(pageBuilder, preventDuplicates: false);
+    }
   }
 
   @override
@@ -207,7 +222,11 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
           if (_snapshot?.roundState == 'ended' ||
               _snapshot?.roundState == 'gameover' ||
               _snapshot?.roundState == 'victory')
-            _SketchResultOverlay(snapshot: _snapshot!, myId: _myId),
+            _SketchResultOverlay(
+              snapshot: _snapshot!,
+              myId: _myId,
+              onNavigate: _stopAndNavigate,
+            ),
         ],
       ),
     );
@@ -477,7 +496,12 @@ class _SketchSidebar extends StatelessWidget {
 class _SketchResultOverlay extends StatelessWidget {
   final GameSnapshot snapshot;
   final String? myId;
-  const _SketchResultOverlay({required this.snapshot, required this.myId});
+  final void Function(Widget Function() pageBuilder, {bool offAll}) onNavigate;
+  const _SketchResultOverlay({
+    required this.snapshot,
+    required this.myId,
+    required this.onNavigate,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -598,19 +622,14 @@ class _SketchResultOverlay extends StatelessWidget {
                     child: GestureDetector(
                       onTap: () {
                         if (isFinalClear) {
-                          // Final victory → main menu
-                          Get.offAll(() => const HomeScreen());
+                          onNavigate(() => const HomeScreen(), offAll: true);
                         } else if (win) {
-                          // Stage clear → upgrade select
-                          Get.off(() => const UpgradeSelectScreen());
+                          onNavigate(() => const UpgradeSelectScreen());
                         } else if (dead && ctrl.lives.value > 1) {
-                          // Still have lives → retry
                           ctrl.loseLife();
-                          Get.off(() => const AutoBattleGamePage(),
-                              preventDuplicates: false);
+                          onNavigate(() => const AutoBattleGamePage());
                         } else {
-                          // Total game over → main menu
-                          Get.offAll(() => const HomeScreen());
+                          onNavigate(() => const HomeScreen(), offAll: true);
                         }
                       },
                       child: Container(

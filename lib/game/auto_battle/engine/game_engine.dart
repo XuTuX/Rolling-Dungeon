@@ -32,9 +32,62 @@ class GameEngine {
     required this.currentStage,
     required PlayerData initialPlayer,
   }) {
+    // Apply stage-based radius to the player
+    initialPlayer.radius = _getPlayerRadius();
     players.add(initialPlayer);
     _spawnEnemiesForStage(currentStage);
     _fillFoods();
+  }
+
+  // ── Stage Scaling Helpers ──
+  /// Linearly interpolate a value from stage 1 to stage 10.
+  double _lerpStage(double start, double end) {
+    final t = ((currentStage - 1) / 9.0).clamp(0.0, 1.0);
+    return start + (end - start) * t;
+  }
+
+  int _lerpStageInt(int start, int end) {
+    return _lerpStage(start.toDouble(), end.toDouble()).round();
+  }
+
+  double _getPlayerRadius() {
+    return _lerpStage(PLAYER_RADIUS_STAGE_1, PLAYER_RADIUS_STAGE_10);
+  }
+
+  double _getEnemyRadiusMult() {
+    return _lerpStage(ENEMY_RADIUS_MULT_STAGE_1, ENEMY_RADIUS_MULT_STAGE_10);
+  }
+
+  double _getEnemyHpMult() {
+    return _lerpStage(ENEMY_HP_MULT_STAGE_1, ENEMY_HP_MULT_STAGE_10);
+  }
+
+  int _getStageShotCount() {
+    return _lerpStageInt(GUNNER_SHOTS_STAGE_1, GUNNER_SHOTS_STAGE_10);
+  }
+
+  double _getStageSpread() {
+    return _lerpStage(GUNNER_SPREAD_STAGE_1, GUNNER_SPREAD_STAGE_10);
+  }
+
+  int _getStageReflect() {
+    return _lerpStageInt(BULLET_REFLECT_STAGE_1, BULLET_REFLECT_STAGE_10);
+  }
+
+  double _getFireRateMult() {
+    return _lerpStage(FIRE_RATE_MULT_STAGE_1, FIRE_RATE_MULT_STAGE_10);
+  }
+
+  double _getBladeRangeMult() {
+    return _lerpStage(BLADE_RANGE_MULT_STAGE_1, BLADE_RANGE_MULT_STAGE_10);
+  }
+
+  double _getLaserWidth() {
+    return _lerpStage(LASER_WIDTH_STAGE_1, LASER_WIDTH_STAGE_10);
+  }
+
+  int _getStageMineCount() {
+    return _lerpStageInt(MINE_COUNT_STAGE_1, MINE_COUNT_STAGE_10);
   }
 
   void start() {
@@ -146,23 +199,26 @@ class GameEngine {
   }
 
   PlayerData _createEnemy(String type, int stage) {
-    final hpMult = stage * 0.5 + 0.5;
+    final stageHpMult = stage * 0.5 + 0.5;
+    final earlyHpMult = _getEnemyHpMult(); // lower early = faster kills
+    final radiusMult = _getEnemyRadiusMult();
     
-    double hp = 100 * hpMult;
+    double hp = 100 * stageHpMult * earlyHpMult;
     double speed = 2.0;
-    double radius = PLAYER_RADIUS;
+    double radius = PLAYER_RADIUS * radiusMult;
     String color = '#FF5E5E';
     double atk = 5.0 + stage;
     double def = 1.0 + stage * 0.5;
 
     if (type == 'fast') {
       speed = 4.0;
-      hp = 50 * hpMult;
+      hp = 50 * stageHpMult * earlyHpMult;
+      radius = PLAYER_RADIUS * radiusMult * 0.85;
       color = '#FFB84D';
     } else if (type == 'tank') {
       speed = 1.2;
-      hp = 250 * hpMult;
-      radius = PLAYER_RADIUS * 1.5;
+      hp = 250 * stageHpMult * earlyHpMult;
+      radius = PLAYER_RADIUS * radiusMult * 1.5;
       color = '#8A2BE2';
       def = 5.0 + stage;
     } else if (type == 'boss') {
@@ -211,6 +267,8 @@ class GameEngine {
       lastShotAt: 0,
       lastBladeAt: 0,
       lastMineDropAt: 0,
+      lastAttackAt: 0,
+      targetAngle: 0,
       activeEffects: [],
     );
   }
@@ -268,17 +326,36 @@ class GameEngine {
         case 'miner': _dropMine(player, now); break;
         case 'laser': _fireLaser(player, now); break;
       }
+      
+      // Update targetAngle for rendering (point at nearest enemy if any)
+      final nearest = _findNearestEnemy(player, 600.0);
+      if (nearest != null) {
+        player.targetAngle = math.atan2(nearest.pos.y - player.pos.y, nearest.pos.x - player.pos.x);
+      } else {
+        // Fallback to velocity if no enemy
+        if (math.sqrt(player.vel.x * player.vel.x + player.vel.y * player.vel.y) > 0.01) {
+          player.targetAngle = math.atan2(player.vel.y, player.vel.x);
+        }
+      }
     }
   }
 
   void _dropPoison(PlayerData player, int now) {
     if (now - player.lastPoisonDropAt < _getAbilityCooldown(player, POISON_DROP_MS)) return;
     player.lastPoisonDropAt = now;
+    player.lastAttackAt = now;
+    // Drop slightly forward (~0.5x radius)
+    final forwardDist = player.radius * 0.5;
+    final spawnPos = Vec2(
+      x: player.pos.x + player.vel.x * forwardDist,
+      y: player.pos.y + player.vel.y * forwardDist,
+    );
+
     hazards.add(HazardData(
       id: _nextId('poison'),
       ownerId: player.id,
       type: 'poison',
-      pos: player.pos.clone(),
+      pos: spawnPos,
       radius: POISON_RADIUS,
       expiresAt: now + POISON_DURATION_MS,
       lastDamageAt: {},
@@ -286,53 +363,108 @@ class GameEngine {
   }
 
   void _fireBullet(PlayerData player, int now) {
-    if (now - player.lastShotAt < _getAbilityCooldown(player, GUNNER_FIRE_MS)) return;
+    final cooldown = _getAbilityCooldown(player, GUNNER_FIRE_MS) * _getFireRateMult();
+    if (now - player.lastShotAt < cooldown) return;
     final target = _findNearestEnemy(player, GUNNER_RANGE);
     if (target == null) return;
     player.lastShotAt = now;
-    final direction = normalize(Vec2(x: target.pos.x - player.pos.x, y: target.pos.y - player.pos.y));
-    projectiles.add(ProjectileData(
-      id: _nextId('bullet'),
-      ownerId: player.id,
-      pos: player.pos.clone(),
-      vel: direction,
-      radius: BULLET_RADIUS,
-      color: player.color,
-    ));
+    player.lastAttackAt = now;
+    final baseAngle = math.atan2(
+      target.pos.y - player.pos.y,
+      target.pos.x - player.pos.x,
+    );
+    final shotCount = _getStageShotCount();
+    final spread = _getStageSpread();
+    final reflectCount = _getStageReflect();
+
+    for (int i = 0; i < shotCount; i++) {
+      double angle = baseAngle;
+      if (shotCount > 1) {
+        // Evenly distribute shots across the spread arc
+        angle = baseAngle - spread / 2 + spread * (i / (shotCount - 1));
+      }
+      final direction = Vec2(x: math.cos(angle), y: math.sin(angle));
+      
+      // Spawn bullet from muzzle (~2.2x radius)
+      final muzzleDist = player.radius * 2.2;
+      final spawnPos = Vec2(
+        x: player.pos.x + direction.x * muzzleDist,
+        y: player.pos.y + direction.y * muzzleDist,
+      );
+
+      projectiles.add(ProjectileData(
+        id: _nextId('bullet'),
+        ownerId: player.id,
+        pos: spawnPos,
+        vel: direction,
+        radius: BULLET_RADIUS,
+        color: player.color,
+        reflectsRemaining: reflectCount,
+      ));
+    }
   }
 
   void _fireLaser(PlayerData player, int now) {
-    if (now - player.lastShotAt < _getAbilityCooldown(player, LASER_FIRE_MS)) return;
+    final cooldown = _getAbilityCooldown(player, LASER_FIRE_MS) * _getFireRateMult();
+    if (now - player.lastShotAt < cooldown) return;
     final target = _findNearestEnemy(player, LASER_RANGE);
     if (target == null) return;
     player.lastShotAt = now;
+    player.lastAttackAt = now;
     final angle = math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
+    final laserWidth = _getLaserWidth();
+    
+    // Laser spawns from cannon tip (~2.4x radius)
+    final muzzleDist = player.radius * 2.4;
+    final spawnPos = Vec2(
+      x: player.pos.x + math.cos(angle) * muzzleDist,
+      y: player.pos.y + math.sin(angle) * muzzleDist,
+    );
+
     attacks.add(AttackEffectData(
       id: _nextId('laser'),
       ownerId: player.id,
       type: 'laser',
-      pos: player.pos.clone(),
+      pos: spawnPos,
       radius: LASER_RANGE,
       angle: angle,
       createdAt: now,
       durationMs: LASER_DURATION_MS,
+      scale: laserWidth,
     ));
     _dealDamage(player, target, 15 + player.atk * 0.5 + player.abilityPower * 1.8);
   }
 
   void _swingBlade(PlayerData player, int now) {
-    if (now - player.lastBladeAt < _getAbilityCooldown(player, BLADE_ATTACK_MS)) return;
-    final target = _findNearestEnemy(player, BLADE_RANGE);
+    final cooldown = _getAbilityCooldown(player, BLADE_ATTACK_MS) * _getFireRateMult();
+    final bladeRange = BLADE_RANGE * _getBladeRangeMult();
+    if (now - player.lastBladeAt < cooldown) return;
+    final target = _findNearestEnemy(player, bladeRange);
     if (target == null) return;
     player.lastBladeAt = now;
+    player.lastAttackAt = now;
     final angle = math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
-    _dealDamage(player, target, 10 + player.atk * 0.8 + player.abilityPower * 1.4);
+    
+    // Blade slash centered a bit forward (~1.2x radius)
+    final forwardDist = player.radius * 1.2;
+    final slashPos = Vec2(
+      x: player.pos.x + math.cos(angle) * forwardDist,
+      y: player.pos.y + math.sin(angle) * forwardDist,
+    );
+
+    // Hit ALL enemies in blade range
+    for (final enemy in players) {
+      if (!enemy.alive || enemy.id == player.id) continue;
+      if (distance(player.pos, enemy.pos) <= bladeRange) {
+        _dealDamage(player, enemy, 10 + player.atk * 0.8 + player.abilityPower * 1.4);
+      }
+    }
     attacks.add(AttackEffectData(
       id: _nextId('blade'),
       ownerId: player.id,
       type: 'blade',
-      pos: player.pos.clone(),
-      radius: BLADE_RANGE,
+      pos: slashPos,
+      radius: bladeRange,
       angle: angle,
       createdAt: now,
       durationMs: BLADE_EFFECT_MS,
@@ -340,17 +472,32 @@ class GameEngine {
   }
 
   void _dropMine(PlayerData player, int now) {
-    if (now - player.lastMineDropAt < _getAbilityCooldown(player, MINER_DROP_MS)) return;
+    final cooldown = _getAbilityCooldown(player, MINER_DROP_MS) * _getFireRateMult();
+    if (now - player.lastMineDropAt < cooldown) return;
     player.lastMineDropAt = now;
-    hazards.add(HazardData(
-      id: _nextId('mine'),
-      ownerId: player.id,
-      type: 'mine',
-      pos: player.pos.clone(),
-      radius: MINE_RADIUS,
-      expiresAt: now + MINE_DURATION_MS,
-      lastDamageAt: {},
-    ));
+    player.lastAttackAt = now;
+    final mineCount = _getStageMineCount();
+    for (int i = 0; i < mineCount; i++) {
+      final offset = i == 0
+          ? Vec2(x: 0, y: 0)
+          : Vec2(
+              x: (_rand.nextDouble() - 0.5) * 40,
+              y: (_rand.nextDouble() - 0.5) * 40,
+            );
+      final minePos = Vec2(
+        x: (player.pos.x + offset.x + player.vel.x * 20).clamp(MINE_RADIUS, ARENA_WIDTH - MINE_RADIUS),
+        y: (player.pos.y + offset.y + player.vel.y * 20).clamp(MINE_RADIUS, ARENA_HEIGHT - MINE_RADIUS),
+      );
+      hazards.add(HazardData(
+        id: _nextId('mine'),
+        ownerId: player.id,
+        type: 'mine',
+        pos: minePos,
+        radius: MINE_RADIUS,
+        expiresAt: now + MINE_DURATION_MS,
+        lastDamageAt: {},
+      ));
+    }
   }
 
   void _updateProjectiles(double dt) {
@@ -358,10 +505,28 @@ class GameEngine {
       final p = projectiles[i];
       p.pos.x += p.vel.x * BULLET_SPEED * dt;
       p.pos.y += p.vel.y * BULLET_SPEED * dt;
-      if (p.pos.x < 0 || p.pos.x > ARENA_WIDTH || p.pos.y < 0 || p.pos.y > ARENA_HEIGHT) {
-        projectiles.removeAt(i);
-        continue;
+
+      // Wall reflection logic
+      bool hitWall = false;
+      if (p.pos.x < 0 || p.pos.x > ARENA_WIDTH) {
+        p.vel.x = -p.vel.x;
+        p.pos.x = p.pos.x < 0 ? 0 : ARENA_WIDTH.toDouble();
+        hitWall = true;
       }
+      if (p.pos.y < 0 || p.pos.y > ARENA_HEIGHT) {
+        p.vel.y = -p.vel.y;
+        p.pos.y = p.pos.y < 0 ? 0 : ARENA_HEIGHT.toDouble();
+        hitWall = true;
+      }
+      if (hitWall) {
+        if (p.reflectsRemaining > 0) {
+          p.reflectsRemaining -= 1;
+        } else {
+          projectiles.removeAt(i);
+          continue;
+        }
+      }
+
       final owner = _getPlayer(p.ownerId);
       if (owner == null) { projectiles.removeAt(i); continue; }
       final target = players.cast<PlayerData?>().firstWhere(
@@ -504,6 +669,8 @@ class GameEngine {
         alive: p.alive,
         lives: p.lives,
         maxLives: p.maxLives,
+        lastAttackAt: p.lastAttackAt,
+        targetAngle: p.targetAngle,
       )).toList(),
       foods: foods.map((f) => FoodSnapshot(
         id: f.id,
@@ -522,6 +689,7 @@ class GameEngine {
         vy: p.vel.y,
         radius: p.radius,
         color: p.color,
+        reflectsRemaining: p.reflectsRemaining,
       )).toList(),
       hazards: hazards.map((h) => HazardSnapshot(
         id: h.id,
@@ -542,6 +710,7 @@ class GameEngine {
         angle: a.angle,
         createdAt: a.createdAt,
         durationMs: a.durationMs,
+        scale: a.scale,
       )).toList(),
     );
     onUpdate(snapshot);

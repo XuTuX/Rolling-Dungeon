@@ -95,6 +95,7 @@ class ProjectileSnapshot {
   final double vy;
   final double radius;
   final String color;
+  final int reflectsRemaining;
 
   const ProjectileSnapshot({
     required this.id,
@@ -105,6 +106,7 @@ class ProjectileSnapshot {
     required this.vy,
     required this.radius,
     required this.color,
+    this.reflectsRemaining = 0,
   });
 
   factory ProjectileSnapshot.fromJson(Map<String, dynamic> json) {
@@ -117,6 +119,7 @@ class ProjectileSnapshot {
       vy: _asDouble(json['vy']),
       radius: _asDouble(json['radius'], fallback: 5),
       color: json['color']?.toString() ?? '#FFFFFF',
+      reflectsRemaining: _asInt(json['reflectsRemaining']),
     );
   }
 }
@@ -163,6 +166,7 @@ class AttackSnapshot {
   final double angle;
   final int createdAt;
   final int durationMs;
+  final double scale;
 
   const AttackSnapshot({
     required this.id,
@@ -174,6 +178,7 @@ class AttackSnapshot {
     required this.angle,
     required this.createdAt,
     required this.durationMs,
+    this.scale = 1.0,
   });
 
   factory AttackSnapshot.fromJson(Map<String, dynamic> json) {
@@ -187,6 +192,7 @@ class AttackSnapshot {
       angle: _asDouble(json['angle']),
       createdAt: _asInt(json['createdAt']),
       durationMs: _asInt(json['durationMs'], fallback: 220),
+      scale: _asDouble(json['scale'], fallback: 1.0),
     );
   }
 }

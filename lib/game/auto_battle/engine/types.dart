@@ -65,6 +65,8 @@ class PlayerData {
   int lastShotAt;
   int lastBladeAt;
   int lastMineDropAt;
+  int lastAttackAt;
+  double targetAngle;
 
   PlayerData({
     required this.id,
@@ -96,6 +98,8 @@ class PlayerData {
     required this.lastShotAt,
     required this.lastBladeAt,
     required this.lastMineDropAt,
+    this.lastAttackAt = 0,
+    this.targetAngle = 0,
   });
 }
 
@@ -122,6 +126,7 @@ class ProjectileData {
   Vec2 vel;
   double radius;
   String color;
+  int reflectsRemaining;
 
   ProjectileData({
     required this.id,
@@ -130,6 +135,7 @@ class ProjectileData {
     required this.vel,
     required this.radius,
     required this.color,
+    this.reflectsRemaining = 0,
   });
 }
 
@@ -162,6 +168,7 @@ class AttackEffectData {
   double angle;
   int createdAt;
   int durationMs;
+  double scale;
 
   AttackEffectData({
     required this.id,
@@ -172,5 +179,6 @@ class AttackEffectData {
     required this.angle,
     required this.createdAt,
     required this.durationMs,
+    this.scale = 1.0,
   });
 }

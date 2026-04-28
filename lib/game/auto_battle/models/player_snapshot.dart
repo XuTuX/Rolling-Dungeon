@@ -26,6 +26,8 @@ class PlayerSnapshot {
   final bool alive;
   final int lives;
   final int maxLives;
+  final int lastAttackAt;
+  final double targetAngle;
 
   const PlayerSnapshot({
     required this.id,
@@ -53,6 +55,8 @@ class PlayerSnapshot {
     required this.alive,
     required this.lives,
     required this.maxLives,
+    this.lastAttackAt = 0,
+    this.targetAngle = 0,
   });
 
   factory PlayerSnapshot.fromJson(Map<String, dynamic> json) {
@@ -83,6 +87,8 @@ class PlayerSnapshot {
       alive: json['alive'] == true,
       lives: _asInt(json['lives'], fallback: 5),
       maxLives: _asInt(json['maxLives'], fallback: 5),
+      lastAttackAt: _asInt(json['lastAttackAt']),
+      targetAngle: _asDouble(json['targetAngle']),
     );
   }
 

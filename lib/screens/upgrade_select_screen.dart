@@ -17,6 +17,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
   late final GameProgressController _ctrl;
   late final List<UpgradeCard> _cards;
   late final AnimationController _animCtrl;
+  int? _hoveredIndex;
 
   @override
   void initState() {
@@ -25,7 +26,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     _cards = _ctrl.generateUpgradeChoices();
     _animCtrl = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 700),
     )..forward();
   }
 
@@ -49,7 +50,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
         children: [
           // Background sketch lines
           Positioned.fill(
-            child: CustomPaint(painter: _SketchLinesPainter()),
+            child: CustomPaint(painter: _SketchPaperPainter()),
           ),
 
           SafeArea(
@@ -57,119 +58,100 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
               builder: (context, constraints) {
                 final compact =
                     constraints.maxHeight < 420 || constraints.maxWidth < 760;
-                final titleSize = compact ? 24.0 : 32.0;
-                final cardW = (constraints.maxWidth * 0.27)
-                    .clamp(compact ? 170.0 : 200.0, 240.0)
-                    .toDouble();
-                final cardH = (constraints.maxHeight * 0.68)
-                    .clamp(compact ? 240.0 : 300.0, 380.0)
-                    .toDouble();
-                final gap = compact ? 16.0 : 28.0;
+                final isPortrait = constraints.maxHeight > constraints.maxWidth;
+                final titleSize = compact ? 22.0 : 28.0;
+                final cardW = isPortrait
+                    ? (constraints.maxWidth * 0.75)
+                        .clamp(220.0, 320.0)
+                        .toDouble()
+                    : (constraints.maxWidth * 0.27)
+                        .clamp(compact ? 180.0 : 210.0, 260.0)
+                        .toDouble();
+                final cardH = isPortrait
+                    ? (constraints.maxHeight * 0.28)
+                        .clamp(160.0, 220.0)
+                        .toDouble()
+                    : (constraints.maxHeight * 0.62)
+                        .clamp(compact ? 260.0 : 300.0, 380.0)
+                        .toDouble();
+                final gap = compact ? 14.0 : 20.0;
 
                 return Column(
                   children: [
-                    SizedBox(height: compact ? 12 : 24),
+                    SizedBox(height: compact ? 10 : 20),
 
                     // ── Title ──
-                    Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: compact ? 20 : 32,
-                        vertical: compact ? 8 : 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(
-                            color: AutoBattlePalette.ink, width: 4),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: AutoBattlePalette.ink,
-                            offset: Offset(8, 8),
-                          ),
-                        ],
-                      ),
-                      child: Text(
-                        'SELECT AUGMENT',
-                        style: TextStyle(
-                          color: AutoBattlePalette.ink,
-                          fontSize: titleSize,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: compact ? 8 : 14),
+                    _buildTitle(titleSize, compact),
+                    SizedBox(height: compact ? 6 : 12),
 
                     // ── Sub-title ──
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: AutoBattlePalette.gold,
-                        border: Border.all(
-                            color: AutoBattlePalette.ink, width: 2),
-                      ),
-                      child: Text(
-                        'STAGE ${_ctrl.currentStage.value} CLEARED!',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: compact ? 14 : 18,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                    SizedBox(height: compact ? 16 : 28),
+                    _buildSubtitle(compact),
+                    SizedBox(height: compact ? 12 : 22),
 
                     // ── Cards ──
                     Expanded(
                       child: Center(
                         child: SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          padding:
-                              const EdgeInsets.symmetric(horizontal: 24),
+                          scrollDirection:
+                              isPortrait ? Axis.vertical : Axis.horizontal,
+                          padding: const EdgeInsets.symmetric(horizontal: 20),
                           child: AnimatedBuilder(
                             animation: _animCtrl,
                             builder: (context, _) {
-                              return Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.center,
-                                children: List.generate(
-                                    _cards.length, (i) {
-                                  final delay = i * 0.15;
-                                  final t = CurvedAnimation(
-                                    parent: _animCtrl,
-                                    curve: Interval(
-                                      delay.clamp(0.0, 0.7),
-                                      (delay + 0.6).clamp(0.0, 1.0),
-                                      curve: Curves.easeOutBack,
-                                    ),
-                                  );
-                                  return Padding(
-                                    padding: EdgeInsets.only(
-                                        right:
-                                            i < _cards.length - 1
-                                                ? gap
-                                                : 0),
-                                    child: Transform.translate(
-                                      offset: Offset(
-                                          0, 40 * (1 - t.value)),
-                                      child: Opacity(
-                                        opacity: t.value
-                                            .clamp(0.0, 1.0),
-                                        child:
-                                            _UpgradeCardWidget(
-                                          card: _cards[i],
-                                          width: cardW,
-                                          height: cardH,
-                                          compact: compact,
-                                          onTap: () =>
-                                              _selectCard(
-                                                  _cards[i]),
-                                        ),
+                              final cardWidgets = List.generate(
+                                  _cards.length, (i) {
+                                final delay = i * 0.18;
+                                final t = CurvedAnimation(
+                                  parent: _animCtrl,
+                                  curve: Interval(
+                                    delay.clamp(0.0, 0.6),
+                                    (delay + 0.55).clamp(0.0, 1.0),
+                                    curve: Curves.easeOutBack,
+                                  ),
+                                );
+                                return Padding(
+                                  padding: EdgeInsets.only(
+                                    right: !isPortrait && i < _cards.length - 1
+                                        ? gap
+                                        : 0,
+                                    bottom: isPortrait && i < _cards.length - 1
+                                        ? gap
+                                        : 0,
+                                  ),
+                                  child: Transform.translate(
+                                    offset: Offset(
+                                        0,
+                                        isPortrait
+                                            ? 30 * (1 - t.value)
+                                            : 50 * (1 - t.value)),
+                                    child: Opacity(
+                                      opacity: t.value.clamp(0.0, 1.0),
+                                      child: _UpgradeCardWidget(
+                                        card: _cards[i],
+                                        index: i,
+                                        width: cardW,
+                                        height: cardH,
+                                        compact: compact,
+                                        isHovered: _hoveredIndex == i,
+                                        onHover: (h) => setState(
+                                            () => _hoveredIndex = h ? i : null),
+                                        onTap: () => _selectCard(_cards[i]),
                                       ),
                                     ),
-                                  );
-                                }),
-                              );
+                                  ),
+                                );
+                              });
+
+                              return isPortrait
+                                  ? Column(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: cardWidgets,
+                                    )
+                                  : Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
+                                      children: cardWidgets,
+                                    );
                             },
                           ),
                         ),
@@ -177,46 +159,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                     ),
 
                     // ── Stats bar ──
-                    Container(
-                      margin: EdgeInsets.only(
-                          bottom: compact ? 8 : 16,
-                          left: 24,
-                          right: 24),
-                      padding: EdgeInsets.symmetric(
-                          horizontal: compact ? 12 : 20,
-                          vertical: compact ? 8 : 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(
-                            color: AutoBattlePalette.ink, width: 2),
-                      ),
-                      child: Obx(() => Row(
-                            mainAxisAlignment:
-                                MainAxisAlignment.spaceEvenly,
-                            children: [
-                              _StatChip(
-                                  label: 'HP',
-                                  value:
-                                      '${_ctrl.playerMaxHp.value.round()}',
-                                  color: AutoBattlePalette.mint),
-                              _StatChip(
-                                  label: 'ATK',
-                                  value:
-                                      _ctrl.playerAtk.value.toStringAsFixed(1),
-                                  color: AutoBattlePalette.primary),
-                              _StatChip(
-                                  label: 'DEF',
-                                  value:
-                                      _ctrl.playerDef.value.toStringAsFixed(1),
-                                  color: AutoBattlePalette.secondary),
-                              _StatChip(
-                                  label: 'SPD',
-                                  value:
-                                      _ctrl.playerSpd.value.toStringAsFixed(2),
-                                  color: AutoBattlePalette.gold),
-                            ],
-                          )),
-                    ),
+                    _buildStatsBar(compact),
                   ],
                 );
               },
@@ -226,6 +169,125 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
       ),
     );
   }
+
+  Widget _buildTitle(double fontSize, bool compact) {
+    return Stack(
+      children: [
+        // Shadow
+        Positioned(
+          left: 6,
+          top: 6,
+          child: Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 20 : 28,
+              vertical: compact ? 8 : 10,
+            ),
+            color: AutoBattlePalette.ink,
+            child: Text(
+              '증강 선택',
+              style: TextStyle(
+                color: Colors.transparent,
+                fontSize: fontSize,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ),
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 20 : 28,
+            vertical: compact ? 8 : 10,
+          ),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AutoBattlePalette.ink, width: 4),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.auto_awesome,
+                  color: AutoBattlePalette.gold,
+                  size: compact ? 22 : 28),
+              SizedBox(width: compact ? 8 : 12),
+              Text(
+                '증강 선택',
+                style: TextStyle(
+                  color: AutoBattlePalette.ink,
+                  fontSize: fontSize,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSubtitle(bool compact) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: compact ? 14 : 18, vertical: compact ? 5 : 7),
+      decoration: BoxDecoration(
+        color: AutoBattlePalette.mint,
+        border: Border.all(color: AutoBattlePalette.ink, width: 2),
+        boxShadow: const [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+        ],
+      ),
+      child: Text(
+        'STAGE ${_ctrl.currentStage.value} CLEAR ★',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: compact ? 12 : 15,
+          fontWeight: FontWeight.w900,
+          letterSpacing: 1,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatsBar(bool compact) {
+    return Container(
+      margin: EdgeInsets.only(
+          bottom: compact ? 8 : 14, left: 20, right: 20),
+      padding: EdgeInsets.symmetric(
+          horizontal: compact ? 10 : 16, vertical: compact ? 8 : 10),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: 3),
+        boxShadow: const [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
+        ],
+      ),
+      child: Obx(() => Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: [
+              _StatChip(
+                  icon: Icons.favorite,
+                  label: 'HP',
+                  value: '${_ctrl.playerMaxHp.value.round()}',
+                  color: AutoBattlePalette.primary),
+              _StatChip(
+                  icon: Icons.flash_on,
+                  label: 'ATK',
+                  value: _ctrl.playerAtk.value.toStringAsFixed(1),
+                  color: const Color(0xFFFF6B00)),
+              _StatChip(
+                  icon: Icons.shield,
+                  label: 'DEF',
+                  value: _ctrl.playerDef.value.toStringAsFixed(1),
+                  color: AutoBattlePalette.secondary),
+              _StatChip(
+                  icon: Icons.speed,
+                  label: 'SPD',
+                  value: _ctrl.playerSpd.value.toStringAsFixed(2),
+                  color: AutoBattlePalette.gold),
+            ],
+          )),
+    );
+  }
 }
 
 // ─────────────────────────────────────────────
@@ -233,16 +295,22 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
 // ─────────────────────────────────────────────
 class _UpgradeCardWidget extends StatelessWidget {
   final UpgradeCard card;
+  final int index;
   final double width;
   final double height;
   final bool compact;
+  final bool isHovered;
+  final ValueChanged<bool> onHover;
   final VoidCallback onTap;
 
   const _UpgradeCardWidget({
     required this.card,
+    required this.index,
     required this.width,
     required this.height,
     required this.compact,
+    required this.isHovered,
+    required this.onHover,
     required this.onTap,
   });
 
@@ -251,39 +319,50 @@ class _UpgradeCardWidget extends StatelessWidget {
       case 'epic':
         return const Color(0xFFAA44FF);
       case 'rare':
-        return AutoBattlePalette.secondary;
+        return const Color(0xFF3B82F6);
       default:
-        return AutoBattlePalette.inkSubtle;
+        return const Color(0xFF6B7280);
     }
   }
 
-  Color get _cardColor {
+  String get _rarityLabel {
+    switch (card.rarity) {
+      case 'epic':
+        return '★★★ EPIC';
+      case 'rare':
+        return '★★ RARE';
+      default:
+        return '★ COMMON';
+    }
+  }
+
+  Color get _typeColor {
     switch (card.type) {
       case 'assault':
-        return AutoBattlePalette.primary;
+        return const Color(0xFFEF4444);
       case 'guard':
-        return AutoBattlePalette.secondary;
+        return const Color(0xFF3B82F6);
       case 'haste':
-        return AutoBattlePalette.gold;
+        return const Color(0xFFFF9500);
       case 'vitality':
-        return AutoBattlePalette.mint;
+        return const Color(0xFF22C55E);
       case 'mastery':
         return const Color(0xFFAA44FF);
       default:
-        return AutoBattlePalette.inkSubtle;
+        return const Color(0xFF6B7280);
     }
   }
 
-  IconData get _cardIcon {
+  IconData get _typeIcon {
     switch (card.type) {
       case 'assault':
-        return Icons.flash_on;
+        return Icons.local_fire_department;
       case 'guard':
-        return Icons.shield;
+        return Icons.shield_rounded;
       case 'haste':
-        return Icons.speed;
+        return Icons.bolt;
       case 'vitality':
-        return Icons.favorite;
+        return Icons.favorite_rounded;
       case 'mastery':
         return Icons.auto_awesome;
       default:
@@ -293,129 +372,212 @@ class _UpgradeCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: width,
-        height: height,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AutoBattlePalette.ink, width: 4),
-          boxShadow: const [
-            BoxShadow(
-              color: AutoBattlePalette.ink,
-              offset: Offset(8, 8),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // ── Rarity Badge ──
-            Container(
-              width: double.infinity,
-              padding:
-                  EdgeInsets.symmetric(vertical: compact ? 5 : 6),
-              decoration: BoxDecoration(
-                color: _rarityColor,
-                border: const Border(
-                  bottom:
-                      BorderSide(color: AutoBattlePalette.ink, width: 3),
-                ),
+    final shadowOffset = isHovered ? 10.0 : 6.0;
+    final lift = isHovered ? -4.0 : 0.0;
+
+    return MouseRegion(
+      onEnter: (_) => onHover(true),
+      onExit: (_) => onHover(false),
+      child: GestureDetector(
+        onTap: onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOut,
+          transform: Matrix4.translationValues(0, lift, 0),
+          width: width,
+          height: height,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(
+                color: isHovered ? _typeColor : AutoBattlePalette.ink,
+                width: isHovered ? 5 : 4),
+            boxShadow: [
+              BoxShadow(
+                color: isHovered
+                    ? _typeColor.withValues(alpha: 0.4)
+                    : AutoBattlePalette.ink,
+                offset: Offset(shadowOffset, shadowOffset),
               ),
-              child: Center(
-                child: Text(
-                  card.rarity.toUpperCase(),
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: compact ? 11 : 13,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 2,
+            ],
+          ),
+          child: Column(
+            children: [
+              // ── Rarity Banner ──
+              Container(
+                width: double.infinity,
+                padding: EdgeInsets.symmetric(
+                    vertical: compact ? 6 : 8),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _rarityColor,
+                      _rarityColor.withValues(alpha: 0.85),
+                    ],
+                  ),
+                  border: const Border(
+                    bottom:
+                        BorderSide(color: AutoBattlePalette.ink, width: 3),
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    _rarityLabel,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: compact ? 11 : 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 2,
+                    ),
                   ),
                 ),
               ),
-            ),
 
-            // ── Icon Area ──
-            Expanded(
-              flex: 3,
-              child: Container(
-                width: double.infinity,
-                color: _cardColor,
-                child: Center(
-                  child: Icon(
-                    _cardIcon,
-                    size: compact ? 52 : 68,
-                    color: Colors.white,
-                    shadows: const [
-                      Shadow(
-                          color: AutoBattlePalette.ink,
-                          offset: Offset(3, 3)),
+              // ── Icon + Type Area ──
+              Expanded(
+                flex: 5,
+                child: Container(
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        _typeColor,
+                        _typeColor.withValues(alpha: 0.75),
+                      ],
+                    ),
+                    border: const Border(
+                      bottom: BorderSide(
+                          color: AutoBattlePalette.ink, width: 3),
+                    ),
+                  ),
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      // Background pattern circles
+                      Positioned(
+                        right: -15,
+                        top: -15,
+                        child: Container(
+                          width: 60,
+                          height: 60,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.1),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        left: -10,
+                        bottom: -10,
+                        child: Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.white.withValues(alpha: 0.08),
+                          ),
+                        ),
+                      ),
+                      // Icon with ink shadow
+                      Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // Icon shadow
+                          Stack(
+                            children: [
+                              Positioned(
+                                left: 3,
+                                top: 3,
+                                child: Icon(
+                                  _typeIcon,
+                                  size: compact ? 44 : 56,
+                                  color: AutoBattlePalette.ink
+                                      .withValues(alpha: 0.2),
+                                ),
+                              ),
+                              Icon(
+                                _typeIcon,
+                                size: compact ? 44 : 56,
+                                color: Colors.white,
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
               ),
-            ),
 
-            // ── Divider ──
-            Container(
-              height: 4,
-              color: AutoBattlePalette.ink,
-            ),
-
-            // ── Info Area ──
-            Expanded(
-              flex: 4,
-              child: Padding(
-                padding: EdgeInsets.all(compact ? 10 : 14),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      card.title,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AutoBattlePalette.ink,
-                        fontSize: compact ? 16 : 20,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    SizedBox(height: compact ? 6 : 10),
-                    Expanded(
-                      child: Text(
-                        card.description,
+              // ── Info Area ──
+              Expanded(
+                flex: 6,
+                child: Padding(
+                  padding: EdgeInsets.all(compact ? 10 : 14),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Title
+                      Text(
+                        card.title,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: AutoBattlePalette.inkSubtle,
-                          fontSize: compact ? 11 : 13,
-                          fontWeight: FontWeight.w700,
-                          height: 1.35,
+                          color: AutoBattlePalette.ink,
+                          fontSize: compact ? 16 : 19,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
-                    ),
-                    // ── Stat Preview ──
-                    Container(
-                      width: double.infinity,
-                      padding: EdgeInsets.all(compact ? 8 : 10),
-                      decoration: BoxDecoration(
-                        color: _cardColor.withValues(alpha: 0.12),
-                        border: Border.all(color: _cardColor, width: 2),
-                      ),
-                      child: Center(
+                      SizedBox(height: compact ? 4 : 8),
+
+                      // Description
+                      Expanded(
                         child: Text(
-                          card.statPreview,
+                          card.description.replaceAll('\\n', '\n'),
                           style: TextStyle(
-                            color: AutoBattlePalette.ink,
-                            fontSize: compact ? 13 : 15,
-                            fontWeight: FontWeight.w900,
+                            color: AutoBattlePalette.inkSubtle,
+                            fontSize: compact ? 11 : 13,
+                            fontWeight: FontWeight.w600,
+                            height: 1.4,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+
+                      // ── Stat Preview Badge ──
+                      Container(
+                        width: double.infinity,
+                        padding: EdgeInsets.symmetric(
+                            horizontal: compact ? 10 : 14,
+                            vertical: compact ? 8 : 10),
+                        decoration: BoxDecoration(
+                          color: _typeColor.withValues(alpha: 0.1),
+                          border: Border.all(color: _typeColor, width: 2.5),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(Icons.arrow_upward_rounded,
+                                color: _typeColor,
+                                size: compact ? 16 : 18),
+                            const SizedBox(width: 6),
+                            Text(
+                              card.statPreview,
+                              style: TextStyle(
+                                color: _typeColor,
+                                fontSize: compact ? 14 : 16,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -426,11 +588,13 @@ class _UpgradeCardWidget extends StatelessWidget {
 //  Stat chip for bottom bar
 // ─────────────────────────────────────────────
 class _StatChip extends StatelessWidget {
+  final IconData icon;
   final String label;
   final String value;
   final Color color;
 
   const _StatChip({
+    required this.icon,
     required this.label,
     required this.value,
     required this.color,
@@ -442,29 +606,35 @@ class _StatChip extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Container(
-          padding:
-              const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+          padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             color: color,
             border: Border.all(color: AutoBattlePalette.ink, width: 2),
           ),
-          child: Text(
-            label,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+          child: Icon(icon, color: Colors.white, size: 14),
         ),
-        const SizedBox(width: 4),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AutoBattlePalette.ink,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-          ),
+        const SizedBox(width: 5),
+        Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              label,
+              style: const TextStyle(
+                color: AutoBattlePalette.inkSubtle,
+                fontSize: 9,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            Text(
+              value,
+              style: const TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -472,23 +642,44 @@ class _StatChip extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Background Sketch Lines
+//  Background Paper + Sketch Lines
 // ─────────────────────────────────────────────
-class _SketchLinesPainter extends CustomPainter {
+class _SketchPaperPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AutoBattlePalette.ink.withValues(alpha: 0.05)
-      ..strokeWidth = 2;
-
-    final random = math.Random(456);
-    for (var i = 0; i < 30; i++) {
-      final y = random.nextDouble() * size.height;
+    // Horizontal ruled lines (notebook paper)
+    final linePaint = Paint()
+      ..color = const Color(0xFF87CEEB).withValues(alpha: 0.12)
+      ..strokeWidth = 1;
+    for (var y = 30.0; y < size.height; y += 28) {
       canvas.drawLine(
         Offset(0, y),
-        Offset(size.width, y + (random.nextDouble() - 0.5) * 50),
-        paint,
+        Offset(size.width, y),
+        linePaint,
       );
+    }
+
+    // Vertical margin line
+    canvas.drawLine(
+      const Offset(40, 0),
+      Offset(40, size.height),
+      Paint()
+        ..color = const Color(0xFFFF9999).withValues(alpha: 0.15)
+        ..strokeWidth = 2,
+    );
+
+    // Random sketch doodles
+    final rand = math.Random(789);
+    final doodlePaint = Paint()
+      ..color = AutoBattlePalette.ink.withValues(alpha: 0.03)
+      ..strokeWidth = 2
+      ..style = PaintingStyle.stroke;
+
+    for (var i = 0; i < 8; i++) {
+      final cx = rand.nextDouble() * size.width;
+      final cy = rand.nextDouble() * size.height;
+      final r = 15 + rand.nextDouble() * 30;
+      canvas.drawCircle(Offset(cx, cy), r, doodlePaint);
     }
   }
 

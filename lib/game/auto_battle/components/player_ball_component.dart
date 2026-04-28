@@ -25,6 +25,9 @@ class PlayerBallComponent extends PositionComponent {
   double _facingAngle;
   double _motionEnergy = 0;
   bool _showLabel = false;
+  int _lastAttackAt = 0;
+  double _thrust = 0;
+  double _targetAngle = 0;
 
   PlayerBallComponent({
     required this.playerId,
@@ -41,6 +44,8 @@ class PlayerBallComponent extends PositionComponent {
         characterType = snapshot.characterType,
         _lastHp = snapshot.hp,
         _facingAngle = _directionFromVelocity(snapshot),
+        _targetAngle = snapshot.targetAngle,
+        _lastAttackAt = snapshot.lastAttackAt,
         super(
           position: initialPosition,
           size: Vector2.all(ballRadius * 2),
@@ -76,9 +81,10 @@ class PlayerBallComponent extends PositionComponent {
     characterType = snapshot.characterType;
     final velocityLength =
         math.sqrt(snapshot.vx * snapshot.vx + snapshot.vy * snapshot.vy);
-    if (velocityLength > 0.04) {
-      _facingAngle = math.atan2(snapshot.vy, snapshot.vx);
-    }
+    
+    // Smoothly update facing angle towards targetAngle
+    _targetAngle = snapshot.targetAngle;
+    
     _motionEnergy = (velocityLength * snapshot.speed).clamp(0.0, 1.8);
     _showLabel = isMine || unspentUpgrades > 0;
 
@@ -87,6 +93,11 @@ class PlayerBallComponent extends PositionComponent {
     }
     hp = snapshot.hp;
     _lastHp = snapshot.hp;
+
+    if (snapshot.lastAttackAt > _lastAttackAt) {
+      _thrust = 1.0;
+    }
+    _lastAttackAt = snapshot.lastAttackAt;
 
     _layoutHpBar();
     hpBar.updateValues(
@@ -100,9 +111,24 @@ class PlayerBallComponent extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
-    _pulse += dt;
-    position += (targetPosition - position) * 0.25;
-    _hitFlash = (_hitFlash - dt * 5.2).clamp(0, 1).toDouble();
+    
+    // Decay animations
+    _hitFlash = (_hitFlash - dt * 5).clamp(0, 1).toDouble();
+    _thrust = (_thrust - dt * 6.5).clamp(0, 1).toDouble();
+    _pulse = (_pulse + dt) % (math.pi * 2);
+
+    // Smoothly lerp facing angle to target angle
+    _facingAngle = _lerpAngle(_facingAngle, _targetAngle, 0.25);
+
+    // Smooth position interpolation
+    position.lerp(targetPosition, 0.22);
+  }
+
+  double _lerpAngle(double start, double end, double t) {
+    double diff = (end - start) % (math.pi * 2);
+    if (diff > math.pi) diff -= math.pi * 2;
+    if (diff < -math.pi) diff += math.pi * 2;
+    return start + diff * t;
   }
 
   @override
@@ -265,6 +291,8 @@ class PlayerBallComponent extends PositionComponent {
         return 'BLD';
       case 'miner':
         return 'MIN';
+      case 'laser':
+        return 'LAS';
       default:
         return type.toUpperCase();
     }
@@ -288,22 +316,29 @@ class PlayerBallComponent extends PositionComponent {
 
     final scale = (ballRadius / 18).clamp(0.72, 1.35).toDouble();
     canvas.save();
-    canvas.translate(center.dx, center.dy);
+    
+    // Apply thrust: lunge forward along the facing angle
+    // Increase distance to 14.0 for better visibility
+    final thrustOffset = 14.0 * _thrust * scale;
+    canvas.translate(
+      center.dx + math.cos(_facingAngle) * thrustOffset,
+      center.dy + math.sin(_facingAngle) * thrustOffset,
+    );
     canvas.rotate(_facingAngle);
 
     final handOffset = Offset(ballRadius * 0.76, ballRadius * 0.20);
     canvas.drawCircle(
       handOffset,
       4.1 * scale,
-      Paint()..color = Colors.white.withValues(alpha: 0.88),
+      Paint()..color = Colors.white.withValues(alpha: 0.92),
     );
     canvas.drawCircle(
       handOffset,
       4.1 * scale,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4 * scale
-        ..color = AutoBattlePalette.secondaryText.withValues(alpha: 0.34),
+        ..strokeWidth = 2.0 * scale
+        ..color = const Color(0xFF1A1A1A).withValues(alpha: 0.5),
     );
 
     switch (characterType) {
@@ -319,6 +354,9 @@ class PlayerBallComponent extends PositionComponent {
       case 'miner':
         _renderHeldMine(canvas, scale);
         break;
+      case 'laser':
+        _renderLaserCannon(canvas, scale);
+        break;
       default:
         break;
     }
@@ -327,173 +365,411 @@ class PlayerBallComponent extends PositionComponent {
   }
 
   void _renderGun(Canvas canvas, double scale) {
-    final outline = Paint()
-      ..color = AutoBattlePalette.secondaryText.withValues(alpha: 0.34)
+    // ── Chunky Cartoon Revolver ──
+    final inkPaint = Paint()
+      ..color = const Color(0xFF1A1A1A)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2 * scale
+      ..strokeWidth = 3.5 * scale
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
-    final body = Paint()..color = const Color(0xFFE5E7EB);
-    final dark = Paint()..color = const Color(0xFF475569);
-    final accent = Paint()..color = const Color(0xFF38BDF8);
 
-    final barrel = RRect.fromRectAndRadius(
-      Rect.fromLTWH(ballRadius * 0.78, -5.5 * scale, 24 * scale, 8.5 * scale),
-      Radius.circular(2.8 * scale),
-    );
-    canvas.drawRRect(barrel, outline);
-    canvas.drawRRect(barrel, body);
-
-    final chamber = RRect.fromRectAndRadius(
-      Rect.fromLTWH(ballRadius * 0.66, -8.2 * scale, 15 * scale, 13 * scale),
-      Radius.circular(3.2 * scale),
-    );
-    canvas.drawRRect(chamber, outline);
-    canvas.drawRRect(chamber, dark);
-
-    final gripPath = Path()
-      ..moveTo(ballRadius * 0.75, 2 * scale)
-      ..lineTo(ballRadius * 0.88, 2 * scale)
-      ..lineTo(ballRadius * 0.82, 20 * scale)
-      ..lineTo(ballRadius * 0.68, 19 * scale)
+    // Barrel – thick rounded rectangle
+    // Stretch barrel forward based on thrust
+    final barrelExtension = 6.0 * _thrust * scale;
+    final barrelPath = Path()
+      ..moveTo(ballRadius * 0.72, -3.5 * scale)
+      ..lineTo(ballRadius * 2.2 + barrelExtension, -3 * scale)
+      ..lineTo(ballRadius * 2.3 + barrelExtension, 0)
+      ..lineTo(ballRadius * 2.2 + barrelExtension, 3 * scale)
+      ..lineTo(ballRadius * 0.72, 3.5 * scale)
       ..close();
-    canvas.drawPath(gripPath, outline);
-    canvas.drawPath(gripPath, dark);
+    canvas.drawPath(barrelPath, Paint()..color = const Color(0xFF374151));
+    canvas.drawPath(barrelPath, inkPaint);
 
-    canvas.drawCircle(
-      Offset(ballRadius * 1.98, -1.1 * scale),
-      2.8 * scale,
-      accent,
+    // Barrel Highlight
+    canvas.drawLine(
+      Offset(ballRadius * 0.85, -1 * scale),
+      Offset(ballRadius * 2.0, -0.5 * scale),
+      Paint()
+        ..color = const Color(0xFF9CA3AF)
+        ..strokeWidth = 2 * scale
+        ..strokeCap = StrokeCap.round,
     );
+
+    // Chamber/Cylinder – bold circle
+    canvas.drawCircle(
+      Offset(ballRadius * 0.78, 0),
+      8.5 * scale,
+      Paint()..color = const Color(0xFF1F2937),
+    );
+    canvas.drawCircle(
+      Offset(ballRadius * 0.78, 0),
+      8.5 * scale,
+      inkPaint,
+    );
+    // Cylinder detail dots
+    for (var i = 0; i < 5; i++) {
+      final a = i * math.pi * 2 / 5 - math.pi / 2;
+      canvas.drawCircle(
+        Offset(ballRadius * 0.78 + math.cos(a) * 5 * scale,
+            math.sin(a) * 5 * scale),
+        1.5 * scale,
+        Paint()..color = const Color(0xFF6B7280),
+      );
+    }
+
+    // Grip – bold trapezoid
+    final gripPath = Path()
+      ..moveTo(ballRadius * 0.68, 5 * scale)
+      ..lineTo(ballRadius * 0.88, 5 * scale)
+      ..lineTo(ballRadius * 0.82, 22 * scale)
+      ..lineTo(ballRadius * 0.62, 21 * scale)
+      ..close();
+    canvas.drawPath(gripPath, Paint()..color = const Color(0xFF92400E));
+    canvas.drawPath(gripPath, inkPaint);
+
+    // Muzzle Flash – bright yellow star
+    final muzzle = Offset(ballRadius * 2.35 + barrelExtension, 0);
+    canvas.drawCircle(muzzle, 5.5 * scale,
+        Paint()..color = const Color(0xFFFFD43B).withValues(alpha: 0.7));
+    canvas.drawCircle(muzzle, 3 * scale,
+        Paint()..color = Colors.white.withValues(alpha: 0.9));
+
+    // Flash lines
+    for (var i = 0; i < 4; i++) {
+      final a = i * math.pi / 2 + math.pi / 4;
+      canvas.drawLine(
+        muzzle + Offset(math.cos(a) * 4 * scale, math.sin(a) * 4 * scale),
+        muzzle + Offset(math.cos(a) * 9 * scale, math.sin(a) * 9 * scale),
+        Paint()
+          ..color = const Color(0xFFFFD43B)
+          ..strokeWidth = 1.8 * scale
+          ..strokeCap = StrokeCap.round,
+      );
+    }
   }
 
   void _renderBlade(Canvas canvas, double scale) {
-    final outline = Paint()
-      ..color = AutoBattlePalette.secondaryText.withValues(alpha: 0.34)
+    // ── Bold Cartoon Katana ──
+    final inkPaint = Paint()
+      ..color = const Color(0xFF1A1A1A)
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.1 * scale
+      ..strokeWidth = 3.5 * scale
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
-    final bladePaint = Paint()..color = const Color(0xFFF8FAFC);
-    final edgePaint = Paint()
-      ..color = const Color(0xFFA7F3D0).withValues(alpha: 0.85);
-    final hiltPaint = Paint()..color = const Color(0xFFF59E0B);
-    final handlePaint = Paint()..color = const Color(0xFF7C2D12);
 
+    // Blade body – long sharp triangle
+    // Stretch blade forward based on thrust
+    final bladeStretch = 10.0 * _thrust * scale;
     final bladePath = Path()
-      ..moveTo(ballRadius * 0.83, -4.5 * scale)
-      ..lineTo(ballRadius * 2.1, -2.2 * scale)
-      ..lineTo(ballRadius * 2.28, 0)
-      ..lineTo(ballRadius * 2.1, 2.2 * scale)
-      ..lineTo(ballRadius * 0.83, 4.5 * scale)
+      ..moveTo(ballRadius * 0.82, -5.5 * scale)
+      ..lineTo(ballRadius * 2.6 + bladeStretch, -1 * scale)
+      ..lineTo(ballRadius * 2.7 + bladeStretch, 0.5 * scale)
+      ..lineTo(ballRadius * 2.5 + bladeStretch, 1.5 * scale)
+      ..lineTo(ballRadius * 0.82, 5.5 * scale)
       ..close();
-    canvas.drawPath(bladePath, outline);
-    canvas.drawPath(bladePath, bladePaint);
+    canvas.drawPath(bladePath, Paint()..color = const Color(0xFFF1F5F9));
+    canvas.drawPath(bladePath, inkPaint);
 
+    // Blade edge glow – bright green slash line
     final edgePath = Path()
-      ..moveTo(ballRadius * 1.05, -1.4 * scale)
-      ..lineTo(ballRadius * 2.02, -0.5 * scale)
-      ..lineTo(ballRadius * 1.05, 1.4 * scale);
-    canvas.drawPath(edgePath, edgePaint);
+      ..moveTo(ballRadius * 0.95, -3 * scale)
+      ..lineTo(ballRadius * 2.45, -0.3 * scale)
+      ..lineTo(ballRadius * 2.55, 0.5 * scale);
+    canvas.drawPath(
+      edgePath,
+      Paint()
+        ..color = const Color(0xFF4ADE80).withValues(alpha: 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3 * scale
+        ..strokeCap = StrokeCap.round,
+    );
 
+    // Blade inner shine
     canvas.drawLine(
-      Offset(ballRadius * 0.74, -9 * scale),
-      Offset(ballRadius * 0.74, 9 * scale),
+      Offset(ballRadius * 1.2, -1.5 * scale),
+      Offset(ballRadius * 2.1, 0),
       Paint()
-        ..color = hiltPaint.color
-        ..strokeWidth = 5 * scale
+        ..color = Colors.white.withValues(alpha: 0.45)
+        ..strokeWidth = 2.5 * scale
         ..strokeCap = StrokeCap.round,
     );
-    canvas.drawLine(
-      Offset(ballRadius * 0.56, 0),
-      Offset(ballRadius * 0.82, 0),
-      Paint()
-        ..color = handlePaint.color
-        ..strokeWidth = 7 * scale
-        ..strokeCap = StrokeCap.round,
+
+    // Guard / Tsuba – bold perpendicular bar
+    final tsubaRect = RRect.fromRectAndRadius(
+      Rect.fromCenter(
+          center: Offset(ballRadius * 0.78, 0),
+          width: 4 * scale,
+          height: 22 * scale),
+      Radius.circular(2 * scale),
     );
+    canvas.drawRRect(tsubaRect, Paint()..color = const Color(0xFFEAB308));
+    canvas.drawRRect(tsubaRect, inkPaint);
+
+    // Handle – wrapped grip
+    final handleRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(
+          ballRadius * 0.48, -3.5 * scale, ballRadius * 0.28, 7 * scale),
+      Radius.circular(2 * scale),
+    );
+    canvas.drawRRect(handleRect, Paint()..color = const Color(0xFF7C2D12));
+    canvas.drawRRect(handleRect, inkPaint);
+
+    // Handle wrap lines
+    for (var i = 0; i < 3; i++) {
+      final y = -2 * scale + i * 2 * scale;
+      canvas.drawLine(
+        Offset(ballRadius * 0.50, y),
+        Offset(ballRadius * 0.74, y),
+        Paint()
+          ..color = const Color(0xFFD97706)
+          ..strokeWidth = 1.2 * scale,
+      );
+    }
   }
 
   void _renderPoisonVial(Canvas canvas, double scale) {
-    final outline = Paint()
-      ..color = AutoBattlePalette.secondaryText.withValues(alpha: 0.34)
+    // ── Cartoon Bubble Flask ──
+    final inkPaint = Paint()
+      ..color = const Color(0xFF1A1A1A)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3 * scale
       ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
-    final glass = Paint()
-      ..color = const Color(0xFFD1FAE5).withValues(alpha: 0.94);
-    final liquid = Paint()..color = const Color(0xFF22C55E);
-    final cap = Paint()..color = const Color(0xFF475569);
 
     canvas.save();
-    canvas.translate(ballRadius * 1.08, -2 * scale);
-    canvas.rotate(-0.28);
+    canvas.translate(ballRadius * 1.08, -1 * scale);
+    canvas.rotate(-0.22);
 
-    final bottle = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-7 * scale, -10 * scale, 18 * scale, 26 * scale),
-      Radius.circular(6 * scale),
-    );
-    canvas.drawRRect(bottle, outline);
-    canvas.drawRRect(bottle, glass);
+    // Flask body – round bottom
+    canvas.drawCircle(
+        Offset(2 * scale, 6 * scale), 12 * scale, Paint()..color = const Color(0xFFD1FAE5).withValues(alpha: 0.9));
+    canvas.drawCircle(
+        Offset(2 * scale, 6 * scale), 12 * scale, inkPaint);
 
-    final liquidRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-5 * scale, 1 * scale, 14 * scale, 12 * scale),
-      Radius.circular(4 * scale),
-    );
-    canvas.drawRRect(liquidRect, liquid);
+    // Liquid fill – green with bubbles
+    final liquidPath = Path()
+      ..addArc(
+        Rect.fromCircle(center: Offset(2 * scale, 6 * scale), radius: 10 * scale),
+        0.3,
+        math.pi - 0.6,
+      )
+      ..close();
+    canvas.drawPath(liquidPath, Paint()..color = const Color(0xFF22C55E));
 
-    final neck = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-2 * scale, -17 * scale, 8 * scale, 8 * scale),
+    // Bubbles
+    canvas.drawCircle(Offset(-2 * scale, 4 * scale), 2.2 * scale,
+        Paint()..color = const Color(0xFF86EFAC));
+    canvas.drawCircle(Offset(5 * scale, 2 * scale), 1.6 * scale,
+        Paint()..color = const Color(0xFFBBF7D0));
+    canvas.drawCircle(Offset(1 * scale, 8 * scale), 1.8 * scale,
+        Paint()..color = const Color(0xFF86EFAC));
+
+    // Neck
+    final neckRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(-2 * scale, -14 * scale, 8 * scale, 12 * scale),
       Radius.circular(2 * scale),
     );
-    canvas.drawRRect(neck, outline);
-    canvas.drawRRect(neck, cap);
+    canvas.drawRRect(neckRect, Paint()..color = const Color(0xFFD1FAE5).withValues(alpha: 0.85));
+    canvas.drawRRect(neckRect, inkPaint);
 
-    canvas.drawCircle(Offset(1 * scale, -1 * scale), 2 * scale,
-        Paint()..color = Colors.white);
-    canvas.drawCircle(Offset(7 * scale, -20 * scale), 2.3 * scale, liquid);
-    canvas.drawCircle(Offset(13 * scale, -26 * scale), 1.7 * scale, liquid);
+    // Cork
+    final corkRect = RRect.fromRectAndRadius(
+      Rect.fromLTWH(-3 * scale, -19 * scale, 10 * scale, 6 * scale),
+      Radius.circular(3 * scale),
+    );
+    canvas.drawRRect(corkRect, Paint()..color = const Color(0xFF92400E));
+    canvas.drawRRect(corkRect, inkPaint);
+
+    // Skull icon on flask
+    canvas.drawCircle(
+      Offset(2 * scale, 4 * scale),
+      3 * scale,
+      Paint()..color = Colors.white.withValues(alpha: 0.7),
+    );
+    // Skull eyes
+    canvas.drawCircle(Offset(0.5 * scale, 3 * scale), 0.8 * scale,
+        Paint()..color = const Color(0xFF1A1A1A));
+    canvas.drawCircle(Offset(3.5 * scale, 3 * scale), 0.8 * scale,
+        Paint()..color = const Color(0xFF1A1A1A));
+
+    // Drip from cork
+    canvas.drawCircle(Offset(6 * scale, -22 * scale), 2.2 * scale,
+        Paint()..color = const Color(0xFF22C55E));
+    canvas.drawCircle(Offset(10 * scale, -27 * scale), 1.5 * scale,
+        Paint()..color = const Color(0xFF22C55E));
+
     canvas.restore();
   }
 
   void _renderHeldMine(Canvas canvas, double scale) {
-    final outline = Paint()
-      ..color = AutoBattlePalette.secondaryText.withValues(alpha: 0.38)
+    // ── TNT Dynamite Bundle ──
+    final inkPaint = Paint()
+      ..color = const Color(0xFF1A1A1A)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3 * scale
       ..strokeCap = StrokeCap.round;
-    final shell = Paint()..color = const Color(0xFF1F2937);
-    final light = Paint()..color = const Color(0xFFFFD43B);
 
-    final mineCenter = Offset(ballRadius * 1.23, -1 * scale);
-    for (var i = 0; i < 8; i += 1) {
-      final angle = i * math.pi / 4;
-      final start =
-          mineCenter + Offset(math.cos(angle), math.sin(angle)) * 8 * scale;
-      final end =
-          mineCenter + Offset(math.cos(angle), math.sin(angle)) * 13 * scale;
-      canvas.drawLine(start, end, outline);
+    final center = Offset(ballRadius * 1.25, -1 * scale);
+
+    // Three dynamite sticks (red cylinders)
+    for (var i = -1; i <= 1; i++) {
+      final stickX = center.dx + i * 5 * scale;
+      final stickRect = RRect.fromRectAndRadius(
+        Rect.fromCenter(
+            center: Offset(stickX, center.dy),
+            width: 6.5 * scale,
+            height: 22 * scale),
+        Radius.circular(3 * scale),
+      );
+      canvas.drawRRect(stickRect, Paint()..color = const Color(0xFFEF4444));
+      canvas.drawRRect(stickRect, inkPaint);
+
+      // Label band
       canvas.drawLine(
-        start,
-        end,
+        Offset(stickX - 2.5 * scale, center.dy + 3 * scale),
+        Offset(stickX + 2.5 * scale, center.dy + 3 * scale),
         Paint()
-          ..color = const Color(0xFF64748B)
-          ..strokeWidth = 2.4 * scale
+          ..color = const Color(0xFFFFD43B)
+          ..strokeWidth = 2.5 * scale
           ..strokeCap = StrokeCap.round,
       );
     }
 
-    canvas.drawCircle(mineCenter, 11 * scale, outline);
-    canvas.drawCircle(mineCenter, 11 * scale, shell);
-    canvas.drawCircle(mineCenter, 4.2 * scale, light);
-    canvas.drawCircle(
-      mineCenter,
-      11 * scale,
+    // Binding rope
+    canvas.drawLine(
+      Offset(center.dx - 7 * scale, center.dy - 2 * scale),
+      Offset(center.dx + 7 * scale, center.dy - 2 * scale),
       Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.4 * scale
-        ..color = Colors.white.withValues(alpha: 0.28),
+        ..color = const Color(0xFF92400E)
+        ..strokeWidth = 2.5 * scale
+        ..strokeCap = StrokeCap.round,
     );
+    canvas.drawLine(
+      Offset(center.dx - 7 * scale, center.dy + 5 * scale),
+      Offset(center.dx + 7 * scale, center.dy + 5 * scale),
+      Paint()
+        ..color = const Color(0xFF92400E)
+        ..strokeWidth = 2.5 * scale
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Fuse – wavy line going up
+    final fusePath = Path()
+      ..moveTo(center.dx, center.dy - 12 * scale)
+      ..cubicTo(
+        center.dx + 5 * scale, center.dy - 18 * scale,
+        center.dx - 3 * scale, center.dy - 24 * scale,
+        center.dx + 2 * scale, center.dy - 28 * scale,
+      );
+    canvas.drawPath(
+      fusePath,
+      Paint()
+        ..color = const Color(0xFF1A1A1A)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2 * scale
+        ..strokeCap = StrokeCap.round,
+    );
+
+    // Fuse spark – bright orange/yellow glow
+    final sparkPos = Offset(center.dx + 2 * scale, center.dy - 28 * scale);
+    canvas.drawCircle(sparkPos, 5 * scale,
+        Paint()..color = const Color(0xFFFF6B00).withValues(alpha: 0.5));
+    canvas.drawCircle(sparkPos, 3 * scale,
+        Paint()..color = const Color(0xFFFFD43B).withValues(alpha: 0.8));
+    canvas.drawCircle(sparkPos, 1.5 * scale,
+        Paint()..color = Colors.white);
+
+    // Spark rays
+    for (var i = 0; i < 5; i++) {
+      final a = i * math.pi * 2 / 5 + _pulse * 8;
+      canvas.drawLine(
+        sparkPos + Offset(math.cos(a) * 3 * scale, math.sin(a) * 3 * scale),
+        sparkPos + Offset(math.cos(a) * 7 * scale, math.sin(a) * 7 * scale),
+        Paint()
+          ..color = const Color(0xFFFFD43B)
+          ..strokeWidth = 1.2 * scale
+          ..strokeCap = StrokeCap.round,
+      );
+    }
+  }
+
+  void _renderLaserCannon(Canvas canvas, double scale) {
+    // ── Sci-fi Sketch Laser Cannon ──
+    final inkPaint = Paint()
+      ..color = const Color(0xFF1A1A1A)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 3 * scale
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+
+    // Cannon body
+    // Stretch cannon forward based on thrust
+    final cannonStretch = 8.0 * _thrust * scale;
+    final cannonPath = Path()
+      ..moveTo(ballRadius * 0.72, -8 * scale)
+      ..lineTo(ballRadius * 2.4 + cannonStretch, -10 * scale)
+      ..lineTo(ballRadius * 2.5 + cannonStretch, 0)
+      ..lineTo(ballRadius * 2.4 + cannonStretch, 10 * scale)
+      ..lineTo(ballRadius * 0.72, 8 * scale)
+      ..close();
+    canvas.drawPath(cannonPath, Paint()..color = const Color(0xFF1E293B));
+    canvas.drawPath(cannonPath, inkPaint);
+
+    // Tech panel lines
+    canvas.drawLine(
+      Offset(ballRadius * 0.9, -4 * scale),
+      Offset(ballRadius * 0.9, 4 * scale),
+      Paint()
+        ..color = const Color(0xFF475569)
+        ..strokeWidth = 1.5 * scale,
+    );
+    canvas.drawLine(
+      Offset(ballRadius * 1.4, -3 * scale),
+      Offset(ballRadius * 1.4, 3 * scale),
+      Paint()
+        ..color = const Color(0xFF475569)
+        ..strokeWidth = 1.5 * scale,
+    );
+
+    // Energy core – glowing circle in the center
+    final corePos = Offset(ballRadius * 1.1, 0);
+    canvas.drawCircle(corePos, 6 * scale,
+        Paint()..color = const Color(0xFFFF4B4B).withValues(alpha: 0.3));
+    canvas.drawCircle(corePos, 4 * scale,
+        Paint()..color = const Color(0xFFFF4B4B));
+    canvas.drawCircle(corePos, 4 * scale, inkPaint);
+    canvas.drawCircle(corePos, 2 * scale,
+        Paint()..color = Colors.white.withValues(alpha: 0.9));
+
+    // Energy rings (pulsing)
+    final ringSize = 1 + math.sin(_pulse * 6) * 0.3;
+    canvas.drawCircle(
+      corePos,
+      7 * scale * ringSize,
+      Paint()
+        ..color = const Color(0xFFFF4B4B).withValues(alpha: 0.25)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.5 * scale,
+    );
+
+    // Emitter tip – bright glow at barrel end
+    final emitter = Offset(ballRadius * 2.35, 0);
+    canvas.drawCircle(emitter, 4.5 * scale,
+        Paint()..color = const Color(0xFFFF4B4B).withValues(alpha: 0.5));
+    canvas.drawCircle(emitter, 2.5 * scale,
+        Paint()..color = const Color(0xFFFF8888).withValues(alpha: 0.8));
+    canvas.drawCircle(emitter, 1.2 * scale,
+        Paint()..color = Colors.white);
+
+    // Grip / stock
+    final gripPath = Path()
+      ..moveTo(ballRadius * 0.58, 3 * scale)
+      ..lineTo(ballRadius * 0.72, 3 * scale)
+      ..lineTo(ballRadius * 0.68, 18 * scale)
+      ..lineTo(ballRadius * 0.52, 17 * scale)
+      ..close();
+    canvas.drawPath(gripPath, Paint()..color = const Color(0xFF374151));
+    canvas.drawPath(gripPath, inkPaint);
   }
 }
