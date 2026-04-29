@@ -13,8 +13,12 @@ class PlayerSnapshot {
   final double shield;
   final double maxShield;
   final int weaponLevel;
+  final int weaponCount;
+  final int bulletReflectCount;
   final double regen;
   final double lifesteal;
+  final double barrierHp;
+  final double barrierMaxHp;
   final double gold;
   final double totalGold;
   final int unspentUpgrades;
@@ -47,8 +51,12 @@ class PlayerSnapshot {
     this.shield = 0,
     this.maxShield = 0,
     this.weaponLevel = 0,
+    this.weaponCount = 1,
+    this.bulletReflectCount = 0,
     this.regen = 0,
     this.lifesteal = 0,
+    this.barrierHp = 0,
+    this.barrierMaxHp = 0,
     required this.gold,
     required this.totalGold,
     required this.unspentUpgrades,
@@ -83,8 +91,12 @@ class PlayerSnapshot {
       shield: _asDouble(json['shield']),
       maxShield: _asDouble(json['maxShield']),
       weaponLevel: _asInt(json['weaponLevel']),
+      weaponCount: _asInt(json['weaponCount'], fallback: 1),
+      bulletReflectCount: _asInt(json['bulletReflectCount']),
       regen: _asDouble(json['regen']),
       lifesteal: _asDouble(json['lifesteal']),
+      barrierHp: _asDouble(json['barrierHp']),
+      barrierMaxHp: _asDouble(json['barrierMaxHp']),
       gold: _asDouble(json['gold']),
       totalGold: _asDouble(json['totalGold']),
       unspentUpgrades: _asInt(json['unspentUpgrades']),

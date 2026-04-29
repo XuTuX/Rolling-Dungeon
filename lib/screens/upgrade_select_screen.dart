@@ -301,18 +301,23 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
               _StatChip(
                   icon: Icons.auto_fix_high,
                   label: 'WPN',
-                  value: '${_ctrl.playerWeaponLevel.value}',
+                  value: '${_ctrl.playerWeaponCount.value}',
                   color: const Color(0xFFAA44FF)),
               _StatChip(
-                  icon: Icons.security,
-                  label: 'SHD',
-                  value: '${_ctrl.playerMaxShield.value.round()}',
+                  icon: Icons.change_circle,
+                  label: 'REF',
+                  value: '${_ctrl.playerBulletReflectCount.value}',
                   color: const Color(0xFF38BDF8)),
               _StatChip(
-                  icon: Icons.healing,
-                  label: 'REG',
-                  value: _ctrl.playerRegen.value.toStringAsFixed(1),
-                  color: const Color(0xFF22C55E)),
+                  icon: Icons.radio_button_unchecked,
+                  label: 'SIZE',
+                  value: '${_ctrl.playerRadius.value.round()}',
+                  color: const Color(0xFF0F766E)),
+              _StatChip(
+                  icon: Icons.security,
+                  label: 'BAR',
+                  value: '${_ctrl.playerBarrierMaxHp.value.round()}',
+                  color: const Color(0xFF38BDF8)),
             ],
           )),
     );
@@ -396,28 +401,20 @@ class _UpgradeCardWidget extends StatelessWidget {
 
   Color get _typeColor {
     switch (card.type) {
-      case 'assault':
+      case 'attack_up':
         return const Color(0xFFEF4444);
-      case 'guard':
+      case 'defense_up':
         return const Color(0xFF3B82F6);
-      case 'haste':
+      case 'body_small':
         return const Color(0xFFFF9500);
-      case 'vitality':
+      case 'body_big':
         return const Color(0xFF22C55E);
-      case 'mastery':
-        return const Color(0xFFAA44FF);
-      case 'weapon_form':
+      case 'weapon_count':
         return const Color(0xFF7C3AED);
+      case 'bullet_reflect':
+        return const Color(0xFF0284C7);
       case 'barrier':
         return const Color(0xFF38BDF8);
-      case 'regen':
-        return const Color(0xFF16A34A);
-      case 'lifesteal':
-        return const Color(0xFFBE123C);
-      case 'overclock':
-        return const Color(0xFFF97316);
-      case 'fortress':
-        return const Color(0xFF0F766E);
       default:
         return const Color(0xFF6B7280);
     }
@@ -425,28 +422,20 @@ class _UpgradeCardWidget extends StatelessWidget {
 
   IconData get _typeIcon {
     switch (card.type) {
-      case 'assault':
+      case 'attack_up':
         return Icons.local_fire_department;
-      case 'guard':
+      case 'defense_up':
         return Icons.shield_rounded;
-      case 'haste':
+      case 'body_small':
         return Icons.bolt;
-      case 'vitality':
-        return Icons.favorite_rounded;
-      case 'mastery':
-        return Icons.auto_awesome;
-      case 'weapon_form':
+      case 'body_big':
+        return Icons.radio_button_unchecked;
+      case 'weapon_count':
         return Icons.auto_fix_high;
+      case 'bullet_reflect':
+        return Icons.change_circle;
       case 'barrier':
         return Icons.security;
-      case 'regen':
-        return Icons.healing;
-      case 'lifesteal':
-        return Icons.bloodtype;
-      case 'overclock':
-        return Icons.whatshot;
-      case 'fortress':
-        return Icons.castle;
       default:
         return Icons.help_outline;
     }

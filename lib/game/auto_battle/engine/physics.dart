@@ -93,6 +93,11 @@ void resolveCircleCollision(PlayerData a, PlayerData b) {
     b.vel.x = b.vel.x - (dotB - dotA) * nx;
     b.vel.y = b.vel.y - (dotB - dotA) * ny;
 
+    a.vel.x -= nx * COLLISION_BOUNCE_IMPULSE;
+    a.vel.y -= ny * COLLISION_BOUNCE_IMPULSE;
+    b.vel.x += nx * COLLISION_BOUNCE_IMPULSE;
+    b.vel.y += ny * COLLISION_BOUNCE_IMPULSE;
+
     a.vel = normalize(a.vel);
     b.vel = normalize(b.vel);
   }

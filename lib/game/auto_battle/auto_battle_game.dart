@@ -429,8 +429,34 @@ class AutoBattleGame extends FlameGame {
         );
       }
 
+      if (p.barrierHp > 0) {
+        final barrierRatio = p.barrierMaxHp <= 0
+            ? 1.0
+            : (p.barrierHp / p.barrierMaxHp).clamp(0.0, 1.0);
+        final barrierR = r * 1.28;
+        canvas.drawCircle(
+          pos,
+          barrierR,
+          Paint()
+            ..color = const Color(0xFF60A5FA).withValues(alpha: 0.12)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 8,
+        );
+        canvas.drawArc(
+          Rect.fromCircle(center: pos, radius: barrierR),
+          -math.pi / 2,
+          math.pi * 2 * barrierRatio,
+          false,
+          Paint()
+            ..color = const Color(0xFF2563EB).withValues(alpha: 0.78)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4.5
+            ..strokeCap = StrokeCap.round,
+        );
+      }
+
       // Weapon Decoration (Simple indicator)
-      _renderWeaponDecoration(canvas, pos, r, p.characterType, _weaponAngle(p));
+      _renderWeaponDecoration(canvas, pos, r, p);
 
       // HP Bar
       final barW = r * 2.5;
@@ -455,38 +481,30 @@ class AutoBattleGame extends FlameGame {
   }
 
   void _renderWeaponDecoration(
-      Canvas canvas, Offset pos, double r, String type, double angle) {
+      Canvas canvas, Offset pos, double r, PlayerSnapshot player) {
     final ink = Paint()
       ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
-    if (type == 'gunner') {
-      canvas.save();
-      canvas.translate(pos.dx, pos.dy);
-      canvas.rotate(angle);
 
-      final barrel = Rect.fromLTWH(r * 0.65, -r * 0.22, r * 1.65, r * 0.44);
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(barrel, Radius.circular(r * 0.08)),
-        Paint()..color = const Color(0xFF374151),
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndRadius(barrel, Radius.circular(r * 0.08)),
-        ink,
-      );
-      canvas.drawCircle(Offset(r * 2.38, 0), r * 0.18,
-          Paint()..color = const Color(0xFFFFD43B));
-      canvas.drawLine(
-        Offset(r * 0.92, r * 0.25),
-        Offset(r * 1.18, r * 0.62),
-        Paint()
-          ..color = AutoBattlePalette.ink
-          ..strokeWidth = 3
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.restore();
-    } else if (type == 'blade') {
+    if (player.weaponCount > 0 || player.characterType == 'gunner') {
+      final weaponCount = math.max(1, player.weaponCount);
+      final baseAngle = _weaponAngle(player);
+      for (int i = 0; i < weaponCount; i++) {
+        _renderGunDecoration(
+          canvas,
+          pos,
+          r,
+          baseAngle + math.pi * 2 * i / weaponCount,
+          ink,
+        );
+      }
+      return;
+    }
+
+    final angle = _weaponAngle(player);
+    if (player.characterType == 'blade') {
       canvas.save();
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(angle);
@@ -544,12 +562,12 @@ class AutoBattleGame extends FlameGame {
       canvas.drawCircle(
           Offset(r * 0.2, 0), r * 0.13, Paint()..color = AutoBattlePalette.ink);
       canvas.restore();
-    } else if (type == 'miner') {
+    } else if (player.characterType == 'miner') {
       // Mini TNT
       canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5,
           Paint()..color = const Color(0xFFEF4444));
       canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5, ink);
-    } else if (type == 'laser') {
+    } else if (player.characterType == 'laser') {
       // Mini laser indicator
       canvas.drawLine(
           pos + Offset(r - 2, 0),
@@ -561,6 +579,39 @@ class AutoBattleGame extends FlameGame {
       canvas.drawCircle(pos + Offset(r + 14, 0), 3,
           Paint()..color = Colors.white.withValues(alpha: 0.8));
     }
+  }
+
+  void _renderGunDecoration(
+    Canvas canvas,
+    Offset pos,
+    double r,
+    double angle,
+    Paint ink,
+  ) {
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy);
+    canvas.rotate(angle);
+
+    final barrel = Rect.fromLTWH(r * 0.65, -r * 0.18, r * 1.35, r * 0.36);
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(barrel, Radius.circular(r * 0.08)),
+      Paint()..color = const Color(0xFF374151),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(barrel, Radius.circular(r * 0.08)),
+      ink,
+    );
+    canvas.drawCircle(Offset(r * 2.08, 0), r * 0.16,
+        Paint()..color = const Color(0xFFFFD43B));
+    canvas.drawLine(
+      Offset(r * 0.92, r * 0.2),
+      Offset(r * 1.14, r * 0.5),
+      Paint()
+        ..color = AutoBattlePalette.ink
+        ..strokeWidth = 2.5
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.restore();
   }
 
   double _weaponAngle(PlayerSnapshot player) {

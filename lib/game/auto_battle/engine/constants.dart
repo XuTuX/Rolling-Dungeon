@@ -11,11 +11,66 @@ const int MAX_LIVES = 3;
 const int VICTORY_STAGE = 10;
 
 const double BASE_HP = 200.0;
-const double BASE_ATK = 5.0;
+const double BASE_ATK = 9.0;
 const double BASE_DEF = 2.0;
-const double BASE_SPEED = 2.8;
-const double MAX_SPEED = 10.0;
-const double PLAYER_RADIUS = 12.0;
+const double BASE_SPEED = 4.15;
+const double MAX_SPEED = 9.0;
+const double PLAYER_RADIUS = 26.0;
+
+// ── Auto Ball Combat ──
+const double PLAYER_BASE_RADIUS = 28.0;
+const double ENEMY_BASE_RADIUS = 27.0;
+const double PLAYER_BASE_SPEED = 4.15;
+const double ENEMY_BASE_SPEED = 4.0;
+const double PLAYER_BASE_HP = 220.0;
+const double PLAYER_BASE_ATTACK = 9.0;
+const double PLAYER_BASE_DEFENSE = 2.0;
+
+const double STAGE_ONE_ENEMY_HP = 90.0;
+const double STAGE_ONE_ENEMY_ATTACK = 7.0;
+const double STAGE_ONE_ENEMY_DEFENSE = 1.0;
+const double STAGE_ONE_ENEMY_RADIUS = 30.0;
+const double STAGE_ONE_ENEMY_SPEED = 4.25;
+
+const double COLLISION_DAMAGE_MULTIPLIER = 1.35;
+const double COLLISION_MIN_DAMAGE = 1.0;
+const int COLLISION_DAMAGE_COOLDOWN_MS = 280;
+const double COLLISION_BOUNCE_IMPULSE = 0.22;
+
+const double BASE_BULLET_DAMAGE = 8.0;
+const double BULLET_ATTACK_DAMAGE_RATIO = 0.75;
+const int WEAPON_FIRE_INTERVAL_MS = 720;
+const double WEAPON_LENGTH = 21.0;
+const double MUZZLE_OFFSET_EXTRA = 4.0;
+const int PLAYER_STARTING_WEAPON_COUNT = 1;
+const int PLAYER_STARTING_BULLET_REFLECTS = 0;
+const double WEAPON_ROTATION_RADIANS_PER_SECOND = 4.5;
+
+const double BARRIER_RADIUS_MULTIPLIER = 1.28;
+const double BARRIER_BASE_HP = 48.0;
+const double BARRIER_DAMAGE = 28.0;
+const double BARRIER_COLLISION_LEAK_RATIO = 0.0;
+
+const double UPGRADE_ATTACK_GAIN = 3.0;
+const int UPGRADE_WEAPON_COUNT_GAIN = 1;
+const int UPGRADE_BULLET_REFLECT_GAIN = 1;
+const double UPGRADE_BIG_RADIUS_GAIN = 5.0;
+const double UPGRADE_BIG_HP_GAIN = 36.0;
+const double UPGRADE_BIG_SPEED_PENALTY = 0.22;
+const double UPGRADE_SMALL_RADIUS_LOSS = 4.0;
+const double UPGRADE_SMALL_SPEED_GAIN = 0.42;
+const double PLAYER_MIN_RADIUS = 16.0;
+const double PLAYER_MAX_RADIUS = 44.0;
+const double UPGRADE_DEFENSE_GAIN = 1.2;
+const double UPGRADE_BARRIER_HP_GAIN = 48.0;
+
+const int ENEMY_SHOOTER_FIRE_MS = 1050;
+const double ENEMY_BULLET_DAMAGE = 7.0;
+const int ENEMY_SHIELD_INTERVAL_MS = 3600;
+const double ENEMY_SHIELD_HP = 28.0;
+const double DASH_ENEMY_SPEED_MULTIPLIER = 1.85;
+const int DASH_ENEMY_INTERVAL_MS = 1600;
+const int DASH_ENEMY_DURATION_MS = 420;
 
 const int FOOD_MAX_COUNT = 35;
 const int FOOD_SPAWN_MS = 400;
@@ -51,7 +106,7 @@ const double BULLET_RADIUS = 5.0;
 const int BLADE_ATTACK_MS = 850;
 const double BLADE_RANGE = 62.0;
 const int BLADE_EFFECT_MS = 220;
-const double ROTATING_WEAPON_RADIANS_PER_SECOND = 6.2;
+const double ROTATING_WEAPON_RADIANS_PER_SECOND = 3;
 const int BLADE_CONTACT_DAMAGE_MS = 200;
 const double BLADE_CONTACT_WIDTH = 5.0;
 

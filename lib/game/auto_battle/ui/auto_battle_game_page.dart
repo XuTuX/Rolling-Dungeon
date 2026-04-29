@@ -44,8 +44,12 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       shield: controller.playerShield.value,
       maxShield: controller.playerMaxShield.value,
       weaponLevel: controller.playerWeaponLevel.value,
+      weaponCount: controller.playerWeaponCount.value,
+      bulletReflectCount: controller.playerBulletReflectCount.value,
       regen: controller.playerRegen.value,
       lifesteal: controller.playerLifesteal.value,
+      barrierHp: controller.playerBarrierHp.value,
+      barrierMaxHp: controller.playerBarrierMaxHp.value,
       gold: controller.gold.value.toDouble(),
       totalGold: controller.gold.value.toDouble(),
       pendingUpgradeCount: 0,
@@ -55,7 +59,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       damageTaken: 0,
       pos: Vec2(x: 250, y: 250),
       vel: normalize(Vec2(x: 1, y: 0.1)),
-      radius: 16.0,
+      radius: controller.playerRadius.value,
       activeEffects: [],
       color: '#4F8CFF',
       alive: true,
@@ -90,6 +94,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
           controller.playerCurrentHp.value = me.hp;
           controller.gold.value = me.gold.round();
           controller.playerShield.value = me.shield;
+          controller.playerBarrierHp.value = me.barrierHp;
         }
         setState(() => _snapshot = s);
         _game.applySnapshot(s);

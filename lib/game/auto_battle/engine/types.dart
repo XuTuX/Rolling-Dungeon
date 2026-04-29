@@ -44,8 +44,12 @@ class PlayerData {
   double shield;
   double maxShield;
   int weaponLevel;
+  int weaponCount;
+  int bulletReflectCount;
   double regen;
   double lifesteal;
+  double barrierHp;
+  double barrierMaxHp;
 
   double gold;
   double totalGold;
@@ -71,7 +75,10 @@ class PlayerData {
   int lastBladeAt;
   int lastMineDropAt;
   int lastAttackAt;
+  int lastAbilityAt;
   double targetAngle;
+  String enemyType;
+  String enemyAbility;
 
   PlayerData({
     required this.id,
@@ -86,8 +93,12 @@ class PlayerData {
     this.shield = 0,
     this.maxShield = 0,
     this.weaponLevel = 0,
+    this.weaponCount = 1,
+    this.bulletReflectCount = 0,
     this.regen = 0,
     this.lifesteal = 0,
+    this.barrierHp = 0,
+    this.barrierMaxHp = 0,
     required this.gold,
     required this.totalGold,
     required this.pendingUpgradeCount,
@@ -109,7 +120,10 @@ class PlayerData {
     required this.lastBladeAt,
     required this.lastMineDropAt,
     this.lastAttackAt = 0,
+    this.lastAbilityAt = 0,
     this.targetAngle = 0,
+    this.enemyType = 'none',
+    this.enemyAbility = 'none',
   });
 }
 
