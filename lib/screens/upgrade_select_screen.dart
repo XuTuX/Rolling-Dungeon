@@ -1,6 +1,7 @@
 import 'package:circle_war/controllers/game_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/ui/auto_battle_game_page.dart';
+import 'package:circle_war/screens/home_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:math' as math;
@@ -42,6 +43,10 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     Get.off(() => const AutoBattleGamePage());
   }
 
+  void _returnHome() {
+    Get.offAll(() => const HomeScreen());
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -61,18 +66,18 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                 final isPortrait = constraints.maxHeight > constraints.maxWidth;
                 final titleSize = compact ? 22.0 : 28.0;
                 final cardW = isPortrait
-                    ? (constraints.maxWidth * 0.75)
-                        .clamp(220.0, 320.0)
+                    ? (constraints.maxWidth * 0.86)
+                        .clamp(260.0, 420.0)
                         .toDouble()
-                    : (constraints.maxWidth * 0.27)
-                        .clamp(compact ? 180.0 : 210.0, 260.0)
+                    : (constraints.maxWidth * 0.29)
+                        .clamp(compact ? 210.0 : 240.0, 310.0)
                         .toDouble();
                 final cardH = isPortrait
-                    ? (constraints.maxHeight * 0.28)
-                        .clamp(160.0, 220.0)
+                    ? (constraints.maxHeight * 0.24)
+                        .clamp(188.0, 240.0)
                         .toDouble()
-                    : (constraints.maxHeight * 0.62)
-                        .clamp(compact ? 260.0 : 300.0, 380.0)
+                    : (constraints.maxHeight * 0.54)
+                        .clamp(compact ? 226.0 : 260.0, 330.0)
                         .toDouble();
                 final gap = compact ? 14.0 : 20.0;
 
@@ -98,8 +103,8 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                           child: AnimatedBuilder(
                             animation: _animCtrl,
                             builder: (context, _) {
-                              final cardWidgets = List.generate(
-                                  _cards.length, (i) {
+                              final cardWidgets =
+                                  List.generate(_cards.length, (i) {
                                 final delay = i * 0.18;
                                 final t = CurvedAnimation(
                                   parent: _animCtrl,
@@ -165,6 +170,15 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
               },
             ),
           ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.only(left: 12, top: 10),
+              child: Align(
+                alignment: Alignment.topLeft,
+                child: _SketchExitButton(onTap: _returnHome),
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -206,8 +220,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
             mainAxisSize: MainAxisSize.min,
             children: [
               Icon(Icons.auto_awesome,
-                  color: AutoBattlePalette.gold,
-                  size: compact ? 22 : 28),
+                  color: AutoBattlePalette.gold, size: compact ? 22 : 28),
               SizedBox(width: compact ? 8 : 12),
               Text(
                 '증강 선택',
@@ -250,8 +263,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
 
   Widget _buildStatsBar(bool compact) {
     return Container(
-      margin: EdgeInsets.only(
-          bottom: compact ? 8 : 14, left: 20, right: 20),
+      margin: EdgeInsets.only(bottom: compact ? 8 : 14, left: 20, right: 20),
       padding: EdgeInsets.symmetric(
           horizontal: compact ? 10 : 16, vertical: compact ? 8 : 10),
       decoration: BoxDecoration(
@@ -261,8 +273,10 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
           BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
         ],
       ),
-      child: Obx(() => Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Obx(() => Wrap(
+            alignment: WrapAlignment.spaceEvenly,
+            runSpacing: 8,
+            spacing: compact ? 10 : 18,
             children: [
               _StatChip(
                   icon: Icons.favorite,
@@ -284,8 +298,52 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                   label: 'SPD',
                   value: _ctrl.playerSpd.value.toStringAsFixed(2),
                   color: AutoBattlePalette.gold),
+              _StatChip(
+                  icon: Icons.auto_fix_high,
+                  label: 'WPN',
+                  value: '${_ctrl.playerWeaponLevel.value}',
+                  color: const Color(0xFFAA44FF)),
+              _StatChip(
+                  icon: Icons.security,
+                  label: 'SHD',
+                  value: '${_ctrl.playerMaxShield.value.round()}',
+                  color: const Color(0xFF38BDF8)),
+              _StatChip(
+                  icon: Icons.healing,
+                  label: 'REG',
+                  value: _ctrl.playerRegen.value.toStringAsFixed(1),
+                  color: const Color(0xFF22C55E)),
             ],
           )),
+    );
+  }
+}
+
+class _SketchExitButton extends StatelessWidget {
+  final VoidCallback onTap;
+
+  const _SketchExitButton({required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 44,
+        height: 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AutoBattlePalette.ink, width: 3),
+          boxShadow: const [
+            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+          ],
+        ),
+        child: const Icon(
+          Icons.arrow_back,
+          color: AutoBattlePalette.ink,
+          size: 22,
+        ),
+      ),
     );
   }
 }
@@ -348,6 +406,18 @@ class _UpgradeCardWidget extends StatelessWidget {
         return const Color(0xFF22C55E);
       case 'mastery':
         return const Color(0xFFAA44FF);
+      case 'weapon_form':
+        return const Color(0xFF7C3AED);
+      case 'barrier':
+        return const Color(0xFF38BDF8);
+      case 'regen':
+        return const Color(0xFF16A34A);
+      case 'lifesteal':
+        return const Color(0xFFBE123C);
+      case 'overclock':
+        return const Color(0xFFF97316);
+      case 'fortress':
+        return const Color(0xFF0F766E);
       default:
         return const Color(0xFF6B7280);
     }
@@ -365,6 +435,18 @@ class _UpgradeCardWidget extends StatelessWidget {
         return Icons.favorite_rounded;
       case 'mastery':
         return Icons.auto_awesome;
+      case 'weapon_form':
+        return Icons.auto_fix_high;
+      case 'barrier':
+        return Icons.security;
+      case 'regen':
+        return Icons.healing;
+      case 'lifesteal':
+        return Icons.bloodtype;
+      case 'overclock':
+        return Icons.whatshot;
+      case 'fortress':
+        return Icons.castle;
       default:
         return Icons.help_outline;
     }
@@ -400,183 +482,99 @@ class _UpgradeCardWidget extends StatelessWidget {
               ),
             ],
           ),
-          child: Column(
-            children: [
-              // ── Rarity Banner ──
-              Container(
-                width: double.infinity,
-                padding: EdgeInsets.symmetric(
-                    vertical: compact ? 6 : 8),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      _rarityColor,
-                      _rarityColor.withValues(alpha: 0.85),
-                    ],
-                  ),
-                  border: const Border(
-                    bottom:
-                        BorderSide(color: AutoBattlePalette.ink, width: 3),
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    _rarityLabel,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: compact ? 11 : 13,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-
-              // ── Icon + Type Area ──
-              Expanded(
-                flex: 5,
-                child: Container(
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        _typeColor,
-                        _typeColor.withValues(alpha: 0.75),
-                      ],
-                    ),
-                    border: const Border(
-                      bottom: BorderSide(
-                          color: AutoBattlePalette.ink, width: 3),
-                    ),
-                  ),
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      // Background pattern circles
-                      Positioned(
-                        right: -15,
-                        top: -15,
-                        child: Container(
-                          width: 60,
-                          height: 60,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.1),
-                          ),
-                        ),
+          child: Padding(
+            padding: EdgeInsets.all(compact ? 12 : 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Container(
+                      width: compact ? 38 : 46,
+                      height: compact ? 38 : 46,
+                      decoration: BoxDecoration(
+                        color: _typeColor,
+                        border:
+                            Border.all(color: AutoBattlePalette.ink, width: 3),
                       ),
-                      Positioned(
-                        left: -10,
-                        bottom: -10,
-                        child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: Colors.white.withValues(alpha: 0.08),
-                          ),
-                        ),
-                      ),
-                      // Icon with ink shadow
-                      Column(
-                        mainAxisSize: MainAxisSize.min,
+                      child: Icon(_typeIcon,
+                          color: Colors.white, size: compact ? 22 : 26),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Icon shadow
-                          Stack(
-                            children: [
-                              Positioned(
-                                left: 3,
-                                top: 3,
-                                child: Icon(
-                                  _typeIcon,
-                                  size: compact ? 44 : 56,
-                                  color: AutoBattlePalette.ink
-                                      .withValues(alpha: 0.2),
-                                ),
-                              ),
-                              Icon(
-                                _typeIcon,
-                                size: compact ? 44 : 56,
-                                color: Colors.white,
-                              ),
-                            ],
+                          Text(
+                            _rarityLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: _rarityColor,
+                              fontSize: compact ? 10 : 11,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 1.2,
+                            ),
+                          ),
+                          Text(
+                            card.title,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: AutoBattlePalette.ink,
+                              fontSize: compact ? 17 : 20,
+                              fontWeight: FontWeight.w900,
+                            ),
                           ),
                         ],
                       ),
-                    ],
+                    ),
+                  ],
+                ),
+                SizedBox(height: compact ? 10 : 14),
+                Expanded(
+                  child: Text(
+                    card.description.replaceAll('\\n', '\n'),
+                    style: TextStyle(
+                      color: AutoBattlePalette.inkSubtle,
+                      fontSize: compact ? 12 : 14,
+                      fontWeight: FontWeight.w700,
+                      height: 1.35,
+                    ),
                   ),
                 ),
-              ),
-
-              // ── Info Area ──
-              Expanded(
-                flex: 6,
-                child: Padding(
-                  padding: EdgeInsets.all(compact ? 10 : 14),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                Container(
+                  width: double.infinity,
+                  padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 10 : 14,
+                      vertical: compact ? 8 : 10),
+                  decoration: BoxDecoration(
+                    color: _typeColor.withValues(alpha: 0.1),
+                    border: Border.all(color: _typeColor, width: 2.5),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Title
-                      Text(
-                        card.title,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: AutoBattlePalette.ink,
-                          fontSize: compact ? 16 : 19,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                      SizedBox(height: compact ? 4 : 8),
-
-                      // Description
-                      Expanded(
+                      Icon(Icons.arrow_upward_rounded,
+                          color: _typeColor, size: compact ? 16 : 18),
+                      const SizedBox(width: 6),
+                      Flexible(
                         child: Text(
-                          card.description.replaceAll('\\n', '\n'),
+                          card.statPreview,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            color: AutoBattlePalette.inkSubtle,
-                            fontSize: compact ? 11 : 13,
-                            fontWeight: FontWeight.w600,
-                            height: 1.4,
+                            color: _typeColor,
+                            fontSize: compact ? 14 : 16,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
-
-                      // ── Stat Preview Badge ──
-                      Container(
-                        width: double.infinity,
-                        padding: EdgeInsets.symmetric(
-                            horizontal: compact ? 10 : 14,
-                            vertical: compact ? 8 : 10),
-                        decoration: BoxDecoration(
-                          color: _typeColor.withValues(alpha: 0.1),
-                          border: Border.all(color: _typeColor, width: 2.5),
-                        ),
-                        child: Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.arrow_upward_rounded,
-                                color: _typeColor,
-                                size: compact ? 16 : 18),
-                            const SizedBox(width: 6),
-                            Text(
-                              card.statPreview,
-                              style: TextStyle(
-                                color: _typeColor,
-                                fontSize: compact ? 14 : 16,
-                                fontWeight: FontWeight.w900,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

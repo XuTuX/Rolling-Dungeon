@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:circle_war/screens/home_screen.dart';
 import 'package:circle_war/screens/upgrade_select_screen.dart';
+
 class AutoBattleGamePage extends StatefulWidget {
   const AutoBattleGamePage({super.key});
 
@@ -40,6 +41,11 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       def: controller.playerDef.value,
       speed: controller.playerSpd.value,
       abilityPower: controller.playerAbilityPower.value,
+      shield: controller.playerShield.value,
+      maxShield: controller.playerMaxShield.value,
+      weaponLevel: controller.playerWeaponLevel.value,
+      regen: controller.playerRegen.value,
+      lifesteal: controller.playerLifesteal.value,
       gold: controller.gold.value.toDouble(),
       totalGold: controller.gold.value.toDouble(),
       pendingUpgradeCount: 0,
@@ -77,6 +83,14 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       })
       ..onGameUpdate((s) {
         if (!mounted || _navigating) return;
+        final me = s.players
+            .cast<PlayerSnapshot?>()
+            .firstWhere((p) => p?.id == 'p1', orElse: () => null);
+        if (me != null) {
+          controller.playerCurrentHp.value = me.hp;
+          controller.gold.value = me.gold.round();
+          controller.playerShield.value = me.shield;
+        }
         setState(() => _snapshot = s);
         _game.applySnapshot(s);
       });
@@ -145,6 +159,8 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                   height: topH + viewPadding.top,
                   myPlayer: myPlayer,
                   compact: true,
+                  onExit: () =>
+                      _stopAndNavigate(() => const HomeScreen(), offAll: true),
                 ),
                 const Spacer(),
                 Container(
@@ -177,6 +193,8 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                         height: topH + viewPadding.top,
                         myPlayer: myPlayer,
                         compact: compact,
+                        onExit: () => _stopAndNavigate(() => const HomeScreen(),
+                            offAll: true),
                       ),
                       const Spacer(),
                       SizedBox(height: viewPadding.bottom + 20),
@@ -217,8 +235,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                 child: _SketchLoadingIndicator(),
               ),
             ),
-          if (_snapshot != null && myPlayer != null)
-            const SizedBox.shrink(),
+          if (_snapshot != null && myPlayer != null) const SizedBox.shrink(),
           if (_snapshot?.roundState == 'ended' ||
               _snapshot?.roundState == 'gameover' ||
               _snapshot?.roundState == 'victory')
@@ -263,12 +280,14 @@ class _SketchTopBar extends StatelessWidget {
   final double height;
   final PlayerSnapshot? myPlayer;
   final bool compact;
+  final VoidCallback onExit;
 
   const _SketchTopBar({
     required this.snapshot,
     required this.connected,
     required this.height,
     required this.compact,
+    required this.onExit,
     this.myPlayer,
   });
 
@@ -287,6 +306,9 @@ class _SketchTopBar extends StatelessWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
+          _SketchExitButton(compact: compact, onTap: onExit),
+          SizedBox(width: compact ? 8 : 14),
+
           // Stage Indicator (Center)
           Container(
             margin: EdgeInsets.only(bottom: bottomMargin),
@@ -296,8 +318,8 @@ class _SketchTopBar extends StatelessWidget {
             ),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border.all(
-                  color: AutoBattlePalette.ink, width: borderWidth),
+              border:
+                  Border.all(color: AutoBattlePalette.ink, width: borderWidth),
               boxShadow: const [
                 BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
               ],
@@ -315,7 +337,7 @@ class _SketchTopBar extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(width: 20),
+          SizedBox(width: compact ? 8 : 20),
 
           // Gold & Lives (Grouped)
           Container(
@@ -331,8 +353,7 @@ class _SketchTopBar extends StatelessWidget {
                   ),
                   decoration: BoxDecoration(
                     color: AutoBattlePalette.gold,
-                    border:
-                        Border.all(color: AutoBattlePalette.ink, width: 2),
+                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -362,8 +383,7 @@ class _SketchTopBar extends StatelessWidget {
                       top: BorderSide(color: AutoBattlePalette.ink, width: 2),
                       bottom:
                           BorderSide(color: AutoBattlePalette.ink, width: 2),
-                      right:
-                          BorderSide(color: AutoBattlePalette.ink, width: 2),
+                      right: BorderSide(color: AutoBattlePalette.ink, width: 2),
                     ),
                   ),
                   child: Row(
@@ -392,6 +412,41 @@ class _SketchTopBar extends StatelessWidget {
   }
 }
 
+class _SketchExitButton extends StatelessWidget {
+  final bool compact;
+  final VoidCallback onTap;
+
+  const _SketchExitButton({
+    required this.compact,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.only(bottom: compact ? 8 : 12),
+        width: compact ? 38 : 44,
+        height: compact ? 34 : 40,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border:
+              Border.all(color: AutoBattlePalette.ink, width: compact ? 2 : 3),
+          boxShadow: const [
+            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+          ],
+        ),
+        child: Icon(
+          Icons.arrow_back,
+          color: AutoBattlePalette.ink,
+          size: compact ? 18 : 22,
+        ),
+      ),
+    );
+  }
+}
+
 class _SketchSidebar extends StatelessWidget {
   final List<PlayerSnapshot> players;
   final String? myId;
@@ -407,7 +462,8 @@ class _SketchSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filtered = players.where((p) => !p.isEnemy || p.maxHp >= 500).toList();
+    final filtered =
+        players.where((p) => !p.isEnemy || p.maxHp >= 500).toList();
     final sorted = List<PlayerSnapshot>.from(filtered)
       ..sort((a, b) => b.hp.compareTo(a.hp));
 
@@ -608,8 +664,7 @@ class _SketchResultOverlay extends StatelessWidget {
                             return const Padding(
                               padding: EdgeInsets.symmetric(horizontal: 2),
                               child: Icon(Icons.favorite,
-                                  color: AutoBattlePalette.primary,
-                                  size: 18),
+                                  color: AutoBattlePalette.primary, size: 18),
                             );
                           }),
                         ],

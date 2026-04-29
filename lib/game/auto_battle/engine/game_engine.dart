@@ -8,17 +8,17 @@ import 'types.dart';
 
 class GameEngine {
   final Function(GameSnapshot) onUpdate;
-  
+
   List<PlayerData> players = [];
   final List<FoodData> foods = [];
   final List<ProjectileData> projectiles = [];
   final List<HazardData> hazards = [];
   final List<AttackEffectData> attacks = [];
-  
+
   Timer? timer;
   int lastTickAt = DateTime.now().millisecondsSinceEpoch;
   int lastFoodSpawnAt = 0;
-  
+
   String roundState = 'waiting';
   int currentStage;
   String? winnerId;
@@ -109,7 +109,7 @@ class GameEngine {
   void _tick(int dt) {
     final now = DateTime.now().millisecondsSinceEpoch;
     final p1 = _getPlayer('p1');
-    
+
     if (p1 == null) return;
 
     if (roundState == 'waiting') {
@@ -136,6 +136,10 @@ class GameEngine {
   void _updatePlayers(double dt, int now) {
     for (final player in players) {
       if (!player.alive) continue;
+      if (player.regen > 0 && player.hp < player.maxHp) {
+        player.hp =
+            math.min(player.maxHp, player.hp + player.regen * dt / 1000);
+      }
       updatePosition(player, dt);
       handleWallCollision(player);
     }
@@ -202,7 +206,7 @@ class GameEngine {
     final stageHpMult = stage * 0.5 + 0.5;
     final earlyHpMult = _getEnemyHpMult(); // lower early = faster kills
     final radiusMult = _getEnemyRadiusMult();
-    
+
     double hp = 100 * stageHpMult * earlyHpMult;
     double speed = 2.0;
     double radius = PLAYER_RADIUS * radiusMult;
@@ -255,7 +259,9 @@ class GameEngine {
       kills: 0,
       damageDealt: 0,
       damageTaken: 0,
-      pos: Vec2(x: ARENA_WIDTH / 2 + math.cos(angle) * spawnDist, y: ARENA_HEIGHT / 2 + math.sin(angle) * spawnDist),
+      pos: Vec2(
+          x: ARENA_WIDTH / 2 + math.cos(angle) * spawnDist,
+          y: ARENA_HEIGHT / 2 + math.sin(angle) * spawnDist),
       vel: normalize(Vec2(x: math.cos(angle), y: math.sin(angle))),
       radius: radius,
       color: color,
@@ -309,7 +315,9 @@ class GameEngine {
       if (!player.alive) continue;
       for (int i = foods.length - 1; i >= 0; i -= 1) {
         final food = foods[i];
-        if (distance(player.pos, food.pos) > player.radius + food.radius) continue;
+        if (distance(player.pos, food.pos) > player.radius + food.radius) {
+          continue;
+        }
         foods.removeAt(i);
         _addGold(player, food.gold);
       }
@@ -319,36 +327,56 @@ class GameEngine {
   void _handleAbilities(int now) {
     for (final player in players) {
       if (!player.alive || player.isEnemy) continue;
-      switch (player.characterType) {
-        case 'poison': _dropPoison(player, now); break;
-        case 'gunner': _fireBullet(player, now); break;
-        case 'blade': _swingBlade(player, now); break;
-        case 'miner': _dropMine(player, now); break;
-        case 'laser': _fireLaser(player, now); break;
+      if (player.characterType == 'gunner' || player.characterType == 'blade') {
+        player.targetAngle = _rotatingWeaponAngle(player, now);
       }
-      
+      switch (player.characterType) {
+        case 'poison':
+          _dropPoison(player, now);
+          break;
+        case 'gunner':
+          _fireBullet(player, now);
+          break;
+        case 'blade':
+          _swingBlade(player, now);
+          break;
+        case 'miner':
+          _dropMine(player, now);
+          break;
+        case 'laser':
+          _fireLaser(player, now);
+          break;
+      }
+
       // Update targetAngle for rendering (point at nearest enemy if any)
-      final nearest = _findNearestEnemy(player, 600.0);
-      if (nearest != null) {
-        player.targetAngle = math.atan2(nearest.pos.y - player.pos.y, nearest.pos.x - player.pos.x);
-      } else {
-        // Fallback to velocity if no enemy
-        if (math.sqrt(player.vel.x * player.vel.x + player.vel.y * player.vel.y) > 0.01) {
-          player.targetAngle = math.atan2(player.vel.y, player.vel.x);
+      if (player.characterType != 'gunner' && player.characterType != 'blade') {
+        final nearest = _findNearestEnemy(player, 600.0);
+        if (nearest != null) {
+          player.targetAngle = math.atan2(
+              nearest.pos.y - player.pos.y, nearest.pos.x - player.pos.x);
+        } else {
+          // Fallback to velocity if no enemy
+          if (math.sqrt(
+                  player.vel.x * player.vel.x + player.vel.y * player.vel.y) >
+              0.01) {
+            player.targetAngle = math.atan2(player.vel.y, player.vel.x);
+          }
         }
       }
     }
   }
 
   void _dropPoison(PlayerData player, int now) {
-    if (now - player.lastPoisonDropAt < _getAbilityCooldown(player, POISON_DROP_MS)) return;
+    if (now - player.lastPoisonDropAt <
+        _getAbilityCooldown(player, POISON_DROP_MS)) {
+      return;
+    }
     player.lastPoisonDropAt = now;
     player.lastAttackAt = now;
-    // Drop slightly forward (~0.5x radius)
-    final forwardDist = player.radius * 0.5;
+    final backDist = player.radius * 1.1;
     final spawnPos = Vec2(
-      x: player.pos.x + player.vel.x * forwardDist,
-      y: player.pos.y + player.vel.y * forwardDist,
+      x: player.pos.x - player.vel.x * backDist,
+      y: player.pos.y - player.vel.y * backDist,
     );
 
     hazards.add(HazardData(
@@ -356,26 +384,25 @@ class GameEngine {
       ownerId: player.id,
       type: 'poison',
       pos: spawnPos,
-      radius: POISON_RADIUS,
-      expiresAt: now + POISON_DURATION_MS,
+      radius: POISON_RADIUS + player.weaponLevel * 1.1,
+      expiresAt: now + POISON_DURATION_MS + player.weaponLevel * 140,
       lastDamageAt: {},
     ));
   }
 
   void _fireBullet(PlayerData player, int now) {
-    final cooldown = _getAbilityCooldown(player, GUNNER_FIRE_MS) * _getFireRateMult();
+    final cooldown =
+        _getAbilityCooldown(player, GUNNER_FIRE_MS) * _getFireRateMult();
     if (now - player.lastShotAt < cooldown) return;
-    final target = _findNearestEnemy(player, GUNNER_RANGE);
-    if (target == null) return;
+    if (!players.any((other) => other.alive && other.id != player.id)) return;
     player.lastShotAt = now;
     player.lastAttackAt = now;
-    final baseAngle = math.atan2(
-      target.pos.y - player.pos.y,
-      target.pos.x - player.pos.x,
-    );
-    final shotCount = _getStageShotCount();
-    final spread = _getStageSpread();
-    final reflectCount = _getStageReflect();
+    final baseAngle = _rotatingWeaponAngle(player, now);
+    player.targetAngle = baseAngle;
+    final shotCount = _getStageShotCount() + (player.weaponLevel ~/ 2);
+    final spread = _getStageSpread() + player.weaponLevel * 0.08;
+    final reflectCount = _getStageReflect() + (player.weaponLevel ~/ 3);
+    final bulletRadius = BULLET_RADIUS * (1 + player.weaponLevel * 0.08);
 
     for (int i = 0; i < shotCount; i++) {
       double angle = baseAngle;
@@ -384,7 +411,7 @@ class GameEngine {
         angle = baseAngle - spread / 2 + spread * (i / (shotCount - 1));
       }
       final direction = Vec2(x: math.cos(angle), y: math.sin(angle));
-      
+
       // Spawn bullet from muzzle (~2.2x radius)
       final muzzleDist = player.radius * 2.2;
       final spawnPos = Vec2(
@@ -397,7 +424,7 @@ class GameEngine {
         ownerId: player.id,
         pos: spawnPos,
         vel: direction,
-        radius: BULLET_RADIUS,
+        radius: bulletRadius,
         color: player.color,
         reflectsRemaining: reflectCount,
       ));
@@ -405,15 +432,18 @@ class GameEngine {
   }
 
   void _fireLaser(PlayerData player, int now) {
-    final cooldown = _getAbilityCooldown(player, LASER_FIRE_MS) * _getFireRateMult();
+    final cooldown =
+        _getAbilityCooldown(player, LASER_FIRE_MS) * _getFireRateMult();
     if (now - player.lastShotAt < cooldown) return;
     final target = _findNearestEnemy(player, LASER_RANGE);
     if (target == null) return;
     player.lastShotAt = now;
     player.lastAttackAt = now;
-    final angle = math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
-    final laserWidth = _getLaserWidth();
-    
+    final angle =
+        math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
+    final laserWidth = _getLaserWidth() + player.weaponLevel * 0.22;
+    final laserRange = LASER_RANGE + player.weaponLevel * 10;
+
     // Laser spawns from cannon tip (~2.4x radius)
     final muzzleDist = player.radius * 2.4;
     final spawnPos = Vec2(
@@ -426,57 +456,67 @@ class GameEngine {
       ownerId: player.id,
       type: 'laser',
       pos: spawnPos,
-      radius: LASER_RANGE,
+      radius: laserRange,
       angle: angle,
       createdAt: now,
       durationMs: LASER_DURATION_MS,
       scale: laserWidth,
     ));
-    _dealDamage(player, target, 15 + player.atk * 0.5 + player.abilityPower * 1.8);
+    _dealDamage(
+        player,
+        target,
+        15 +
+            player.atk * 0.5 +
+            player.abilityPower * 1.8 +
+            player.weaponLevel * 1.2);
   }
 
   void _swingBlade(PlayerData player, int now) {
-    final cooldown = _getAbilityCooldown(player, BLADE_ATTACK_MS) * _getFireRateMult();
-    final bladeRange = BLADE_RANGE * _getBladeRangeMult();
-    if (now - player.lastBladeAt < cooldown) return;
-    final target = _findNearestEnemy(player, bladeRange);
-    if (target == null) return;
-    player.lastBladeAt = now;
-    player.lastAttackAt = now;
-    final angle = math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
-    
-    // Blade slash centered a bit forward (~1.2x radius)
-    final forwardDist = player.radius * 1.2;
-    final slashPos = Vec2(
-      x: player.pos.x + math.cos(angle) * forwardDist,
-      y: player.pos.y + math.sin(angle) * forwardDist,
+    final bladeRange =
+        BLADE_RANGE * _getBladeRangeMult() * (1 + player.weaponLevel * 0.09);
+    final angle = _rotatingWeaponAngle(player, now);
+    player.targetAngle = angle;
+    final dir = Vec2(x: math.cos(angle), y: math.sin(angle));
+    final bladeStart = Vec2(
+      x: player.pos.x + dir.x * player.radius * 0.85,
+      y: player.pos.y + dir.y * player.radius * 0.85,
     );
+    final bladeEnd = Vec2(
+      x: player.pos.x + dir.x * bladeRange,
+      y: player.pos.y + dir.y * bladeRange,
+    );
+    final bladeWidth =
+        BLADE_CONTACT_WIDTH + player.abilityPower * 0.25 + player.weaponLevel;
 
-    // Hit ALL enemies in blade range
     for (final enemy in players) {
       if (!enemy.alive || enemy.id == player.id) continue;
-      if (distance(player.pos, enemy.pos) <= bladeRange) {
-        _dealDamage(player, enemy, 10 + player.atk * 0.8 + player.abilityPower * 1.4);
-      }
+      final hitKey = 'blade:${player.id}';
+      final lastHitAt = enemy.lastCollisionAt[hitKey] ?? 0;
+      if (now - lastHitAt < BLADE_CONTACT_DAMAGE_MS) continue;
+      final hitDistance =
+          _distancePointToSegment(enemy.pos, bladeStart, bladeEnd);
+      if (hitDistance > enemy.radius + bladeWidth) continue;
+
+      enemy.lastCollisionAt[hitKey] = now;
+      player.lastBladeAt = now;
+      player.lastAttackAt = now;
+      _dealDamage(
+          player,
+          enemy,
+          3.2 +
+              player.atk * 0.22 +
+              player.abilityPower * 0.5 +
+              player.weaponLevel * 0.6);
     }
-    attacks.add(AttackEffectData(
-      id: _nextId('blade'),
-      ownerId: player.id,
-      type: 'blade',
-      pos: slashPos,
-      radius: bladeRange,
-      angle: angle,
-      createdAt: now,
-      durationMs: BLADE_EFFECT_MS,
-    ));
   }
 
   void _dropMine(PlayerData player, int now) {
-    final cooldown = _getAbilityCooldown(player, MINER_DROP_MS) * _getFireRateMult();
+    final cooldown =
+        _getAbilityCooldown(player, MINER_DROP_MS) * _getFireRateMult();
     if (now - player.lastMineDropAt < cooldown) return;
     player.lastMineDropAt = now;
     player.lastAttackAt = now;
-    final mineCount = _getStageMineCount();
+    final mineCount = _getStageMineCount() + (player.weaponLevel ~/ 3);
     for (int i = 0; i < mineCount; i++) {
       final offset = i == 0
           ? Vec2(x: 0, y: 0)
@@ -485,15 +525,17 @@ class GameEngine {
               y: (_rand.nextDouble() - 0.5) * 40,
             );
       final minePos = Vec2(
-        x: (player.pos.x + offset.x + player.vel.x * 20).clamp(MINE_RADIUS, ARENA_WIDTH - MINE_RADIUS),
-        y: (player.pos.y + offset.y + player.vel.y * 20).clamp(MINE_RADIUS, ARENA_HEIGHT - MINE_RADIUS),
+        x: (player.pos.x + offset.x + player.vel.x * 20)
+            .clamp(MINE_RADIUS, ARENA_WIDTH - MINE_RADIUS),
+        y: (player.pos.y + offset.y + player.vel.y * 20)
+            .clamp(MINE_RADIUS, ARENA_HEIGHT - MINE_RADIUS),
       );
       hazards.add(HazardData(
         id: _nextId('mine'),
         ownerId: player.id,
         type: 'mine',
         pos: minePos,
-        radius: MINE_RADIUS,
+        radius: MINE_RADIUS + player.weaponLevel * 1.4,
         expiresAt: now + MINE_DURATION_MS,
         lastDamageAt: {},
       ));
@@ -528,13 +570,26 @@ class GameEngine {
       }
 
       final owner = _getPlayer(p.ownerId);
-      if (owner == null) { projectiles.removeAt(i); continue; }
+      if (owner == null) {
+        projectiles.removeAt(i);
+        continue;
+      }
       final target = players.cast<PlayerData?>().firstWhere(
-        (pl) => pl != null && pl.alive && pl.id != p.ownerId && distance(pl.pos, p.pos) <= pl.radius + p.radius,
-        orElse: () => null,
-      );
+            (pl) =>
+                pl != null &&
+                pl.alive &&
+                pl.id != p.ownerId &&
+                distance(pl.pos, p.pos) <= pl.radius + p.radius,
+            orElse: () => null,
+          );
       if (target == null) continue;
-      _dealDamage(owner, target, 8 + owner.atk * 0.7 + owner.abilityPower * 1.1);
+      _dealDamage(
+          owner,
+          target,
+          8 +
+              owner.atk * 0.7 +
+              owner.abilityPower * 1.1 +
+              owner.weaponLevel * 0.9);
       projectiles.removeAt(i);
     }
   }
@@ -542,18 +597,34 @@ class GameEngine {
   void _updateHazards(int now, double dt) {
     for (int i = hazards.length - 1; i >= 0; i -= 1) {
       final hazard = hazards[i];
-      if (now >= hazard.expiresAt) { hazards.removeAt(i); continue; }
+      if (now >= hazard.expiresAt) {
+        hazards.removeAt(i);
+        continue;
+      }
       final owner = _getPlayer(hazard.ownerId);
-      if (owner == null) { hazards.removeAt(i); continue; }
+      if (owner == null) {
+        hazards.removeAt(i);
+        continue;
+      }
       for (final target in players) {
         if (!target.alive || target.id == hazard.ownerId) continue;
-        if (distance(target.pos, hazard.pos) > target.radius + hazard.radius) continue;
+        if (distance(target.pos, hazard.pos) > target.radius + hazard.radius) {
+          continue;
+        }
         if (hazard.type == 'mine') {
-          _dealDamage(owner, target, 10 + owner.atk * 0.55 + owner.abilityPower * 1.8);
+          _dealDamage(
+              owner,
+              target,
+              10 +
+                  owner.atk * 0.55 +
+                  owner.abilityPower * 1.8 +
+                  owner.weaponLevel * 1.2);
           hazards.removeAt(i);
           break;
         }
-        final poisonDamage = (1.7 + owner.abilityPower * 0.45) * (dt / 1000);
+        final poisonDamage =
+            (1.7 + owner.abilityPower * 0.45 + owner.weaponLevel * 0.18) *
+                (dt / 1000);
         _dealDamage(owner, target, poisonDamage);
       }
     }
@@ -561,7 +632,9 @@ class GameEngine {
 
   void _cleanupEffects(int now) {
     for (int i = attacks.length - 1; i >= 0; i -= 1) {
-      if (now - attacks[i].createdAt >= attacks[i].durationMs) attacks.removeAt(i);
+      if (now - attacks[i].createdAt >= attacks[i].durationMs) {
+        attacks.removeAt(i);
+      }
     }
   }
 
@@ -582,7 +655,8 @@ class GameEngine {
     }
   }
 
-  void _applyCollisionDamage(PlayerData attacker, PlayerData defender, int now) {
+  void _applyCollisionDamage(
+      PlayerData attacker, PlayerData defender, int now) {
     defender.lastCollisionAt[attacker.id] = now;
     _dealDamage(attacker, defender, attacker.atk);
   }
@@ -590,11 +664,23 @@ class GameEngine {
   void _dealDamage(PlayerData attacker, PlayerData defender, double raw) {
     if (!attacker.alive || !defender.alive || raw <= 0) return;
     final dmg = math.max(0.25, raw - defender.def * 0.35);
+    final shieldAbsorb = math.min(defender.shield, dmg);
+    defender.shield = math.max(0, defender.shield - shieldAbsorb);
+    final hpDamage = dmg - shieldAbsorb;
+    if (hpDamage <= 0) {
+      defender.damageTaken += shieldAbsorb;
+      return;
+    }
+
     final prev = defender.hp;
-    defender.hp = math.max(0.0, defender.hp - dmg);
+    defender.hp = math.max(0.0, defender.hp - hpDamage);
     final actual = prev - defender.hp;
     attacker.damageDealt += actual;
-    defender.damageTaken += actual;
+    defender.damageTaken += actual + shieldAbsorb;
+    if (attacker.lifesteal > 0 && actual > 0) {
+      attacker.hp =
+          math.min(attacker.maxHp, attacker.hp + actual * attacker.lifesteal);
+    }
     _addGold(attacker, actual * 0.8);
     if (defender.hp <= 0 && defender.alive) {
       defender.alive = false;
@@ -614,18 +700,53 @@ class GameEngine {
     return base / (1 + math.max(0, p.speed - BASE_SPEED) * 0.55);
   }
 
+  double _rotatingWeaponAngle(PlayerData p, int now) {
+    final phase =
+        p.id.codeUnits.fold<int>(0, (sum, code) => sum + code) * 0.017;
+    return _normalizeAngle(
+        now / 1000.0 * ROTATING_WEAPON_RADIANS_PER_SECOND + phase);
+  }
+
+  double _normalizeAngle(double angle) {
+    const fullTurn = math.pi * 2;
+    final normalized = angle % fullTurn;
+    return normalized < 0 ? normalized + fullTurn : normalized;
+  }
+
+  double _distancePointToSegment(Vec2 point, Vec2 start, Vec2 end) {
+    final dx = end.x - start.x;
+    final dy = end.y - start.y;
+    final lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared <= 0) return distance(point, start);
+
+    final t =
+        (((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared)
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final closest = Vec2(
+      x: start.x + dx * t,
+      y: start.y + dy * t,
+    );
+    return distance(point, closest);
+  }
+
   PlayerData? _findNearestEnemy(PlayerData p, double range) {
     PlayerData? best;
     double bestDist = range;
     for (final other in players) {
       if (!other.alive || other.id == p.id) continue;
       final d = distance(p.pos, other.pos);
-      if (d < bestDist) { bestDist = d; best = other; }
+      if (d < bestDist) {
+        bestDist = d;
+        best = other;
+      }
     }
     return best;
   }
 
-  String _nextId(String prefix) { return '${prefix}_${idSeq++}'; }
+  String _nextId(String prefix) {
+    return '${prefix}_${idSeq++}';
+  }
 
   void _broadcastSnapshot() {
     final snapshot = GameSnapshot(
@@ -637,81 +758,98 @@ class GameEngine {
       winnerId: winnerId,
       roundEndsAt: roundEndsAt,
       aliveCount: players.where((p) => p.alive).length,
-      players: players.map((p) => PlayerSnapshot(
-        id: p.id,
-        characterType: p.characterType,
-        isEnemy: p.isEnemy,
-        hp: p.hp,
-        maxHp: p.maxHp,
-        atk: p.atk,
-        def: p.def,
-        speed: p.speed,
-        abilityPower: p.abilityPower,
-        gold: p.gold,
-        totalGold: p.totalGold,
-        unspentUpgrades: p.pendingUpgradeCount,
-        upgradeChoices: p.upgradeChoices.map((u) => UpgradeOption(
-          type: u.type,
-          rarity: u.rarity,
-          title: u.title,
-          description: u.description,
-          statPreview: u.statPreview,
-        )).toList(),
-        kills: p.kills,
-        damageDealt: p.damageDealt.roundToDouble(),
-        damageTaken: p.damageTaken.roundToDouble(),
-        x: p.pos.x,
-        y: p.pos.y,
-        vx: p.vel.x,
-        vy: p.vel.y,
-        radius: p.radius,
-        color: p.color,
-        alive: p.alive,
-        lives: p.lives,
-        maxLives: p.maxLives,
-        lastAttackAt: p.lastAttackAt,
-        targetAngle: p.targetAngle,
-      )).toList(),
-      foods: foods.map((f) => FoodSnapshot(
-        id: f.id,
-        x: f.pos.x,
-        y: f.pos.y,
-        radius: f.radius,
-        gold: f.gold,
-        kind: f.kind,
-      )).toList(),
-      projectiles: projectiles.map((p) => ProjectileSnapshot(
-        id: p.id,
-        ownerId: p.ownerId,
-        x: p.pos.x,
-        y: p.pos.y,
-        vx: p.vel.x,
-        vy: p.vel.y,
-        radius: p.radius,
-        color: p.color,
-        reflectsRemaining: p.reflectsRemaining,
-      )).toList(),
-      hazards: hazards.map((h) => HazardSnapshot(
-        id: h.id,
-        ownerId: h.ownerId,
-        type: h.type,
-        x: h.pos.x,
-        y: h.pos.y,
-        radius: h.radius,
-        expiresAt: h.expiresAt,
-      )).toList(),
-      attacks: attacks.map((a) => AttackSnapshot(
-        id: a.id,
-        ownerId: a.ownerId,
-        type: a.type,
-        x: a.pos.x,
-        y: a.pos.y,
-        radius: a.radius,
-        angle: a.angle,
-        createdAt: a.createdAt,
-        durationMs: a.durationMs,
-        scale: a.scale,
-      )).toList(),
+      players: players
+          .map((p) => PlayerSnapshot(
+                id: p.id,
+                characterType: p.characterType,
+                isEnemy: p.isEnemy,
+                hp: p.hp,
+                maxHp: p.maxHp,
+                atk: p.atk,
+                def: p.def,
+                speed: p.speed,
+                abilityPower: p.abilityPower,
+                shield: p.shield,
+                maxShield: p.maxShield,
+                weaponLevel: p.weaponLevel,
+                regen: p.regen,
+                lifesteal: p.lifesteal,
+                gold: p.gold,
+                totalGold: p.totalGold,
+                unspentUpgrades: p.pendingUpgradeCount,
+                upgradeChoices: p.upgradeChoices
+                    .map((u) => UpgradeOption(
+                          type: u.type,
+                          rarity: u.rarity,
+                          title: u.title,
+                          description: u.description,
+                          statPreview: u.statPreview,
+                        ))
+                    .toList(),
+                kills: p.kills,
+                damageDealt: p.damageDealt.roundToDouble(),
+                damageTaken: p.damageTaken.roundToDouble(),
+                x: p.pos.x,
+                y: p.pos.y,
+                vx: p.vel.x,
+                vy: p.vel.y,
+                radius: p.radius,
+                color: p.color,
+                alive: p.alive,
+                lives: p.lives,
+                maxLives: p.maxLives,
+                lastAttackAt: p.lastAttackAt,
+                targetAngle: p.targetAngle,
+              ))
+          .toList(),
+      foods: foods
+          .map((f) => FoodSnapshot(
+                id: f.id,
+                x: f.pos.x,
+                y: f.pos.y,
+                radius: f.radius,
+                gold: f.gold,
+                kind: f.kind,
+              ))
+          .toList(),
+      projectiles: projectiles
+          .map((p) => ProjectileSnapshot(
+                id: p.id,
+                ownerId: p.ownerId,
+                x: p.pos.x,
+                y: p.pos.y,
+                vx: p.vel.x,
+                vy: p.vel.y,
+                radius: p.radius,
+                color: p.color,
+                reflectsRemaining: p.reflectsRemaining,
+              ))
+          .toList(),
+      hazards: hazards
+          .map((h) => HazardSnapshot(
+                id: h.id,
+                ownerId: h.ownerId,
+                type: h.type,
+                x: h.pos.x,
+                y: h.pos.y,
+                radius: h.radius,
+                expiresAt: h.expiresAt,
+              ))
+          .toList(),
+      attacks: attacks
+          .map((a) => AttackSnapshot(
+                id: a.id,
+                ownerId: a.ownerId,
+                type: a.type,
+                x: a.pos.x,
+                y: a.pos.y,
+                radius: a.radius,
+                angle: a.angle,
+                createdAt: a.createdAt,
+                durationMs: a.durationMs,
+                scale: a.scale,
+              ))
+          .toList(),
     );
     onUpdate(snapshot);
   }

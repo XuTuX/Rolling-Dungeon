@@ -51,6 +51,9 @@ const double BULLET_RADIUS = 5.0;
 const int BLADE_ATTACK_MS = 850;
 const double BLADE_RANGE = 62.0;
 const int BLADE_EFFECT_MS = 220;
+const double ROTATING_WEAPON_RADIANS_PER_SECOND = 6.2;
+const int BLADE_CONTACT_DAMAGE_MS = 200;
+const double BLADE_CONTACT_WIDTH = 5.0;
 
 const int MINER_DROP_MS = 2300;
 const int MINE_DURATION_MS = 6200;

@@ -1,6 +1,7 @@
 import 'dart:math' as math;
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/models/game_snapshot.dart';
+import 'package:circle_war/game/auto_battle/models/player_snapshot.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
@@ -18,6 +19,7 @@ class AutoBattleGame extends FlameGame {
   final List<_DamageNumber> _damageNumbers = [];
   final Map<String, double> _prevHp = {};
   double _shakeIntensity = 0;
+  int _snapshotReceivedAt = 0;
 
   set viewportPadding(EdgeInsets padding) {
     if (_viewportPadding == padding) return;
@@ -44,6 +46,7 @@ class AutoBattleGame extends FlameGame {
     }
 
     _snapshot = snapshot;
+    _snapshotReceivedAt = DateTime.now().millisecondsSinceEpoch;
     _updateTransform();
   }
 
@@ -145,8 +148,11 @@ class AutoBattleGame extends FlameGame {
 
       if (h.type == 'mine') {
         // Sketch Mine – bold circles with spikes
-        canvas.drawCircle(pos, r, Paint()..color = AutoBattlePalette.primary.withValues(alpha: 0.15));
         canvas.drawCircle(pos, r,
+            Paint()..color = AutoBattlePalette.primary.withValues(alpha: 0.15));
+        canvas.drawCircle(
+            pos,
+            r,
             Paint()
               ..color = AutoBattlePalette.ink
               ..style = PaintingStyle.stroke
@@ -164,24 +170,32 @@ class AutoBattleGame extends FlameGame {
           );
         }
         // Core
-        canvas.drawCircle(pos, r * 0.35, Paint()..color = AutoBattlePalette.primary);
-        canvas.drawCircle(pos, r * 0.35,
+        canvas.drawCircle(
+            pos, r * 0.35, Paint()..color = AutoBattlePalette.primary);
+        canvas.drawCircle(
+            pos,
+            r * 0.35,
             Paint()
               ..color = AutoBattlePalette.ink
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2);
         // Blink light
-        canvas.drawCircle(pos, r * 0.15, Paint()..color = const Color(0xFFFFD43B));
+        canvas.drawCircle(
+            pos, r * 0.15, Paint()..color = const Color(0xFFFFD43B));
       } else {
         // Poison cloud – sketchy with bubbles
-        canvas.drawCircle(pos, r, Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.18));
         canvas.drawCircle(pos, r,
+            Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.18));
+        canvas.drawCircle(
+            pos,
+            r,
             Paint()
               ..color = AutoBattlePalette.ink
               ..style = PaintingStyle.stroke
               ..strokeWidth = 2);
         // Skull indicator
-        canvas.drawCircle(pos, r * 0.3, Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.5));
+        canvas.drawCircle(pos, r * 0.3,
+            Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.5));
       }
     }
 
@@ -233,8 +247,12 @@ class AutoBattleGame extends FlameGame {
         // Slash impact lines
         for (var i = 0; i < 3; i++) {
           final slashAngle = a.angle - 0.5 + i * 0.5;
-          final slashStart = pos + Offset(math.cos(slashAngle) * r * 0.6, math.sin(slashAngle) * r * 0.6);
-          final slashEnd = pos + Offset(math.cos(slashAngle) * r * 1.15, math.sin(slashAngle) * r * 1.15);
+          final slashStart = pos +
+              Offset(math.cos(slashAngle) * r * 0.6,
+                  math.sin(slashAngle) * r * 0.6);
+          final slashEnd = pos +
+              Offset(math.cos(slashAngle) * r * 1.15,
+                  math.sin(slashAngle) * r * 1.15);
           canvas.drawLine(
             slashStart,
             slashEnd,
@@ -248,7 +266,8 @@ class AutoBattleGame extends FlameGame {
         final pos = _toScreen(a.x, a.y);
         final r = a.radius * _arenaScale;
         final beamWidth = 4 * a.scale;
-        final endPos = pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r);
+        final endPos =
+            pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r);
 
         // Outer glow beam
         canvas.drawLine(
@@ -304,9 +323,11 @@ class AutoBattleGame extends FlameGame {
         ..color = AutoBattlePalette.ink.withValues(alpha: 0.4)
         ..strokeWidth = 1.5
         ..strokeCap = StrokeCap.round;
-      canvas.drawLine(Offset(-r * 2.5, -r * 0.6), Offset(-r * 5, -r * 0.6), trailPaint);
+      canvas.drawLine(
+          Offset(-r * 2.5, -r * 0.6), Offset(-r * 5, -r * 0.6), trailPaint);
       canvas.drawLine(Offset(-r * 2, 0), Offset(-r * 4.5, 0), trailPaint);
-      canvas.drawLine(Offset(-r * 2.5, r * 0.6), Offset(-r * 5, r * 0.6), trailPaint);
+      canvas.drawLine(
+          Offset(-r * 2.5, r * 0.6), Offset(-r * 5, r * 0.6), trailPaint);
 
       // Bullet body – elongated with bright color
       final bulletColor = canReflect
@@ -329,9 +350,9 @@ class AutoBattleGame extends FlameGame {
       canvas.drawCircle(
         Offset(r * 1.2, 0),
         r * 0.6,
-        Paint()..color = canReflect
-            ? const Color(0xFF7DD3FC)
-            : const Color(0xFFFFD43B),
+        Paint()
+          ..color =
+              canReflect ? const Color(0xFF7DD3FC) : const Color(0xFFFFD43B),
       );
 
       // Reflect glow
@@ -384,8 +405,32 @@ class AutoBattleGame extends FlameGame {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
 
+      if (p.shield > 0) {
+        final shieldRatio =
+            p.maxShield <= 0 ? 0.0 : (p.shield / p.maxShield).clamp(0.0, 1.0);
+        canvas.drawCircle(
+          pos,
+          r + 7,
+          Paint()
+            ..color = const Color(0xFF38BDF8).withValues(alpha: 0.12)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 7,
+        );
+        canvas.drawArc(
+          Rect.fromCircle(center: pos, radius: r + 7),
+          -math.pi / 2,
+          math.pi * 2 * shieldRatio,
+          false,
+          Paint()
+            ..color = const Color(0xFF38BDF8)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4
+            ..strokeCap = StrokeCap.round,
+        );
+      }
+
       // Weapon Decoration (Simple indicator)
-      _renderWeaponDecoration(canvas, pos, r, p.characterType);
+      _renderWeaponDecoration(canvas, pos, r, p.characterType, _weaponAngle(p));
 
       // HP Bar
       final barW = r * 2.5;
@@ -410,27 +455,95 @@ class AutoBattleGame extends FlameGame {
   }
 
   void _renderWeaponDecoration(
-      Canvas canvas, Offset pos, double r, String type) {
+      Canvas canvas, Offset pos, double r, String type, double angle) {
     final ink = Paint()
       ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
     if (type == 'gunner') {
-      // Mini gun barrel
-      canvas.drawRect(Rect.fromLTWH(pos.dx + r - 4, pos.dy - 3, 16, 6),
-          Paint()..color = const Color(0xFF374151));
-      canvas.drawRect(Rect.fromLTWH(pos.dx + r - 4, pos.dy - 3, 16, 6), ink);
-      // Muzzle dot
-      canvas.drawCircle(Offset(pos.dx + r + 14, pos.dy),
-          3, Paint()..color = const Color(0xFFFFD43B));
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(angle);
+
+      final barrel = Rect.fromLTWH(r * 0.65, -r * 0.22, r * 1.65, r * 0.44);
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(barrel, Radius.circular(r * 0.08)),
+        Paint()..color = const Color(0xFF374151),
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(barrel, Radius.circular(r * 0.08)),
+        ink,
+      );
+      canvas.drawCircle(Offset(r * 2.38, 0), r * 0.18,
+          Paint()..color = const Color(0xFFFFD43B));
+      canvas.drawLine(
+        Offset(r * 0.92, r * 0.25),
+        Offset(r * 1.18, r * 0.62),
+        Paint()
+          ..color = AutoBattlePalette.ink
+          ..strokeWidth = 3
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.restore();
     } else if (type == 'blade') {
-      // Mini sword
-      canvas.drawLine(pos + Offset(r - 4, -r + 4),
-          pos + Offset(r + 16, -r - 16), ink..strokeWidth = 4);
-      // Guard
-      canvas.drawLine(pos + Offset(r - 2, -r + 8),
-          pos + Offset(r + 6, -r), Paint()..color = const Color(0xFFEAB308)..strokeWidth = 3..strokeCap = StrokeCap.round);
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(angle);
+
+      canvas.drawArc(
+        Rect.fromCircle(center: Offset.zero, radius: r * 2.25),
+        -0.62,
+        0.82,
+        false,
+        Paint()
+          ..color = const Color(0xFF4ADE80).withValues(alpha: 0.18)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = r * 0.38
+          ..strokeCap = StrokeCap.round,
+      );
+
+      final handle = RRect.fromRectAndRadius(
+        Rect.fromLTWH(r * 0.44, -r * 0.11, r * 0.68, r * 0.22),
+        Radius.circular(r * 0.07),
+      );
+      canvas.drawRRect(handle, Paint()..color = const Color(0xFF7C2D12));
+      canvas.drawRRect(handle, ink);
+
+      canvas.drawLine(
+        Offset(r * 1.02, -r * 0.52),
+        Offset(r * 1.02, r * 0.52),
+        Paint()
+          ..color = const Color(0xFFEAB308)
+          ..strokeWidth = 5
+          ..strokeCap = StrokeCap.round,
+      );
+
+      final bladePath = Path()
+        ..moveTo(r * 1.06, -r * 0.24)
+        ..quadraticBezierTo(r * 2.18, -r * 0.34, r * 3.32, -r * 0.04)
+        ..lineTo(r * 3.58, 0)
+        ..quadraticBezierTo(r * 2.18, r * 0.34, r * 1.06, r * 0.24)
+        ..close();
+      canvas.drawPath(bladePath, Paint()..color = const Color(0xFFF1F5F9));
+      canvas.drawPath(
+        bladePath,
+        Paint()
+          ..color = AutoBattlePalette.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5,
+      );
+      canvas.drawLine(
+        Offset(r * 1.2, -r * 0.06),
+        Offset(r * 2.95, -r * 0.02),
+        Paint()
+          ..color = Colors.white.withValues(alpha: 0.8)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round,
+      );
+      canvas.drawCircle(
+          Offset(r * 0.2, 0), r * 0.13, Paint()..color = AutoBattlePalette.ink);
+      canvas.restore();
     } else if (type == 'miner') {
       // Mini TNT
       canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5,
@@ -438,12 +551,33 @@ class AutoBattleGame extends FlameGame {
       canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5, ink);
     } else if (type == 'laser') {
       // Mini laser indicator
-      canvas.drawLine(pos + Offset(r - 2, 0),
+      canvas.drawLine(
+          pos + Offset(r - 2, 0),
           pos + Offset(r + 14, 0),
-          Paint()..color = AutoBattlePalette.primary..strokeWidth = 3..strokeCap = StrokeCap.round);
+          Paint()
+            ..color = AutoBattlePalette.primary
+            ..strokeWidth = 3
+            ..strokeCap = StrokeCap.round);
       canvas.drawCircle(pos + Offset(r + 14, 0), 3,
           Paint()..color = Colors.white.withValues(alpha: 0.8));
     }
+  }
+
+  double _weaponAngle(PlayerSnapshot player) {
+    if (player.characterType != 'gunner' && player.characterType != 'blade') {
+      return player.targetAngle;
+    }
+    if (_snapshotReceivedAt == 0) return player.targetAngle;
+
+    final elapsedMs =
+        DateTime.now().millisecondsSinceEpoch - _snapshotReceivedAt;
+    return _normalizeAngle(player.targetAngle + elapsedMs / 1000.0 * 6.2);
+  }
+
+  double _normalizeAngle(double angle) {
+    const fullTurn = math.pi * 2;
+    final normalized = angle % fullTurn;
+    return normalized < 0 ? normalized + fullTurn : normalized;
   }
 
   void _renderVFX(Canvas canvas) {

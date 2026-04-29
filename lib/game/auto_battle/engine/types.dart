@@ -41,6 +41,11 @@ class PlayerData {
   double def;
   double speed;
   double abilityPower;
+  double shield;
+  double maxShield;
+  int weaponLevel;
+  double regen;
+  double lifesteal;
 
   double gold;
   double totalGold;
@@ -78,6 +83,11 @@ class PlayerData {
     required this.def,
     required this.speed,
     required this.abilityPower,
+    this.shield = 0,
+    this.maxShield = 0,
+    this.weaponLevel = 0,
+    this.regen = 0,
+    this.lifesteal = 0,
     required this.gold,
     required this.totalGold,
     required this.pendingUpgradeCount,

@@ -59,7 +59,7 @@ class _GameScreenState extends State<GameScreen> {
     final themeController = Get.find<ThemeController>();
     return Obx(() {
       return Scaffold(
-        backgroundColor: const Color(0xFFF5F5F5),
+        backgroundColor: const Color(0xFFFAF7F0), // Paper-like background
         extendBodyBehindAppBar: true,
         appBar: _buildAppBar(themeController),
         body: Stack(
@@ -273,10 +273,17 @@ class _GameScreenState extends State<GameScreen> {
           const Text(
             'circle-war',
             style: TextStyle(
-              fontSize: 20,
+              fontSize: 22,
               fontWeight: FontWeight.w900,
-              color: Colors.black87,
+              color: charcoalBlack,
               letterSpacing: -0.5,
+              shadows: [
+                Shadow(
+                  color: Colors.white,
+                  offset: Offset(2, 2),
+                  blurRadius: 0,
+                ),
+              ],
             ),
           ),
         ],
@@ -286,7 +293,7 @@ class _GameScreenState extends State<GameScreen> {
           icon: Icons.home_rounded,
           onPressed: () => Get.back(),
         ),
-        const SizedBox(width: 8),
+        const SizedBox(width: 12),
         _buildAppBarButton(
           icon: Icons.refresh_rounded,
           onPressed: () => controller.restartGame(),
@@ -303,23 +310,23 @@ class _GameScreenState extends State<GameScreen> {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: Colors.white,
           shape: BoxShape.circle,
-          border: Border.all(color: charcoalBlack, width: 2),
+          border: Border.all(color: charcoalBlack, width: 3),
           boxShadow: const [
             BoxShadow(
               color: charcoalBlack,
-              offset: Offset(2, 2),
+              offset: Offset(3, 3),
               blurRadius: 0,
             ),
           ],
         ),
         child: Icon(
           icon,
-          size: 20,
+          size: 22,
           color: charcoalBlack,
         ),
       ),

@@ -11,76 +11,117 @@ class ScoreBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ScoreController scoreController = Get.find<ScoreController>();
-    double fontSize = 34;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: _buildScoreBox('SCORE', scoreController.score, fontSize,
-                increment: scoreController.lastIncrement,
-                showIncrement: scoreController.showIncrement,
-                combo: scoreController.combo),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Container(
+          height: 100,
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: charcoalBlack, width: 3),
+            boxShadow: const [
+              BoxShadow(
+                color: charcoalBlack,
+                offset: Offset(6, 6),
+                blurRadius: 0,
+              ),
+            ],
           ),
-          const SizedBox(width: 15),
-          Expanded(
-            child: _buildScoreBox('BEST', scoreController.highscore, fontSize),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildScoreBox(String label, RxInt value, double fontSize,
-      {RxInt? increment, RxBool? showIncrement, RxInt? combo}) {
-    return Container(
-      height: 90,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: charcoalBlack, width: 2),
-        boxShadow: const [
-          BoxShadow(
-            color: charcoalBlack,
-            offset: Offset(4, 4),
-            blurRadius: 0,
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(
-            label,
-            style: AppTypography.label.copyWith(
-              fontSize: 14,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Obx(() => Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.baseline,
-                textBaseline: TextBaseline.alphabetic,
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // VS text in the middle
+              Positioned(
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFFF4081), // Vibrant Pink/Red
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: charcoalBlack, width: 3),
+                    boxShadow: const [
+                      BoxShadow(
+                        color: charcoalBlack,
+                        offset: Offset(3, 3),
+                        blurRadius: 0,
+                      ),
+                    ],
+                  ),
+                  child: Text(
+                    'VS',
+                    style: AppTypography.title.copyWith(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.w900,
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                ),
+              ),
+              Row(
                 children: [
-                  Text(
-                    value.value.toString(),
-                    style: AppTypography.scoreMedium,
+                  // Left Side: SCORE
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'SCORE',
+                          style: AppTypography.label.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.blueAccent,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Obx(() => Text(
+                              scoreController.score.value.toString(),
+                              style: AppTypography.scoreMedium.copyWith(
+                                fontSize: 32,
+                              ),
+                            )),
+                        Obx(() => scoreController.combo.value > 1
+                            ? Text(
+                                'COMBO x${scoreController.combo.value}',
+                                style: AppTypography.label.copyWith(
+                                  fontWeight: FontWeight.w900,
+                                  color: Colors.orangeAccent,
+                                ),
+                              )
+                            : const SizedBox.shrink()),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 60), // Space for VS badge
+                  // Right Side: BEST
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          'BEST',
+                          style: AppTypography.label.copyWith(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.green,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Obx(() => Text(
+                              scoreController.highscore.value.toString(),
+                              style: AppTypography.scoreMedium.copyWith(
+                                fontSize: 32,
+                                color: charcoalBlack.withValues(alpha: 0.6),
+                              ),
+                            )),
+                      ],
+                    ),
                   ),
                 ],
-              )),
-          if (combo != null)
-            Obx(() => combo.value > 1
-                ? Text(
-                    'COMBO x${combo.value}',
-                    style: AppTypography.label.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  )
-                : const SizedBox(height: 12)),
-        ],
-      ),
-    );
+              ),
+            ],
+          ),
+        ));
   }
 }

@@ -32,8 +32,13 @@ class GameProgressController extends GetxController {
   var playerCurrentHp = 200.0.obs;
   var playerAtk = 5.0.obs;
   var playerDef = 2.0.obs;
-  var playerSpd = 2.8.obs;      // matches BASE_SPEED in constants
+  var playerSpd = 2.8.obs; // matches BASE_SPEED in constants
   var playerAbilityPower = 1.0.obs;
+  var playerShield = 0.0.obs;
+  var playerMaxShield = 0.0.obs;
+  var playerWeaponLevel = 0.obs;
+  var playerRegen = 0.0.obs;
+  var playerLifesteal = 0.0.obs;
 
   // ── Character Type ──
   var characterType = 'none'.obs; // 'gunner', 'blade', 'miner', 'laser'
@@ -90,6 +95,11 @@ class GameProgressController extends GetxController {
 
     playerCurrentHp.value = playerMaxHp.value;
     playerAbilityPower.value = 1.0;
+    playerShield.value = 0;
+    playerMaxShield.value = 0;
+    playerWeaponLevel.value = 0;
+    playerRegen.value = 0;
+    playerLifesteal.value = 0;
   }
 
   // ───────────────────────────────────────────
@@ -136,6 +146,7 @@ class GameProgressController extends GetxController {
       currentStage.value += 1;
       // Heal to full when advancing to next stage
       fullHeal();
+      playerShield.value = playerMaxShield.value;
     }
   }
 
@@ -145,14 +156,34 @@ class GameProgressController extends GetxController {
   //  Upgrade Card Generation
   // ───────────────────────────────────────────
   List<UpgradeCard> generateUpgradeChoices() {
-    final allTypes = ['assault', 'guard', 'haste', 'vitality', 'mastery'];
+    final allTypes = [
+      'assault',
+      'guard',
+      'haste',
+      'vitality',
+      'mastery',
+      'weapon_form',
+      'barrier',
+      'regen',
+      'lifesteal',
+      'overclock',
+      'fortress',
+    ];
     allTypes.shuffle(_rand);
     final selected = allTypes.sublist(0, 3);
 
     return selected.map((type) {
       final roll = _rand.nextDouble();
-      final rarity = roll < 0.10 ? 'epic' : roll < 0.35 ? 'rare' : 'common';
-      final mult = rarity == 'epic' ? 2.5 : rarity == 'rare' ? 1.6 : 1.0;
+      final rarity = roll < 0.10
+          ? 'epic'
+          : roll < 0.35
+              ? 'rare'
+              : 'common';
+      final mult = rarity == 'epic'
+          ? 2.5
+          : rarity == 'rare'
+              ? 1.6
+              : 1.0;
 
       switch (type) {
         case 'assault':
@@ -228,6 +259,94 @@ class GameProgressController extends GetxController {
             statPreview: 'PWR +$pwrGain',
             multiplier: mult,
           );
+        case 'weapon_form':
+          final levelGain = (1 * mult).round().clamp(1, 3);
+          return UpgradeCard(
+            type: type,
+            rarity: rarity,
+            title: rarity == 'epic'
+                ? '무기 각성'
+                : rarity == 'rare'
+                    ? '무기 변형'
+                    : '무기 개조',
+            description:
+                '${_weaponKorean(characterType.value)} 형태를 발전시킵니다.\n범위/크기/개수가 강화됩니다.',
+            statPreview: 'WPN +$levelGain',
+            multiplier: mult,
+          );
+        case 'barrier':
+          final shieldGain = (35.0 * mult).round();
+          return UpgradeCard(
+            type: type,
+            rarity: rarity,
+            title: rarity == 'epic'
+                ? '재생 방벽'
+                : rarity == 'rare'
+                    ? '두꺼운 보호막'
+                    : '보호막',
+            description: '다음 전투부터 피해를 먼저 흡수하는 보호막을 얻습니다.\nSHD +$shieldGain',
+            statPreview: 'SHD +$shieldGain',
+            multiplier: mult,
+          );
+        case 'regen':
+          final regenGain = (1.2 * mult).toStringAsFixed(1);
+          return UpgradeCard(
+            type: type,
+            rarity: rarity,
+            title: rarity == 'epic'
+                ? '불사의 회복'
+                : rarity == 'rare'
+                    ? '빠른 재생'
+                    : '자가 회복',
+            description: '전투 중 매초 체력을 조금씩 회복합니다.\n초당 HP +$regenGain',
+            statPreview: 'REG +$regenGain',
+            multiplier: mult,
+          );
+        case 'lifesteal':
+          final stealGain = (4.0 * mult).round();
+          return UpgradeCard(
+            type: type,
+            rarity: rarity,
+            title: rarity == 'epic'
+                ? '피의 계약'
+                : rarity == 'rare'
+                    ? '흡혈 타격'
+                    : '생명 흡수',
+            description: '적에게 준 피해 일부만큼 체력을 회복합니다.\n흡혈 +$stealGain%',
+            statPreview: 'LIFE +$stealGain%',
+            multiplier: mult,
+          );
+        case 'overclock':
+          final atkGain = (1.8 * mult).toStringAsFixed(1);
+          final spdGain = (0.08 * mult).toStringAsFixed(2);
+          return UpgradeCard(
+            type: type,
+            rarity: rarity,
+            title: rarity == 'epic'
+                ? '폭주 구동'
+                : rarity == 'rare'
+                    ? '전투 가속'
+                    : '과부하',
+            description: '공격력과 이동 속도를 동시에 올립니다.\nATK +$atkGain / SPD +$spdGain',
+            statPreview: 'ATK/SPD',
+            multiplier: mult,
+          );
+        case 'fortress':
+          final defGain = (0.7 * mult).toStringAsFixed(1);
+          final shieldGain = (18.0 * mult).round();
+          return UpgradeCard(
+            type: type,
+            rarity: rarity,
+            title: rarity == 'epic'
+                ? '요새화'
+                : rarity == 'rare'
+                    ? '장갑 보강'
+                    : '방호 장갑',
+            description:
+                '방어력과 보호막을 함께 강화합니다.\nDEF +$defGain / SHD +$shieldGain',
+            statPreview: 'DEF/SHD',
+            multiplier: mult,
+          );
         default:
           return UpgradeCard(
             type: type,
@@ -271,8 +390,7 @@ class GameProgressController extends GetxController {
         heal(14);
         break;
       case 'haste':
-        playerSpd.value =
-            math.min(10.0, playerSpd.value + 0.12 * m);
+        playerSpd.value = math.min(10.0, playerSpd.value + 0.12 * m);
         break;
       case 'vitality':
         playerMaxHp.value += 20.0 * m;
@@ -281,6 +399,29 @@ class GameProgressController extends GetxController {
       case 'mastery':
         playerAtk.value += 1.2 * m;
         playerAbilityPower.value += 1.0 * m;
+        break;
+      case 'weapon_form':
+        playerWeaponLevel.value += (1 * m).round().clamp(1, 3);
+        break;
+      case 'barrier':
+        playerMaxShield.value += 35.0 * m;
+        playerShield.value = playerMaxShield.value;
+        break;
+      case 'regen':
+        playerRegen.value += 1.2 * m;
+        break;
+      case 'lifesteal':
+        playerLifesteal.value =
+            math.min(0.35, playerLifesteal.value + 0.04 * m);
+        break;
+      case 'overclock':
+        playerAtk.value += 1.8 * m;
+        playerSpd.value = math.min(10.0, playerSpd.value + 0.08 * m);
+        break;
+      case 'fortress':
+        playerDef.value += 0.7 * m;
+        playerMaxShield.value += 18.0 * m;
+        playerShield.value = playerMaxShield.value;
         break;
     }
     appliedUpgrades.add(card.type);

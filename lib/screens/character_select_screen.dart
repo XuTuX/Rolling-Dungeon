@@ -31,7 +31,8 @@ class CharacterSelectScreen extends StatelessWidget {
                 const SizedBox(height: 24),
                 // Title
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
                   decoration: BoxDecoration(
                     color: Colors.white,
                     border: Border.all(color: AutoBattlePalette.ink, width: 4),
@@ -53,7 +54,7 @@ class CharacterSelectScreen extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 32),
-                
+
                 // Character Cards
                 Expanded(
                   child: Center(
@@ -66,7 +67,7 @@ class CharacterSelectScreen extends StatelessWidget {
                           _buildCharacterCard(
                             id: 'gunner',
                             name: 'GUNNER',
-                            description: 'Rapid Fire\nLow ATK',
+                            description: 'Rotating Shot\nLow ATK',
                             color: AutoBattlePalette.primary,
                             icon: Icons.my_location,
                           ),
@@ -74,7 +75,7 @@ class CharacterSelectScreen extends StatelessWidget {
                           _buildCharacterCard(
                             id: 'blade',
                             name: 'BLADE',
-                            description: 'AoE Sweep\nHigh HP',
+                            description: 'Contact Blade\nHigh HP',
                             color: AutoBattlePalette.secondary,
                             icon: Icons.change_history,
                           ),
@@ -99,17 +100,19 @@ class CharacterSelectScreen extends StatelessWidget {
                     ),
                   ),
                 ),
-                
+
                 // Back Button
                 Padding(
                   padding: const EdgeInsets.only(bottom: 24),
                   child: GestureDetector(
                     onTap: () => Get.back(),
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 24, vertical: 12),
                       decoration: BoxDecoration(
                         color: AutoBattlePalette.surfaceLight,
-                        border: Border.all(color: AutoBattlePalette.ink, width: 3),
+                        border:
+                            Border.all(color: AutoBattlePalette.ink, width: 3),
                         boxShadow: const [
                           BoxShadow(
                             color: AutoBattlePalette.ink,
@@ -182,7 +185,8 @@ class CharacterSelectScreen extends StatelessWidget {
                     size: 64,
                     color: Colors.white,
                     shadows: const [
-                      Shadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                      Shadow(
+                          color: AutoBattlePalette.ink, offset: Offset(3, 3)),
                     ],
                   ),
                 ),

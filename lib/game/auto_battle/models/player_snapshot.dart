@@ -10,6 +10,11 @@ class PlayerSnapshot {
   final double def;
   final double speed;
   final double abilityPower;
+  final double shield;
+  final double maxShield;
+  final int weaponLevel;
+  final double regen;
+  final double lifesteal;
   final double gold;
   final double totalGold;
   final int unspentUpgrades;
@@ -39,6 +44,11 @@ class PlayerSnapshot {
     required this.def,
     required this.speed,
     required this.abilityPower,
+    this.shield = 0,
+    this.maxShield = 0,
+    this.weaponLevel = 0,
+    this.regen = 0,
+    this.lifesteal = 0,
     required this.gold,
     required this.totalGold,
     required this.unspentUpgrades,
@@ -70,6 +80,11 @@ class PlayerSnapshot {
       def: _asDouble(json['def']),
       speed: _asDouble(json['speed']),
       abilityPower: _asDouble(json['abilityPower'], fallback: 1),
+      shield: _asDouble(json['shield']),
+      maxShield: _asDouble(json['maxShield']),
+      weaponLevel: _asInt(json['weaponLevel']),
+      regen: _asDouble(json['regen']),
+      lifesteal: _asDouble(json['lifesteal']),
       gold: _asDouble(json['gold']),
       totalGold: _asDouble(json['totalGold']),
       unspentUpgrades: _asInt(json['unspentUpgrades']),
