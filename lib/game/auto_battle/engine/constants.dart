@@ -31,6 +31,10 @@ const double STAGE_ONE_ENEMY_ATTACK = 7.0;
 const double STAGE_ONE_ENEMY_DEFENSE = 1.0;
 const double STAGE_ONE_ENEMY_RADIUS = 30.0;
 const double STAGE_ONE_ENEMY_SPEED = 4.25;
+const double ENEMY_STAGE_HP_GROWTH = 0.24;
+const double ENEMY_STAGE_ATTACK_GROWTH = 1.12;
+const double ENEMY_STAGE_DEFENSE_GROWTH = 0.52;
+const double ENEMY_STAGE_SPEED_GROWTH = 0.035;
 
 const double COLLISION_DAMAGE_MULTIPLIER = 1.35;
 const double COLLISION_MIN_DAMAGE = 1.0;
@@ -44,6 +48,9 @@ const double WEAPON_LENGTH = 21.0;
 const double MUZZLE_OFFSET_EXTRA = 4.0;
 const int PLAYER_STARTING_WEAPON_COUNT = 1;
 const int PLAYER_STARTING_BULLET_REFLECTS = 0;
+const int PLAYER_STARTING_BULLETS_PER_WEAPON = 1;
+const int PLAYER_MAX_BULLETS_PER_WEAPON = 4;
+const double BULLET_BURST_SPREAD_RADIANS = 0.18;
 const double WEAPON_ROTATION_RADIANS_PER_SECOND = 4.5;
 
 const double BARRIER_RADIUS_MULTIPLIER = 1.28;
@@ -54,6 +61,7 @@ const double BARRIER_COLLISION_LEAK_RATIO = 0.0;
 const double UPGRADE_ATTACK_GAIN = 3.0;
 const int UPGRADE_WEAPON_COUNT_GAIN = 1;
 const int UPGRADE_BULLET_REFLECT_GAIN = 1;
+const int UPGRADE_BULLET_BURST_GAIN = 1;
 const double UPGRADE_BIG_RADIUS_GAIN = 5.0;
 const double UPGRADE_BIG_HP_GAIN = 36.0;
 const double UPGRADE_BIG_SPEED_PENALTY = 0.22;
@@ -113,11 +121,17 @@ const double BLADE_CONTACT_WIDTH = 5.0;
 const int MINER_DROP_MS = 2300;
 const int MINE_DURATION_MS = 6200;
 const double MINE_RADIUS = 20.0;
+const double MINE_DAMAGE = 22.0;
+const double MINE_ATTACK_DAMAGE_RATIO = 0.9;
+const double MINE_THROW_DISTANCE = 42.0;
 
 const int LASER_FIRE_MS = 1200;
 const double LASER_RANGE = 300.0;
 const int LASER_DURATION_MS = 400;
 const int LASER_DAMAGE_TICK_MS = 100;
+const double LASER_DAMAGE = 16.0;
+const double LASER_ATTACK_DAMAGE_RATIO = 1.0;
+const double LASER_WIDTH = 1.25;
 
 // ── Stage Scaling ──
 // Player radius scales per stage: big early, shrinks late

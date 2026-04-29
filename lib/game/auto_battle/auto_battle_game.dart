@@ -488,7 +488,8 @@ class AutoBattleGame extends FlameGame {
       ..strokeWidth = 2.5
       ..strokeCap = StrokeCap.round;
 
-    if (player.weaponCount > 0 || player.characterType == 'gunner') {
+    if (player.characterType == 'gunner' ||
+        (player.isEnemy && player.weaponCount > 0)) {
       final weaponCount = math.max(1, player.weaponCount);
       final baseAngle = _weaponAngle(player);
       for (int i = 0; i < weaponCount; i++) {
@@ -563,21 +564,36 @@ class AutoBattleGame extends FlameGame {
           Offset(r * 0.2, 0), r * 0.13, Paint()..color = AutoBattlePalette.ink);
       canvas.restore();
     } else if (player.characterType == 'miner') {
-      // Mini TNT
-      canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5,
-          Paint()..color = const Color(0xFFEF4444));
-      canvas.drawCircle(pos + Offset(r + 5, -r + 5), 5, ink);
+      final weaponCount = math.max(1, player.weaponCount);
+      final baseAngle = _weaponAngle(player);
+      for (int i = 0; i < weaponCount; i++) {
+        final a = baseAngle + math.pi * 2 * i / weaponCount;
+        final minePos =
+            pos + Offset(math.cos(a) * (r + 10), math.sin(a) * (r + 10));
+        canvas.drawCircle(
+            minePos, 5.5, Paint()..color = const Color(0xFFEF4444));
+        canvas.drawCircle(minePos, 5.5, ink);
+      }
     } else if (player.characterType == 'laser') {
-      // Mini laser indicator
-      canvas.drawLine(
-          pos + Offset(r - 2, 0),
-          pos + Offset(r + 14, 0),
+      final weaponCount = math.max(1, player.weaponCount);
+      final baseAngle = _weaponAngle(player);
+      for (int i = 0; i < weaponCount; i++) {
+        final a = baseAngle + math.pi * 2 * i / weaponCount;
+        final start =
+            pos + Offset(math.cos(a) * (r - 2), math.sin(a) * (r - 2));
+        final end =
+            pos + Offset(math.cos(a) * (r + 16), math.sin(a) * (r + 16));
+        canvas.drawLine(
+          start,
+          end,
           Paint()
             ..color = AutoBattlePalette.primary
             ..strokeWidth = 3
-            ..strokeCap = StrokeCap.round);
-      canvas.drawCircle(pos + Offset(r + 14, 0), 3,
-          Paint()..color = Colors.white.withValues(alpha: 0.8));
+            ..strokeCap = StrokeCap.round,
+        );
+        canvas.drawCircle(
+            end, 3, Paint()..color = Colors.white.withValues(alpha: 0.8));
+      }
     }
   }
 

@@ -46,6 +46,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       weaponLevel: controller.playerWeaponLevel.value,
       weaponCount: controller.playerWeaponCount.value,
       bulletReflectCount: controller.playerBulletReflectCount.value,
+      bulletsPerWeapon: controller.playerBulletsPerWeapon.value,
       regen: controller.playerRegen.value,
       lifesteal: controller.playerLifesteal.value,
       barrierHp: controller.playerBarrierHp.value,
@@ -98,7 +99,34 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         }
         setState(() => _snapshot = s);
         _game.applySnapshot(s);
+        _handleTerminalSnapshot(s, controller);
       });
+  }
+
+  void _handleTerminalSnapshot(
+    GameSnapshot snapshot,
+    GameProgressController controller,
+  ) {
+    if (_navigating) return;
+
+    final win = snapshot.roundState == 'victory';
+    final dead = snapshot.roundState == 'gameover';
+    if (!win && !dead) return;
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || _navigating) return;
+
+      if (win && controller.isFinalStage) {
+        _stopAndNavigate(() => const HomeScreen(), offAll: true);
+      } else if (win) {
+        _stopAndNavigate(() => const UpgradeSelectScreen());
+      } else if (dead && controller.lives.value > 1) {
+        controller.loseLife();
+        _stopAndNavigate(() => const AutoBattleGamePage());
+      } else {
+        _stopAndNavigate(() => const HomeScreen(), offAll: true);
+      }
+    });
   }
 
   /// Stop engine and prevent further callbacks before navigating.
@@ -241,14 +269,6 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
               ),
             ),
           if (_snapshot != null && myPlayer != null) const SizedBox.shrink(),
-          if (_snapshot?.roundState == 'ended' ||
-              _snapshot?.roundState == 'gameover' ||
-              _snapshot?.roundState == 'victory')
-            _SketchResultOverlay(
-              snapshot: _snapshot!,
-              myId: _myId,
-              onNavigate: _stopAndNavigate,
-            ),
         ],
       ),
     );
@@ -550,185 +570,6 @@ class _SketchSidebar extends StatelessWidget {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _SketchResultOverlay extends StatelessWidget {
-  final GameSnapshot snapshot;
-  final String? myId;
-  final void Function(Widget Function() pageBuilder, {bool offAll}) onNavigate;
-  const _SketchResultOverlay({
-    required this.snapshot,
-    required this.myId,
-    required this.onNavigate,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final ctrl = Get.find<GameProgressController>();
-    final win = snapshot.roundState == 'victory'; // all enemies dead
-    final dead = snapshot.roundState == 'gameover'; // player dead
-    final isFinalClear = win && ctrl.isFinalStage;
-
-    // Determine title and color
-    String title;
-    Color bgColor;
-
-    if (isFinalClear) {
-      title = 'FINAL VICTORY!';
-      bgColor = AutoBattlePalette.mint;
-    } else if (win) {
-      title = 'STAGE CLEAR!';
-      bgColor = AutoBattlePalette.gold;
-    } else if (dead && ctrl.lives.value <= 1) {
-      title = 'GAME OVER';
-      bgColor = AutoBattlePalette.primary;
-    } else {
-      title = 'DEFEAT';
-      bgColor = AutoBattlePalette.primary;
-    }
-
-    return Container(
-      color: Colors.white.withValues(alpha: 0.85),
-      alignment: Alignment.center,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final compact =
-              constraints.maxHeight < 390 || constraints.maxWidth < 740;
-          final titleFontSize = (constraints.maxWidth * 0.075)
-              .clamp(compact ? 28.0 : 36.0, 48.0)
-              .toDouble();
-          final horizontalPadding =
-              (constraints.maxWidth * 0.07).clamp(28.0, 60.0).toDouble();
-          final verticalPadding =
-              (constraints.maxHeight * 0.07).clamp(16.0, 30.0).toDouble();
-
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // ── Big Title Banner ──
-                  Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: verticalPadding,
-                    ),
-                    decoration: BoxDecoration(
-                      color: bgColor,
-                      border:
-                          Border.all(color: AutoBattlePalette.ink, width: 6),
-                      boxShadow: const [
-                        BoxShadow(
-                          color: AutoBattlePalette.ink,
-                          offset: Offset(10, 10),
-                        ),
-                      ],
-                    ),
-                    child: Text(
-                      title,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: titleFontSize,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ),
-
-                  // ── Subtitle ──
-                  if (win && !isFinalClear)
-                    Padding(
-                      padding: EdgeInsets.only(top: compact ? 12 : 18),
-                      child: Text(
-                        'STAGE ${ctrl.currentStage.value} COMPLETED',
-                        style: TextStyle(
-                          color: AutoBattlePalette.ink,
-                          fontSize: compact ? 14 : 18,
-                          fontWeight: FontWeight.w800,
-                        ),
-                      ),
-                    ),
-                  if (dead && ctrl.lives.value > 1)
-                    Padding(
-                      padding: EdgeInsets.only(top: compact ? 12 : 18),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Text(
-                            'LIVES:  ',
-                            style: TextStyle(
-                              color: AutoBattlePalette.ink,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w800,
-                            ),
-                          ),
-                          ...List.generate(ctrl.lives.value - 1, (_) {
-                            return const Padding(
-                              padding: EdgeInsets.symmetric(horizontal: 2),
-                              child: Icon(Icons.favorite,
-                                  color: AutoBattlePalette.primary, size: 18),
-                            );
-                          }),
-                        ],
-                      ),
-                    ),
-
-                  // ── Action Button ──
-                  Padding(
-                    padding: EdgeInsets.only(top: compact ? 20 : 32),
-                    child: GestureDetector(
-                      onTap: () {
-                        if (isFinalClear) {
-                          onNavigate(() => const HomeScreen(), offAll: true);
-                        } else if (win) {
-                          onNavigate(() => const UpgradeSelectScreen());
-                        } else if (dead && ctrl.lives.value > 1) {
-                          ctrl.loseLife();
-                          onNavigate(() => const AutoBattleGamePage());
-                        } else {
-                          onNavigate(() => const HomeScreen(), offAll: true);
-                        }
-                      },
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 28, vertical: 14),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          border: Border.all(
-                              color: AutoBattlePalette.ink, width: 3),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: AutoBattlePalette.ink,
-                                offset: Offset(5, 5)),
-                          ],
-                        ),
-                        child: Text(
-                          isFinalClear
-                              ? 'MAIN MENU'
-                              : win
-                                  ? 'CONTINUE'
-                                  : (dead && ctrl.lives.value > 1)
-                                      ? 'RETRY'
-                                      : 'MAIN MENU',
-                          style: const TextStyle(
-                            color: AutoBattlePalette.ink,
-                            fontSize: 20,
-                            fontWeight: FontWeight.w900,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
     );
   }
 }

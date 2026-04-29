@@ -41,6 +41,7 @@ class GameProgressController extends GetxController {
   var playerWeaponLevel = 0.obs;
   var playerWeaponCount = PLAYER_STARTING_WEAPON_COUNT.obs;
   var playerBulletReflectCount = PLAYER_STARTING_BULLET_REFLECTS.obs;
+  var playerBulletsPerWeapon = PLAYER_STARTING_BULLETS_PER_WEAPON.obs;
   var playerRegen = 0.0.obs;
   var playerLifesteal = 0.0.obs;
   var playerBarrierHp = 0.0.obs;
@@ -80,6 +81,7 @@ class GameProgressController extends GetxController {
     playerWeaponLevel.value = 0;
     playerWeaponCount.value = PLAYER_STARTING_WEAPON_COUNT;
     playerBulletReflectCount.value = PLAYER_STARTING_BULLET_REFLECTS;
+    playerBulletsPerWeapon.value = PLAYER_STARTING_BULLETS_PER_WEAPON;
     playerRegen.value = 0;
     playerLifesteal.value = 0;
     playerBarrierHp.value = 0;
@@ -144,6 +146,7 @@ class GameProgressController extends GetxController {
     final allTypes = [
       'attack_up',
       'weapon_count',
+      'bullet_burst',
       'bullet_reflect',
       'body_big',
       'body_small',
@@ -172,6 +175,15 @@ class GameProgressController extends GetxController {
             title: '무기 수 증가',
             description: '공 주변 무기를 1개 늘립니다.\n각 무기가 독립적으로 발사합니다.',
             statPreview: 'WPN +1',
+            multiplier: 1,
+          );
+        case 'bullet_burst':
+          return const UpgradeCard(
+            type: 'bullet_burst',
+            rarity: 'common',
+            title: '2연발',
+            description: '각 총구가 한 번에 총알을 1발 더 발사합니다.\n총알 계열 무기에 특히 강력합니다.',
+            statPreview: 'SHOT +1',
             multiplier: 1,
           );
         case 'bullet_reflect':
@@ -243,6 +255,12 @@ class GameProgressController extends GetxController {
       case 'weapon_count':
         playerWeaponCount.value += UPGRADE_WEAPON_COUNT_GAIN;
         playerWeaponLevel.value = playerWeaponCount.value - 1;
+        break;
+      case 'bullet_burst':
+        playerBulletsPerWeapon.value = math.min(
+          PLAYER_MAX_BULLETS_PER_WEAPON,
+          playerBulletsPerWeapon.value + UPGRADE_BULLET_BURST_GAIN,
+        );
         break;
       case 'bullet_reflect':
         playerBulletReflectCount.value += UPGRADE_BULLET_REFLECT_GAIN;

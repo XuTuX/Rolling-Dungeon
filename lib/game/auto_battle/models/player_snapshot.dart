@@ -15,6 +15,7 @@ class PlayerSnapshot {
   final int weaponLevel;
   final int weaponCount;
   final int bulletReflectCount;
+  final int bulletsPerWeapon;
   final double regen;
   final double lifesteal;
   final double barrierHp;
@@ -53,6 +54,7 @@ class PlayerSnapshot {
     this.weaponLevel = 0,
     this.weaponCount = 1,
     this.bulletReflectCount = 0,
+    this.bulletsPerWeapon = 1,
     this.regen = 0,
     this.lifesteal = 0,
     this.barrierHp = 0,
@@ -93,6 +95,7 @@ class PlayerSnapshot {
       weaponLevel: _asInt(json['weaponLevel']),
       weaponCount: _asInt(json['weaponCount'], fallback: 1),
       bulletReflectCount: _asInt(json['bulletReflectCount']),
+      bulletsPerWeapon: _asInt(json['bulletsPerWeapon'], fallback: 1),
       regen: _asDouble(json['regen']),
       lifesteal: _asDouble(json['lifesteal']),
       barrierHp: _asDouble(json['barrierHp']),

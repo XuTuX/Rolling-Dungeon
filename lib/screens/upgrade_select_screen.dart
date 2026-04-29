@@ -309,6 +309,11 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                   value: '${_ctrl.playerBulletReflectCount.value}',
                   color: const Color(0xFF38BDF8)),
               _StatChip(
+                  icon: Icons.grain,
+                  label: 'SHOT',
+                  value: '${_ctrl.playerBulletsPerWeapon.value}',
+                  color: const Color(0xFFBE123C)),
+              _StatChip(
                   icon: Icons.radio_button_unchecked,
                   label: 'SIZE',
                   value: '${_ctrl.playerRadius.value.round()}',
@@ -411,6 +416,8 @@ class _UpgradeCardWidget extends StatelessWidget {
         return const Color(0xFF22C55E);
       case 'weapon_count':
         return const Color(0xFF7C3AED);
+      case 'bullet_burst':
+        return const Color(0xFFBE123C);
       case 'bullet_reflect':
         return const Color(0xFF0284C7);
       case 'barrier':
@@ -432,6 +439,8 @@ class _UpgradeCardWidget extends StatelessWidget {
         return Icons.radio_button_unchecked;
       case 'weapon_count':
         return Icons.auto_fix_high;
+      case 'bullet_burst':
+        return Icons.grain;
       case 'bullet_reflect':
         return Icons.change_circle;
       case 'barrier':

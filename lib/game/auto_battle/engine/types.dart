@@ -46,6 +46,7 @@ class PlayerData {
   int weaponLevel;
   int weaponCount;
   int bulletReflectCount;
+  int bulletsPerWeapon;
   double regen;
   double lifesteal;
   double barrierHp;
@@ -95,6 +96,7 @@ class PlayerData {
     this.weaponLevel = 0,
     this.weaponCount = 1,
     this.bulletReflectCount = 0,
+    this.bulletsPerWeapon = 1,
     this.regen = 0,
     this.lifesteal = 0,
     this.barrierHp = 0,

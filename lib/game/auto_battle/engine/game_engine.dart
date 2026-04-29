@@ -39,6 +39,7 @@ class GameEngine {
           ? 'gunner'
           : initialPlayer.characterType
       ..weaponCount = math.max(1, initialPlayer.weaponCount)
+      ..bulletsPerWeapon = math.max(1, initialPlayer.bulletsPerWeapon)
       ..barrierHp = initialPlayer.barrierMaxHp > 0
           ? math.max(initialPlayer.barrierHp, initialPlayer.barrierMaxHp)
           : initialPlayer.barrierHp;
@@ -115,8 +116,11 @@ class GameEngine {
         ));
       }
     }
-    player.speed =
-        ENEMY_BASE_SPEED * (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
+    final stageSpeedMult =
+        1 + math.max(0, currentStage - 1) * ENEMY_STAGE_SPEED_GROWTH;
+    player.speed = ENEMY_BASE_SPEED *
+        stageSpeedMult *
+        (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
   }
 
   void _handleCollisions(int now) {
@@ -128,6 +132,7 @@ class GameEngine {
         if (!checkCircleCollision(a, b)) continue;
 
         resolveCircleCollision(a, b);
+        if (a.isEnemy && b.isEnemy) continue;
         _applyCollisionDamage(a, b, now);
         _applyCollisionDamage(b, a, now);
       }
@@ -181,64 +186,71 @@ class GameEngine {
   }
 
   PlayerData _createEnemy(String type, int stage) {
-    final stageMult = 1 + (stage - 1) * 0.18;
-    double hp = stage == 1 ? STAGE_ONE_ENEMY_HP : 110 * stageMult;
-    double speed = stage == 1 ? STAGE_ONE_ENEMY_SPEED : ENEMY_BASE_SPEED;
+    final stageStep = math.max(0, stage - 1);
+    final hpMult = 1 + stageStep * ENEMY_STAGE_HP_GROWTH;
+    final speedMult = 1 + stageStep * ENEMY_STAGE_SPEED_GROWTH;
+    double hp = stage == 1 ? STAGE_ONE_ENEMY_HP : 110 * hpMult;
+    double speed =
+        stage == 1 ? STAGE_ONE_ENEMY_SPEED : ENEMY_BASE_SPEED * speedMult;
     double radius = stage == 1 ? STAGE_ONE_ENEMY_RADIUS : ENEMY_BASE_RADIUS;
     String color = '#FF5E5E';
-    double atk = stage == 1 ? STAGE_ONE_ENEMY_ATTACK : 7.0 + stage * 0.9;
-    double def = stage == 1 ? STAGE_ONE_ENEMY_DEFENSE : 1.0 + stage * 0.35;
+    double atk = stage == 1
+        ? STAGE_ONE_ENEMY_ATTACK
+        : 7.0 + stage * ENEMY_STAGE_ATTACK_GROWTH;
+    double def = stage == 1
+        ? STAGE_ONE_ENEMY_DEFENSE
+        : 1.0 + stage * ENEMY_STAGE_DEFENSE_GROWTH;
     String ability = 'none';
 
     if (type == 'fast') {
-      speed = ENEMY_BASE_SPEED * 1.28;
-      hp = 72 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 1.28;
+      hp = 72 * hpMult;
       radius = ENEMY_BASE_RADIUS * 0.72;
       color = '#FFB84D';
     } else if (type == 'dasher') {
-      speed = ENEMY_BASE_SPEED * 0.95;
-      hp = 95 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 0.95;
+      hp = 95 * hpMult;
       radius = ENEMY_BASE_RADIUS * 0.9;
       color = '#FB7185';
       ability = 'dash';
     } else if (type == 'shooter') {
-      speed = ENEMY_BASE_SPEED * 0.85;
-      hp = 92 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 0.85;
+      hp = 92 * hpMult;
       radius = ENEMY_BASE_RADIUS * 0.85;
       color = '#38BDF8';
       ability = 'shoot';
     } else if (type == 'tank') {
-      speed = ENEMY_BASE_SPEED * 0.66;
-      hp = 210 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 0.66;
+      hp = 210 * hpMult;
       radius = ENEMY_BASE_RADIUS * 1.34;
       color = '#8A2BE2';
       def += 3.5;
     } else if (type == 'bruiser') {
-      speed = ENEMY_BASE_SPEED * 1.02;
-      hp = 130 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 1.02;
+      hp = 130 * hpMult;
       radius = ENEMY_BASE_RADIUS * 1.06;
       color = '#F97316';
       atk += 5;
       ability = 'impact';
     } else if (type == 'shield') {
-      speed = ENEMY_BASE_SPEED * 0.82;
-      hp = 130 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 0.82;
+      hp = 130 * hpMult;
       radius = ENEMY_BASE_RADIUS;
       color = '#14B8A6';
       ability = 'shield';
     } else if (type == 'splitter') {
-      speed = ENEMY_BASE_SPEED * 1.04;
-      hp = 112 * stageMult;
+      speed = ENEMY_BASE_SPEED * speedMult * 1.04;
+      hp = 112 * hpMult;
       radius = ENEMY_BASE_RADIUS * 1.05;
       color = '#A855F7';
       ability = 'split';
     } else if (type == 'final_boss') {
-      speed = ENEMY_BASE_SPEED * 0.92;
-      hp = 780;
+      speed = ENEMY_BASE_SPEED * speedMult * 0.92;
+      hp = 780 * hpMult;
       radius = ENEMY_BASE_RADIUS * 1.9;
       color = '#000000';
-      atk = 19;
-      def = 7;
+      atk = 19 + stageStep * 0.9;
+      def = 7 + stageStep * 0.35;
       ability = 'shield';
     }
 
@@ -259,6 +271,7 @@ class GameEngine {
       weaponLevel: 0,
       weaponCount: ability == 'shoot' ? 1 : 0,
       bulletReflectCount: 0,
+      bulletsPerWeapon: 1,
       barrierHp: 0,
       barrierMaxHp: 0,
       gold: 0,
@@ -303,7 +316,17 @@ class GameEngine {
         _handleEnemyAbility(player, now);
       } else {
         player.targetAngle = _rotatingWeaponAngle(player, now);
-        _fireBullet(player, now);
+        switch (player.characterType) {
+          case 'miner':
+            _dropMine(player, now);
+            break;
+          case 'laser':
+            _fireLaser(player, now);
+            break;
+          default:
+            _fireBullet(player, now);
+            break;
+        }
       }
     }
   }
@@ -338,26 +361,119 @@ class GameEngine {
     final baseAngle = _rotatingWeaponAngle(player, now);
     player.targetAngle = baseAngle;
     final weaponCount = math.max(1, player.weaponCount);
+    final bulletsPerWeapon = math.max(1, player.bulletsPerWeapon);
     const bulletRadius = BULLET_RADIUS;
     final muzzleDist = player.radius + WEAPON_LENGTH + MUZZLE_OFFSET_EXTRA;
 
     for (int i = 0; i < weaponCount; i++) {
-      final angle = baseAngle + math.pi * 2 * i / weaponCount;
-      final direction = Vec2(x: math.cos(angle), y: math.sin(angle));
+      final weaponAngle = baseAngle + math.pi * 2 * i / weaponCount;
+      final spread = (bulletsPerWeapon - 1) * BULLET_BURST_SPREAD_RADIANS;
+      for (int shot = 0; shot < bulletsPerWeapon; shot++) {
+        final angle = bulletsPerWeapon == 1
+            ? weaponAngle
+            : weaponAngle - spread / 2 + spread * shot / (bulletsPerWeapon - 1);
+        final direction = Vec2(x: math.cos(angle), y: math.sin(angle));
+        final spawnPos = Vec2(
+          x: player.pos.x + direction.x * muzzleDist,
+          y: player.pos.y + direction.y * muzzleDist,
+        );
+
+        projectiles.add(ProjectileData(
+          id: _nextId('bullet'),
+          ownerId: player.id,
+          pos: spawnPos,
+          vel: direction,
+          radius: bulletRadius,
+          color: player.color,
+          reflectsRemaining: player.bulletReflectCount,
+        ));
+      }
+    }
+  }
+
+  void _dropMine(PlayerData player, int now) {
+    final cooldown = _getAbilityCooldown(player, MINER_DROP_MS);
+    if (now - player.lastMineDropAt < cooldown) return;
+    if (!players.any((other) => other.alive && other.isEnemy)) return;
+    player.lastMineDropAt = now;
+    player.lastAttackAt = now;
+    final baseAngle = _rotatingWeaponAngle(player, now);
+    player.targetAngle = baseAngle;
+    final mineCount = math.max(1, player.weaponCount);
+    final mineDistance = player.radius + MINE_THROW_DISTANCE;
+
+    for (int i = 0; i < mineCount; i++) {
+      final angle = baseAngle + math.pi * 2 * i / mineCount;
+      final minePos = Vec2(
+        x: (player.pos.x + math.cos(angle) * mineDistance)
+            .clamp(MINE_RADIUS, ARENA_WIDTH - MINE_RADIUS)
+            .toDouble(),
+        y: (player.pos.y + math.sin(angle) * mineDistance)
+            .clamp(MINE_RADIUS, ARENA_HEIGHT - MINE_RADIUS)
+            .toDouble(),
+      );
+      hazards.add(HazardData(
+        id: _nextId('mine'),
+        ownerId: player.id,
+        type: 'mine',
+        pos: minePos,
+        radius: MINE_RADIUS,
+        expiresAt: now + MINE_DURATION_MS,
+        lastDamageAt: {},
+      ));
+    }
+  }
+
+  void _fireLaser(PlayerData player, int now) {
+    final cooldown = _getAbilityCooldown(player, LASER_FIRE_MS);
+    if (now - player.lastShotAt < cooldown) return;
+    final target = _findNearestOpponent(player, LASER_RANGE);
+    if (target == null) return;
+    player.lastShotAt = now;
+    player.lastAttackAt = now;
+
+    final aimAngle =
+        math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
+    player.targetAngle = aimAngle;
+    final beamCount = math.max(1, player.weaponCount);
+    final muzzleDist = player.radius + WEAPON_LENGTH + MUZZLE_OFFSET_EXTRA;
+
+    for (int i = 0; i < beamCount; i++) {
+      final angle =
+          beamCount == 1 ? aimAngle : aimAngle + math.pi * 2 * i / beamCount;
+      final dir = Vec2(x: math.cos(angle), y: math.sin(angle));
       final spawnPos = Vec2(
-        x: player.pos.x + direction.x * muzzleDist,
-        y: player.pos.y + direction.y * muzzleDist,
+        x: player.pos.x + dir.x * muzzleDist,
+        y: player.pos.y + dir.y * muzzleDist,
       );
 
-      projectiles.add(ProjectileData(
-        id: _nextId('bullet'),
+      attacks.add(AttackEffectData(
+        id: _nextId('laser'),
         ownerId: player.id,
+        type: 'laser',
         pos: spawnPos,
-        vel: direction,
-        radius: bulletRadius,
-        color: player.color,
-        reflectsRemaining: player.bulletReflectCount,
+        radius: LASER_RANGE,
+        angle: angle,
+        createdAt: now,
+        durationMs: LASER_DURATION_MS,
+        scale: LASER_WIDTH,
       ));
+
+      final beamEnd = Vec2(
+        x: spawnPos.x + dir.x * LASER_RANGE,
+        y: spawnPos.y + dir.y * LASER_RANGE,
+      );
+      for (final enemy in players) {
+        if (!enemy.alive || !enemy.isEnemy) continue;
+        final hitDistance =
+            _distancePointToSegment(enemy.pos, spawnPos, beamEnd);
+        if (hitDistance > enemy.radius + 7 * LASER_WIDTH) continue;
+        _dealDamage(
+          player,
+          enemy,
+          LASER_DAMAGE + player.atk * LASER_ATTACK_DAMAGE_RATIO,
+        );
+      }
     }
   }
 
@@ -450,17 +566,16 @@ class GameEngine {
       }
       for (final target in players) {
         if (!target.alive || target.id == hazard.ownerId) continue;
+        if (target.isEnemy == owner.isEnemy) continue;
         if (distance(target.pos, hazard.pos) > target.radius + hazard.radius) {
           continue;
         }
         if (hazard.type == 'mine') {
           _dealDamage(
-              owner,
-              target,
-              10 +
-                  owner.atk * 0.55 +
-                  owner.abilityPower * 1.8 +
-                  owner.weaponLevel * 1.2);
+            owner,
+            target,
+            MINE_DAMAGE + owner.atk * MINE_ATTACK_DAMAGE_RATIO,
+          );
           hazards.removeAt(i);
           break;
         }
@@ -606,6 +721,39 @@ class GameEngine {
     return normalized < 0 ? normalized + fullTurn : normalized;
   }
 
+  PlayerData? _findNearestOpponent(PlayerData player, double range) {
+    PlayerData? best;
+    var bestDistance = range;
+    for (final other in players) {
+      if (!other.alive || other.id == player.id) continue;
+      if (other.isEnemy == player.isEnemy) continue;
+      final d = distance(player.pos, other.pos);
+      if (d >= bestDistance) continue;
+      bestDistance = d;
+      best = other;
+    }
+    return best;
+  }
+
+  double _distancePointToSegment(Vec2 point, Vec2 start, Vec2 end) {
+    final dx = end.x - start.x;
+    final dy = end.y - start.y;
+    final lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared <= 0) return distance(point, start);
+
+    final t =
+        (((point.x - start.x) * dx + (point.y - start.y) * dy) / lengthSquared)
+            .clamp(0.0, 1.0)
+            .toDouble();
+    return distance(
+      point,
+      Vec2(
+        x: start.x + dx * t,
+        y: start.y + dy * t,
+      ),
+    );
+  }
+
   String _nextId(String prefix) {
     return '${prefix}_${idSeq++}';
   }
@@ -636,6 +784,7 @@ class GameEngine {
                 weaponLevel: p.weaponLevel,
                 weaponCount: p.weaponCount,
                 bulletReflectCount: p.bulletReflectCount,
+                bulletsPerWeapon: p.bulletsPerWeapon,
                 regen: p.regen,
                 lifesteal: p.lifesteal,
                 barrierHp: p.barrierHp,
