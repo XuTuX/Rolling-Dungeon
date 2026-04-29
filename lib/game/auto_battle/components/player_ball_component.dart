@@ -131,6 +131,41 @@ class PlayerBallComponent extends PositionComponent {
     return start + diff * t;
   }
 
+  void _drawRoughPath(Canvas canvas, Path path, Paint paint, {double jitter = 0.8}) {
+    final metrics = path.computeMetrics();
+    final roughPath = Path();
+    final rand = math.Random(42); // Seed for consistency
+
+    for (final metric in metrics) {
+      const step = 4.0;
+      for (var d = 0.0; d < metric.length; d += step) {
+        final pos = metric.getTangentForOffset(d)!.position;
+        final offset = Offset(
+          (rand.nextDouble() - 0.5) * jitter,
+          (rand.nextDouble() - 0.5) * jitter,
+        );
+        if (d == 0) {
+          roughPath.moveTo(pos.dx + offset.dx, pos.dy + offset.dy);
+        } else {
+          roughPath.lineTo(pos.dx + offset.dx, pos.dy + offset.dy);
+        }
+      }
+    }
+    if (path.contains(const Offset(0,0))) roughPath.close(); // Approximation
+    canvas.drawPath(roughPath, paint);
+  }
+
+  void _drawHatching(Canvas canvas, Rect rect, double angle, double spacing, Paint paint) {
+    canvas.save();
+    canvas.clipRect(rect);
+    canvas.rotate(angle);
+    final diagonal = math.sqrt(rect.width * rect.width + rect.height * rect.height);
+    for (var i = -diagonal; i < diagonal; i += spacing) {
+      canvas.drawLine(Offset(i, -diagonal), Offset(i + diagonal * 0.5, diagonal), paint);
+    }
+    canvas.restore();
+  }
+
   @override
   void render(Canvas canvas) {
     final center = Offset(size.x / 2, size.y / 2);
@@ -288,11 +323,11 @@ class PlayerBallComponent extends PositionComponent {
       case 'gunner':
         return 'GUN';
       case 'blade':
-        return 'BLD';
+        return 'SPR';
       case 'miner':
         return 'MIN';
       case 'laser':
-        return 'LAS';
+        return 'CBW';
       default:
         return type.toUpperCase();
     }
@@ -349,13 +384,13 @@ class PlayerBallComponent extends PositionComponent {
         _renderGun(canvas, scale);
         break;
       case 'blade':
-        _renderBlade(canvas, scale);
+        _renderSpear(canvas, scale);
         break;
       case 'miner':
         _renderHeldMine(canvas, scale);
         break;
       case 'laser':
-        _renderLaserCannon(canvas, scale);
+        _renderCrossbow(canvas, scale);
         break;
       default:
         break;
@@ -365,166 +400,142 @@ class PlayerBallComponent extends PositionComponent {
   }
 
   void _renderGun(Canvas canvas, double scale) {
-    // ── Chunky Cartoon Revolver ──
+    // ── Ultra Premium Rough Sketch Revolver ──
     final inkPaint = Paint()
-      ..color = const Color(0xFF1A1A1A)
+      ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5 * scale
-      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 3.2 * scale
       ..strokeCap = StrokeCap.round;
 
-    // Barrel – thick rounded rectangle
-    // Stretch barrel forward based on thrust
-    final barrelExtension = 6.0 * _thrust * scale;
-    final barrelPath = Path()
-      ..moveTo(ballRadius * 0.72, -3.5 * scale)
-      ..lineTo(ballRadius * 2.2 + barrelExtension, -3 * scale)
-      ..lineTo(ballRadius * 2.3 + barrelExtension, 0)
-      ..lineTo(ballRadius * 2.2 + barrelExtension, 3 * scale)
-      ..lineTo(ballRadius * 0.72, 3.5 * scale)
+    final recoil = _thrust * 15.0 * scale;
+    final tilt = _thrust * 0.22;
+    
+    canvas.save();
+    canvas.translate(-recoil, 0);
+    canvas.rotate(-tilt);
+
+    // Frame - Rough Path
+    final framePath = Path()
+      ..moveTo(ballRadius * 0.55, -9 * scale)
+      ..lineTo(ballRadius * 1.15, -9 * scale)
+      ..lineTo(ballRadius * 1.25, -4.5 * scale)
+      ..lineTo(ballRadius * 2.3, -4.5 * scale)
+      ..lineTo(ballRadius * 2.3, 4.5 * scale)
+      ..lineTo(ballRadius * 0.55, 4.5 * scale)
       ..close();
-    canvas.drawPath(barrelPath, Paint()..color = const Color(0xFF374151));
-    canvas.drawPath(barrelPath, inkPaint);
+    
+    canvas.drawPath(framePath, Paint()..color = const Color(0xFF94A3B8));
+    _drawRoughPath(canvas, framePath, inkPaint);
 
-    // Barrel Highlight
-    canvas.drawLine(
-      Offset(ballRadius * 0.85, -1 * scale),
-      Offset(ballRadius * 2.0, -0.5 * scale),
-      Paint()
-        ..color = const Color(0xFF9CA3AF)
-        ..strokeWidth = 2 * scale
-        ..strokeCap = StrokeCap.round,
-    );
+    // Hatching Shadow on Frame
+    _drawHatching(canvas, Rect.fromLTWH(ballRadius * 0.6, -8 * scale, 20 * scale, 12 * scale), 0.5, 4 * scale, Paint()..color = Colors.black26..strokeWidth = 1);
 
-    // Chamber/Cylinder – bold circle
-    canvas.drawCircle(
-      Offset(ballRadius * 0.78, 0),
-      8.5 * scale,
-      Paint()..color = const Color(0xFF1F2937),
-    );
-    canvas.drawCircle(
-      Offset(ballRadius * 0.78, 0),
-      8.5 * scale,
-      inkPaint,
-    );
-    // Cylinder detail dots
-    for (var i = 0; i < 5; i++) {
-      final a = i * math.pi * 2 / 5 - math.pi / 2;
-      canvas.drawCircle(
-        Offset(ballRadius * 0.78 + math.cos(a) * 5 * scale,
-            math.sin(a) * 5 * scale),
-        1.5 * scale,
-        Paint()..color = const Color(0xFF6B7280),
-      );
+    // Cylinder - More detailed
+    final cylinderRect = Rect.fromLTWH(ballRadius * 0.7, -8 * scale, 14 * scale, 16 * scale);
+    canvas.drawRRect(RRect.fromRectAndRadius(cylinderRect, Radius.circular(4 * scale)), Paint()..color = const Color(0xFF334155));
+    _drawRoughPath(canvas, Path()..addRRect(RRect.fromRectAndRadius(cylinderRect, Radius.circular(4 * scale))), inkPaint);
+    
+    // Cylinder detail lines
+    for (var i = 0; i < 3; i++) {
+      final y = -4 * scale + i * 4 * scale;
+      canvas.drawLine(Offset(ballRadius * 0.75, y), Offset(ballRadius * 0.75 + 10 * scale, y), Paint()..color = Colors.white24..strokeWidth = 2 * scale);
     }
 
-    // Grip – bold trapezoid
+    // Grip - Hand-drawn curve
     final gripPath = Path()
-      ..moveTo(ballRadius * 0.68, 5 * scale)
-      ..lineTo(ballRadius * 0.88, 5 * scale)
-      ..lineTo(ballRadius * 0.82, 22 * scale)
-      ..lineTo(ballRadius * 0.62, 21 * scale)
-      ..close();
-    canvas.drawPath(gripPath, Paint()..color = const Color(0xFF92400E));
-    canvas.drawPath(gripPath, inkPaint);
+      ..moveTo(ballRadius * 0.6, 4 * scale)
+      ..quadraticBezierTo(ballRadius * 0.9, 5 * scale, ballRadius * 0.8, 26 * scale)
+      ..lineTo(ballRadius * 0.4, 24 * scale)
+      ..quadraticBezierTo(ballRadius * 0.45, 10 * scale, ballRadius * 0.55, 4 * scale);
+    canvas.drawPath(gripPath, Paint()..color = const Color(0xFF78350F));
+    _drawRoughPath(canvas, gripPath, inkPaint);
 
-    // Muzzle Flash – bright yellow star
-    final muzzle = Offset(ballRadius * 2.35 + barrelExtension, 0);
-    canvas.drawCircle(muzzle, 5.5 * scale,
-        Paint()..color = const Color(0xFFFFD43B).withValues(alpha: 0.7));
-    canvas.drawCircle(muzzle, 3 * scale,
-        Paint()..color = Colors.white.withValues(alpha: 0.9));
+    // Hammer & Trigger Guard
+    _drawRoughPath(canvas, Path()..addOval(Rect.fromCircle(center: Offset(ballRadius * 0.8, 8 * scale), radius: 5 * scale)), inkPaint..strokeWidth = 2 * scale);
+    
+    if (_thrust > 0.7) {
+      _renderMuzzleFlash(canvas, Offset(ballRadius * 2.35, 0), scale);
+      _renderSmoke(canvas, Offset(ballRadius * 2.5, -5 * scale), scale);
+    }
 
-    // Flash lines
-    for (var i = 0; i < 4; i++) {
-      final a = i * math.pi / 2 + math.pi / 4;
-      canvas.drawLine(
-        muzzle + Offset(math.cos(a) * 4 * scale, math.sin(a) * 4 * scale),
-        muzzle + Offset(math.cos(a) * 9 * scale, math.sin(a) * 9 * scale),
-        Paint()
-          ..color = const Color(0xFFFFD43B)
-          ..strokeWidth = 1.8 * scale
-          ..strokeCap = StrokeCap.round,
-      );
+    canvas.restore();
+  }
+
+  void _renderSmoke(Canvas canvas, Offset pos, double scale) {
+    final t = (_pulse * 5) % 1.0;
+    final ink = Paint()..color = Colors.black12..style = PaintingStyle.stroke..strokeWidth = 1.5 * scale;
+    for (var i = 0; i < 3; i++) {
+      final r = (5 + i * 8) * scale * t;
+      canvas.drawCircle(pos + Offset(i * 10 * scale * t, -i * 5 * scale * t), r, ink);
     }
   }
 
-  void _renderBlade(Canvas canvas, double scale) {
-    // ── Bold Cartoon Katana ──
+  void _renderMuzzleFlash(Canvas canvas, Offset muzzle, double scale) {
+    final flashPaint = Paint()..color = AutoBattlePalette.gold;
+    final size = 16 * scale * _thrust;
+    
+    final path = Path();
+    for (var i = 0; i < 12; i++) {
+      final angle = i * math.pi / 6;
+      final r = i % 3 == 0 ? size : size * 0.4;
+      final x = muzzle.dx + math.cos(angle) * r;
+      final y = muzzle.dy + math.sin(angle) * r;
+      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
+    }
+    path.close();
+    canvas.drawPath(path, flashPaint);
+    _drawRoughPath(canvas, path, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5 * scale, jitter: 1.2);
+  }
+
+  void _renderSpear(Canvas canvas, double scale) {
+    // ── Ultra Premium Rough Sketch Spear ──
     final inkPaint = Paint()
-      ..color = const Color(0xFF1A1A1A)
+      ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.5 * scale
-      ..strokeJoin = StrokeJoin.round
       ..strokeCap = StrokeCap.round;
 
-    // Blade body – long sharp triangle
-    // Stretch blade forward based on thrust
-    final bladeStretch = 10.0 * _thrust * scale;
-    final bladePath = Path()
-      ..moveTo(ballRadius * 0.82, -5.5 * scale)
-      ..lineTo(ballRadius * 2.6 + bladeStretch, -1 * scale)
-      ..lineTo(ballRadius * 2.7 + bladeStretch, 0.5 * scale)
-      ..lineTo(ballRadius * 2.5 + bladeStretch, 1.5 * scale)
-      ..lineTo(ballRadius * 0.82, 5.5 * scale)
+    final thrustExt = 22.0 * _thrust * scale;
+    final shaftStart = ballRadius * 0.2;
+    final shaftEnd = ballRadius * 2.8 + thrustExt;
+    
+    // Shaft with jitter
+    final shaftPath = Path()..moveTo(shaftStart, 0)..lineTo(shaftEnd, 0);
+    canvas.drawLine(Offset(shaftStart, 0), Offset(shaftEnd, 0), Paint()..color = const Color(0xFF451A03)..strokeWidth = 6 * scale);
+    _drawRoughPath(canvas, shaftPath, inkPaint..strokeWidth = 2.8 * scale);
+
+    // Wrapped grip area - Hatching
+    final gripRect = Rect.fromLTWH(ballRadius * 0.4, -4 * scale, 12 * scale, 8 * scale);
+    canvas.drawRect(gripRect, Paint()..color = const Color(0xFF92400E));
+    _drawHatching(canvas, gripRect, 0.8, 3 * scale, Paint()..color = Colors.black26..strokeWidth = 1);
+    _drawRoughPath(canvas, Path()..addRect(gripRect), inkPaint..strokeWidth = 2 * scale);
+
+    // Spear Head - More organic shape
+    final headStart = shaftEnd;
+    final headPath = Path()
+      ..moveTo(headStart, -9 * scale)
+      ..quadraticBezierTo(headStart + 12 * scale, -8 * scale, headStart + 32 * scale, 0)
+      ..quadraticBezierTo(headStart + 12 * scale, 8 * scale, headStart, 9 * scale)
+      ..lineTo(headStart - 4 * scale, 0)
       ..close();
-    canvas.drawPath(bladePath, Paint()..color = const Color(0xFFF1F5F9));
-    canvas.drawPath(bladePath, inkPaint);
+    
+    canvas.drawPath(headPath, Paint()..color = const Color(0xFFCBD5E1));
+    _drawRoughPath(canvas, headPath, inkPaint..strokeWidth = 3.5 * scale, jitter: 1.2);
+    
+    // Shading on head
+    _drawHatching(canvas, Rect.fromLTWH(headStart, -5 * scale, 20 * scale, 10 * scale), 0.7, 2.5 * scale, Paint()..color = Colors.black12);
 
-    // Blade edge glow – bright green slash line
-    final edgePath = Path()
-      ..moveTo(ballRadius * 0.95, -3 * scale)
-      ..lineTo(ballRadius * 2.45, -0.3 * scale)
-      ..lineTo(ballRadius * 2.55, 0.5 * scale);
-    canvas.drawPath(
-      edgePath,
-      Paint()
-        ..color = const Color(0xFF4ADE80).withValues(alpha: 0.8)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 3 * scale
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Blade inner shine
-    canvas.drawLine(
-      Offset(ballRadius * 1.2, -1.5 * scale),
-      Offset(ballRadius * 2.1, 0),
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.45)
-        ..strokeWidth = 2.5 * scale
-        ..strokeCap = StrokeCap.round,
-    );
-
-    // Guard / Tsuba – bold perpendicular bar
-    final tsubaRect = RRect.fromRectAndRadius(
-      Rect.fromCenter(
-          center: Offset(ballRadius * 0.78, 0),
-          width: 4 * scale,
-          height: 22 * scale),
-      Radius.circular(2 * scale),
-    );
-    canvas.drawRRect(tsubaRect, Paint()..color = const Color(0xFFEAB308));
-    canvas.drawRRect(tsubaRect, inkPaint);
-
-    // Handle – wrapped grip
-    final handleRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(
-          ballRadius * 0.48, -3.5 * scale, ballRadius * 0.28, 7 * scale),
-      Radius.circular(2 * scale),
-    );
-    canvas.drawRRect(handleRect, Paint()..color = const Color(0xFF7C2D12));
-    canvas.drawRRect(handleRect, inkPaint);
-
-    // Handle wrap lines
-    for (var i = 0; i < 3; i++) {
-      final y = -2 * scale + i * 2 * scale;
-      canvas.drawLine(
-        Offset(ballRadius * 0.50, y),
-        Offset(ballRadius * 0.74, y),
-        Paint()
-          ..color = const Color(0xFFD97706)
-          ..strokeWidth = 1.2 * scale,
-      );
+    // Animated Multi-Strand Tassel
+    final tasselWave = math.sin(_pulse * 12 + _motionEnergy * 8);
+    for (var i = 0; i < 4; i++) {
+      final off = i * 2.0 - 4.0;
+      final tasselPath = Path()
+        ..moveTo(headStart - 2 * scale, off * scale)
+        ..quadraticBezierTo(
+          headStart - 15 * scale, (off + 10 * tasselWave + i * 2) * scale,
+          headStart - 35 * scale, (off + 15 * tasselWave + i * 5) * scale,
+        );
+      canvas.drawPath(tasselPath, Paint()..color = AutoBattlePalette.primary..style = PaintingStyle.stroke..strokeWidth = 2.5 * scale..strokeCap = StrokeCap.round);
     }
   }
 
@@ -603,173 +614,110 @@ class PlayerBallComponent extends PositionComponent {
   }
 
   void _renderHeldMine(Canvas canvas, double scale) {
-    // ── TNT Dynamite Bundle ──
+    // ── Ultra Premium Rough Sketch TNT ──
     final inkPaint = Paint()
-      ..color = const Color(0xFF1A1A1A)
+      ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3 * scale
       ..strokeCap = StrokeCap.round;
 
-    final center = Offset(ballRadius * 1.25, -1 * scale);
+    final center = Offset(ballRadius * 1.2, -4 * scale);
+    final shake = math.sin(_pulse * 30) * 1.5 * _motionEnergy * scale;
 
-    // Three dynamite sticks (red cylinders)
+    canvas.save();
+    canvas.translate(shake, shake);
+
+    // Sticks with Jitter
     for (var i = -1; i <= 1; i++) {
-      final stickX = center.dx + i * 5 * scale;
-      final stickRect = RRect.fromRectAndRadius(
-        Rect.fromCenter(
-            center: Offset(stickX, center.dy),
-            width: 6.5 * scale,
-            height: 22 * scale),
-        Radius.circular(3 * scale),
-      );
-      canvas.drawRRect(stickRect, Paint()..color = const Color(0xFFEF4444));
-      canvas.drawRRect(stickRect, inkPaint);
-
-      // Label band
-      canvas.drawLine(
-        Offset(stickX - 2.5 * scale, center.dy + 3 * scale),
-        Offset(stickX + 2.5 * scale, center.dy + 3 * scale),
-        Paint()
-          ..color = const Color(0xFFFFD43B)
-          ..strokeWidth = 2.5 * scale
-          ..strokeCap = StrokeCap.round,
-      );
+      final x = center.dx + i * 7 * scale;
+      final y = center.dy + (i.abs() * 3 * scale);
+      final stickPath = Path()..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, y), width: 8 * scale, height: 28 * scale), Radius.circular(2 * scale)));
+      canvas.drawPath(stickPath, Paint()..color = AutoBattlePalette.primary);
+      _drawRoughPath(canvas, stickPath, inkPaint);
+      
+      // Vertical hatching on sticks
+      _drawHatching(canvas, Rect.fromLTWH(x - 3 * scale, y - 10 * scale, 6 * scale, 20 * scale), 1.5, 3 * scale, Paint()..color = Colors.black26);
     }
 
-    // Binding rope
-    canvas.drawLine(
-      Offset(center.dx - 7 * scale, center.dy - 2 * scale),
-      Offset(center.dx + 7 * scale, center.dy - 2 * scale),
-      Paint()
-        ..color = const Color(0xFF92400E)
-        ..strokeWidth = 2.5 * scale
-        ..strokeCap = StrokeCap.round,
-    );
-    canvas.drawLine(
-      Offset(center.dx - 7 * scale, center.dy + 5 * scale),
-      Offset(center.dx + 7 * scale, center.dy + 5 * scale),
-      Paint()
-        ..color = const Color(0xFF92400E)
-        ..strokeWidth = 2.5 * scale
-        ..strokeCap = StrokeCap.round,
-    );
+    // Binding Straps - Bold
+    for (var yOff in [-6, 6]) {
+      final strap = Rect.fromLTWH(center.dx - 12 * scale, center.dy + yOff * scale - 2 * scale, 24 * scale, 4 * scale);
+      canvas.drawRect(strap, Paint()..color = AutoBattlePalette.ink);
+    }
 
-    // Fuse – wavy line going up
+    // Fuse - Hand-drawn
     final fusePath = Path()
-      ..moveTo(center.dx, center.dy - 12 * scale)
-      ..cubicTo(
-        center.dx + 5 * scale, center.dy - 18 * scale,
-        center.dx - 3 * scale, center.dy - 24 * scale,
-        center.dx + 2 * scale, center.dy - 28 * scale,
-      );
-    canvas.drawPath(
-      fusePath,
-      Paint()
-        ..color = const Color(0xFF1A1A1A)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2 * scale
-        ..strokeCap = StrokeCap.round,
-    );
+      ..moveTo(center.dx, center.dy - 14 * scale)
+      ..quadraticBezierTo(center.dx + 12 * scale, center.dy - 24 * scale, center.dx + 6 * scale, center.dy - 36 * scale);
+    _drawRoughPath(canvas, fusePath, inkPaint..strokeWidth = 2.2 * scale);
 
-    // Fuse spark – bright orange/yellow glow
-    final sparkPos = Offset(center.dx + 2 * scale, center.dy - 28 * scale);
-    canvas.drawCircle(sparkPos, 5 * scale,
-        Paint()..color = const Color(0xFFFF6B00).withValues(alpha: 0.5));
-    canvas.drawCircle(sparkPos, 3 * scale,
-        Paint()..color = const Color(0xFFFFD43B).withValues(alpha: 0.8));
-    canvas.drawCircle(sparkPos, 1.5 * scale,
-        Paint()..color = Colors.white);
-
-    // Spark rays
-    for (var i = 0; i < 5; i++) {
-      final a = i * math.pi * 2 / 5 + _pulse * 8;
-      canvas.drawLine(
-        sparkPos + Offset(math.cos(a) * 3 * scale, math.sin(a) * 3 * scale),
-        sparkPos + Offset(math.cos(a) * 7 * scale, math.sin(a) * 7 * scale),
-        Paint()
-          ..color = const Color(0xFFFFD43B)
-          ..strokeWidth = 1.2 * scale
-          ..strokeCap = StrokeCap.round,
-      );
-    }
+    _renderSpark(canvas, Offset(center.dx + 6 * scale, center.dy - 36 * scale), scale);
+    canvas.restore();
   }
 
-  void _renderLaserCannon(Canvas canvas, double scale) {
-    // ── Sci-fi Sketch Laser Cannon ──
+  void _renderSpark(Canvas canvas, Offset pos, double scale) {
+    final t = (_pulse * 20) % 1.0;
+    final sparkPaint = Paint()..color = AutoBattlePalette.gold..strokeWidth = 2 * scale..strokeCap = StrokeCap.round;
+    for (var i = 0; i < 8; i++) {
+      final a = i * math.pi * 2 / 8 + _pulse * 15;
+      final dist = (8 + math.sin(t * 15) * 8) * scale;
+      canvas.drawLine(pos, pos + Offset(math.cos(a) * dist, math.sin(a) * dist), sparkPaint);
+    }
+    canvas.drawCircle(pos, 4 * scale, Paint()..color = Colors.white);
+  }
+
+  void _renderCrossbow(Canvas canvas, double scale) {
+    // ── Ultra Premium Rough Sketch Crossbow ──
     final inkPaint = Paint()
-      ..color = const Color(0xFF1A1A1A)
+      ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
-      ..strokeWidth = 3 * scale
-      ..strokeJoin = StrokeJoin.round
+      ..strokeWidth = 3.5 * scale
       ..strokeCap = StrokeCap.round;
 
-    // Cannon body
-    // Stretch cannon forward based on thrust
-    final cannonStretch = 8.0 * _thrust * scale;
-    final cannonPath = Path()
-      ..moveTo(ballRadius * 0.72, -8 * scale)
-      ..lineTo(ballRadius * 2.4 + cannonStretch, -10 * scale)
-      ..lineTo(ballRadius * 2.5 + cannonStretch, 0)
-      ..lineTo(ballRadius * 2.4 + cannonStretch, 10 * scale)
-      ..lineTo(ballRadius * 0.72, 8 * scale)
+    final stringPull = _thrust * 14 * scale;
+    final basePos = ballRadius * 0.7;
+    
+    // Detailed Stock - Rough Path
+    final stockPath = Path()
+      ..moveTo(basePos, -6 * scale)
+      ..lineTo(basePos + 26 * scale, -5 * scale)
+      ..lineTo(basePos + 28 * scale, 0)
+      ..lineTo(basePos + 26 * scale, 5 * scale)
+      ..lineTo(basePos, 6 * scale)
       ..close();
-    canvas.drawPath(cannonPath, Paint()..color = const Color(0xFF1E293B));
-    canvas.drawPath(cannonPath, inkPaint);
+    canvas.drawPath(stockPath, Paint()..color = const Color(0xFF451A03));
+    _drawRoughPath(canvas, stockPath, inkPaint);
+    
+    // Hatching on Stock
+    _drawHatching(canvas, Rect.fromLTWH(basePos + 5 * scale, -4 * scale, 15 * scale, 8 * scale), 0.5, 3 * scale, Paint()..color = Colors.black26);
 
-    // Tech panel lines
-    canvas.drawLine(
-      Offset(ballRadius * 0.9, -4 * scale),
-      Offset(ballRadius * 0.9, 4 * scale),
-      Paint()
-        ..color = const Color(0xFF475569)
-        ..strokeWidth = 1.5 * scale,
-    );
-    canvas.drawLine(
-      Offset(ballRadius * 1.4, -3 * scale),
-      Offset(ballRadius * 1.4, 3 * scale),
-      Paint()
-        ..color = const Color(0xFF475569)
-        ..strokeWidth = 1.5 * scale,
-    );
+    // Flexible Limbs
+    final limbsPath = Path()
+      ..moveTo(basePos + 18 * scale, -32 * scale)
+      ..quadraticBezierTo(basePos + 8 * scale + stringPull * 0.3, 0, basePos + 18 * scale, 32 * scale);
+    
+    canvas.drawPath(limbsPath, Paint()..color = const Color(0xFF334155)..style = PaintingStyle.stroke..strokeWidth = 8 * scale..strokeCap = StrokeCap.round);
+    _drawRoughPath(canvas, limbsPath, inkPaint..strokeWidth = 2.5 * scale);
 
-    // Energy core – glowing circle in the center
-    final corePos = Offset(ballRadius * 1.1, 0);
-    canvas.drawCircle(corePos, 6 * scale,
-        Paint()..color = const Color(0xFFFF4B4B).withValues(alpha: 0.3));
-    canvas.drawCircle(corePos, 4 * scale,
-        Paint()..color = const Color(0xFFFF4B4B));
-    canvas.drawCircle(corePos, 4 * scale, inkPaint);
-    canvas.drawCircle(corePos, 2 * scale,
-        Paint()..color = Colors.white.withValues(alpha: 0.9));
+    // Bowstring
+    final stringPath = Path()
+      ..moveTo(basePos + 18 * scale, -31 * scale)
+      ..lineTo(basePos + 6 * scale + stringPull, 0)
+      ..lineTo(basePos + 18 * scale, 31 * scale);
+    canvas.drawPath(stringPath, Paint()..color = const Color(0xFFF1F5F9)..style = PaintingStyle.stroke..strokeWidth = 1.8 * scale);
 
-    // Energy rings (pulsing)
-    final ringSize = 1 + math.sin(_pulse * 6) * 0.3;
-    canvas.drawCircle(
-      corePos,
-      7 * scale * ringSize,
-      Paint()
-        ..color = const Color(0xFFFF4B4B).withValues(alpha: 0.25)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.5 * scale,
-    );
-
-    // Emitter tip – bright glow at barrel end
-    final emitter = Offset(ballRadius * 2.35, 0);
-    canvas.drawCircle(emitter, 4.5 * scale,
-        Paint()..color = const Color(0xFFFF4B4B).withValues(alpha: 0.5));
-    canvas.drawCircle(emitter, 2.5 * scale,
-        Paint()..color = const Color(0xFFFF8888).withValues(alpha: 0.8));
-    canvas.drawCircle(emitter, 1.2 * scale,
-        Paint()..color = Colors.white);
-
-    // Grip / stock
-    final gripPath = Path()
-      ..moveTo(ballRadius * 0.58, 3 * scale)
-      ..lineTo(ballRadius * 0.72, 3 * scale)
-      ..lineTo(ballRadius * 0.68, 18 * scale)
-      ..lineTo(ballRadius * 0.52, 17 * scale)
-      ..close();
-    canvas.drawPath(gripPath, Paint()..color = const Color(0xFF374151));
-    canvas.drawPath(gripPath, inkPaint);
+    // Bolt
+    if (_thrust < 0.25) {
+      final boltPath = Path()..moveTo(basePos + 4 * scale, 0)..lineTo(basePos + 36 * scale, 0);
+      canvas.drawPath(boltPath, Paint()..color = const Color(0xFF94A3B8)..style = PaintingStyle.stroke..strokeWidth = 4 * scale..strokeCap = StrokeCap.round);
+      
+      final tip = Path()
+        ..moveTo(basePos + 36 * scale, -4.5 * scale)
+        ..lineTo(basePos + 46 * scale, 0)
+        ..lineTo(basePos + 36 * scale, 4.5 * scale)
+        ..close();
+      canvas.drawPath(tip, Paint()..color = const Color(0xFF0F172A));
+      _drawRoughPath(canvas, tip, inkPaint..strokeWidth = 2 * scale);
+    }
   }
 }

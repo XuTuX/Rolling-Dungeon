@@ -203,107 +203,87 @@ class AutoBattleGame extends FlameGame {
     for (final a in _snapshot!.attacks) {
       if (a.type == 'blade') {
         final pos = _toScreen(a.x, a.y);
-        final r = a.radius * _arenaScale * 1.5;
+        final r = a.radius * _arenaScale;
 
-        // Outer glow arc
-        canvas.drawArc(
-          Rect.fromCircle(center: pos, radius: r + 4),
-          a.angle - 0.9,
-          1.8,
-          false,
+        // Spear Thrust Visual
+        final endPos = pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r);
+        
+        // Thrust trail
+        canvas.drawLine(
+          pos,
+          endPos,
           Paint()
-            ..color = const Color(0xFF4ADE80).withValues(alpha: 0.25)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 10
+            ..color = AutoBattlePalette.ink.withValues(alpha: 0.15)
+            ..strokeWidth = 12 * _arenaScale
             ..strokeCap = StrokeCap.round,
         );
 
-        // Main blade arc – thick ink
-        canvas.drawArc(
-          Rect.fromCircle(center: pos, radius: r),
-          a.angle - 0.8,
-          1.6,
-          false,
+        // Core thrust line
+        canvas.drawLine(
+          pos,
+          endPos,
+          Paint()
+            ..color = AutoBattlePalette.ink
+            ..strokeWidth = 4 * _arenaScale
+            ..strokeCap = StrokeCap.round,
+        );
+
+        // Spear head flash
+        canvas.drawCircle(
+          endPos,
+          8 * _arenaScale,
+          Paint()..color = Colors.white.withValues(alpha: 0.8),
+        );
+        canvas.drawCircle(
+          endPos,
+          8 * _arenaScale,
           Paint()
             ..color = AutoBattlePalette.ink
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 6
-            ..strokeCap = StrokeCap.round,
+            ..strokeWidth = 2,
         );
-
-        // Inner white highlight arc
-        canvas.drawArc(
-          Rect.fromCircle(center: pos, radius: r - 2),
-          a.angle - 0.6,
-          1.2,
-          false,
-          Paint()
-            ..color = Colors.white.withValues(alpha: 0.6)
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 3
-            ..strokeCap = StrokeCap.round,
-        );
-
-        // Slash impact lines
-        for (var i = 0; i < 3; i++) {
-          final slashAngle = a.angle - 0.5 + i * 0.5;
-          final slashStart = pos +
-              Offset(math.cos(slashAngle) * r * 0.6,
-                  math.sin(slashAngle) * r * 0.6);
-          final slashEnd = pos +
-              Offset(math.cos(slashAngle) * r * 1.15,
-                  math.sin(slashAngle) * r * 1.15);
-          canvas.drawLine(
-            slashStart,
-            slashEnd,
-            Paint()
-              ..color = AutoBattlePalette.ink.withValues(alpha: 0.4)
-              ..strokeWidth = 2
-              ..strokeCap = StrokeCap.round,
-          );
-        }
       } else if (a.type == 'laser') {
         final pos = _toScreen(a.x, a.y);
         final r = a.radius * _arenaScale;
-        final beamWidth = 4 * a.scale;
+        final beamWidth = 3 * a.scale * _arenaScale;
         final endPos =
             pos + Offset(math.cos(a.angle) * r, math.sin(a.angle) * r);
 
-        // Outer glow beam
+        // Crossbow Bolt Trail (Sketchy)
+        const boltColor = Color(0xFF64748B);
+        
         canvas.drawLine(
           pos,
           endPos,
           Paint()
-            ..color = AutoBattlePalette.primary.withValues(alpha: 0.2)
-            ..strokeWidth = beamWidth * 3
+            ..color = boltColor.withValues(alpha: 0.3)
+            ..strokeWidth = beamWidth * 2
             ..strokeCap = StrokeCap.round,
         );
 
-        // Main beam – vibrant red
+        // Main bolt line
         canvas.drawLine(
           pos,
           endPos,
           Paint()
-            ..color = AutoBattlePalette.primary
-            ..strokeWidth = beamWidth
+            ..color = AutoBattlePalette.ink
+            ..strokeWidth = beamWidth * 0.8
             ..strokeCap = StrokeCap.round,
         );
 
-        // Core beam – white hot center
-        canvas.drawLine(
-          pos,
-          endPos,
-          Paint()
-            ..color = Colors.white.withValues(alpha: 0.85)
-            ..strokeWidth = beamWidth * 0.35
-            ..strokeCap = StrokeCap.round,
-        );
-
-        // Impact burst at end
-        canvas.drawCircle(endPos, beamWidth * 1.5,
-            Paint()..color = AutoBattlePalette.primary.withValues(alpha: 0.35));
-        canvas.drawCircle(endPos, beamWidth * 0.8,
-            Paint()..color = Colors.white.withValues(alpha: 0.6));
+        // Motion speed lines along the bolt
+        for (var i = 0; i < 5; i++) {
+          final dist = math.Random().nextDouble() * r;
+          final p1 = pos + Offset(math.cos(a.angle) * dist, math.sin(a.angle) * dist);
+          final p2 = pos + Offset(math.cos(a.angle) * (dist + 20), math.sin(a.angle) * (dist + 20));
+          canvas.drawLine(
+            p1,
+            p2,
+            Paint()
+              ..color = AutoBattlePalette.ink.withValues(alpha: 0.4)
+              ..strokeWidth = 1,
+          );
+        }
       }
     }
 
@@ -510,58 +490,26 @@ class AutoBattleGame extends FlameGame {
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(angle);
 
-      canvas.drawArc(
-        Rect.fromCircle(center: Offset.zero, radius: r * 2.25),
-        -0.62,
-        0.82,
-        false,
-        Paint()
-          ..color = const Color(0xFF4ADE80).withValues(alpha: 0.18)
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = r * 0.38
-          ..strokeCap = StrokeCap.round,
-      );
-
-      final handle = RRect.fromRectAndRadius(
-        Rect.fromLTWH(r * 0.44, -r * 0.11, r * 0.68, r * 0.22),
-        Radius.circular(r * 0.07),
-      );
-      canvas.drawRRect(handle, Paint()..color = const Color(0xFF7C2D12));
-      canvas.drawRRect(handle, ink);
-
+      // Shaft
       canvas.drawLine(
-        Offset(r * 1.02, -r * 0.52),
-        Offset(r * 1.02, r * 0.52),
+        Offset(r * 0.4, 0),
+        Offset(r * 2.2, 0),
         Paint()
-          ..color = const Color(0xFFEAB308)
-          ..strokeWidth = 5
+          ..color = const Color(0xFF92400E)
+          ..strokeWidth = 4
           ..strokeCap = StrokeCap.round,
       );
+      canvas.drawLine(Offset(r * 0.4, 0), Offset(r * 2.2, 0), ink);
 
-      final bladePath = Path()
-        ..moveTo(r * 1.06, -r * 0.24)
-        ..quadraticBezierTo(r * 2.18, -r * 0.34, r * 3.32, -r * 0.04)
-        ..lineTo(r * 3.58, 0)
-        ..quadraticBezierTo(r * 2.18, r * 0.34, r * 1.06, r * 0.24)
+      // Spear head
+      final headPath = Path()
+        ..moveTo(r * 2.2, -r * 0.25)
+        ..lineTo(r * 3.1, 0)
+        ..lineTo(r * 2.2, r * 0.25)
         ..close();
-      canvas.drawPath(bladePath, Paint()..color = const Color(0xFFF1F5F9));
-      canvas.drawPath(
-        bladePath,
-        Paint()
-          ..color = AutoBattlePalette.ink
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.5,
-      );
-      canvas.drawLine(
-        Offset(r * 1.2, -r * 0.06),
-        Offset(r * 2.95, -r * 0.02),
-        Paint()
-          ..color = Colors.white.withValues(alpha: 0.8)
-          ..strokeWidth = 2
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawCircle(
-          Offset(r * 0.2, 0), r * 0.13, Paint()..color = AutoBattlePalette.ink);
+      canvas.drawPath(headPath, Paint()..color = const Color(0xFFE2E8F0));
+      canvas.drawPath(headPath, ink);
+
       canvas.restore();
     } else if (player.characterType == 'miner') {
       final weaponCount = math.max(1, player.weaponCount);
@@ -579,20 +527,25 @@ class AutoBattleGame extends FlameGame {
       final baseAngle = _weaponAngle(player);
       for (int i = 0; i < weaponCount; i++) {
         final a = baseAngle + math.pi * 2 * i / weaponCount;
-        final start =
-            pos + Offset(math.cos(a) * (r - 2), math.sin(a) * (r - 2));
-        final end =
-            pos + Offset(math.cos(a) * (r + 16), math.sin(a) * (r + 16));
+        canvas.save();
+        canvas.translate(pos.dx, pos.dy);
+        canvas.rotate(a);
+        
+        // Simple crossbow body decoration
+        final stock = Rect.fromLTWH(r * 0.5, -r * 0.12, r * 1.2, r * 0.24);
+        canvas.drawRect(stock, Paint()..color = const Color(0xFF7C2D12));
+        canvas.drawRect(stock, ink);
+        
+        // Bow part
         canvas.drawLine(
-          start,
-          end,
+          Offset(r * 1.4, -r * 0.8),
+          Offset(r * 1.4, r * 0.8),
           Paint()
-            ..color = AutoBattlePalette.primary
+            ..color = const Color(0xFF4B5563)
             ..strokeWidth = 3
             ..strokeCap = StrokeCap.round,
         );
-        canvas.drawCircle(
-            end, 3, Paint()..color = Colors.white.withValues(alpha: 0.8));
+        canvas.restore();
       }
     }
   }

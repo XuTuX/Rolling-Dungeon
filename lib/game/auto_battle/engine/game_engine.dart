@@ -129,14 +129,60 @@ class GameEngine {
         final a = players[i];
         final b = players[j];
         if (!a.alive || !b.alive) continue;
-        if (!checkCircleCollision(a, b)) continue;
 
-        resolveCircleCollision(a, b);
-        if (a.isEnemy && b.isEnemy) continue;
-        _applyCollisionDamage(a, b, now);
-        _applyCollisionDamage(b, a, now);
+        // 1. Body-to-Body Collision
+        if (checkCircleCollision(a, b)) {
+          resolveCircleCollision(a, b);
+          if (a.isEnemy && b.isEnemy) continue;
+          _applyCollisionDamage(a, b, now);
+          _applyCollisionDamage(b, a, now);
+        }
+
+        // 2. Weapon-to-Body Physical Interaction
+        // Players' weapons now physically block and push opponents
+        _handleWeaponPhysicalCollision(a, b);
+        _handleWeaponPhysicalCollision(b, a);
       }
     }
+  }
+
+  void _handleWeaponPhysicalCollision(PlayerData attacker, PlayerData victim) {
+    if (attacker.isEnemy == victim.isEnemy) return; // Only collide with opponents
+    if (attacker.characterType == 'none') return;
+
+    double length = 0;
+    switch (attacker.characterType) {
+      case 'gunner':
+        length = WEAPON_LENGTH * 1.5;
+        break;
+      case 'blade':
+        length = BLADE_RANGE * 0.9;
+        break;
+      case 'laser':
+        length = WEAPON_LENGTH * 2.0;
+        break;
+      case 'miner':
+        length = 15.0;
+        break;
+    }
+
+    if (length <= 0) return;
+
+    final weaponDir = Vec2(
+      x: math.cos(attacker.targetAngle),
+      y: math.sin(attacker.targetAngle),
+    );
+
+    final wStart = Vec2(
+      x: attacker.pos.x + weaponDir.x * attacker.radius * 0.5,
+      y: attacker.pos.y + weaponDir.y * attacker.radius * 0.5,
+    );
+    final wEnd = Vec2(
+      x: attacker.pos.x + weaponDir.x * (attacker.radius + length),
+      y: attacker.pos.y + weaponDir.y * (attacker.radius + length),
+    );
+
+    resolveWeaponCollision(attacker, victim, wStart, wEnd);
   }
 
   PlayerData? _getPlayer(String id) {
@@ -323,6 +369,9 @@ class GameEngine {
           case 'laser':
             _fireLaser(player, now);
             break;
+          case 'blade':
+            _handleBladeAttack(player, now);
+            break;
           default:
             _fireBullet(player, now);
             break;
@@ -425,6 +474,7 @@ class GameEngine {
   }
 
   void _fireLaser(PlayerData player, int now) {
+    // This is now the Crossbow 'Bolt' attack
     final cooldown = _getAbilityCooldown(player, LASER_FIRE_MS);
     if (now - player.lastShotAt < cooldown) return;
     final target = _findNearestOpponent(player, LASER_RANGE);
@@ -447,15 +497,16 @@ class GameEngine {
         y: player.pos.y + dir.y * muzzleDist,
       );
 
+      // Add the visual effect (Crossbow bolt trail)
       attacks.add(AttackEffectData(
-        id: _nextId('laser'),
+        id: _nextId('bolt'),
         ownerId: player.id,
-        type: 'laser',
+        type: 'laser', // Keep key for rendering consistency
         pos: spawnPos,
         radius: LASER_RANGE,
         angle: angle,
         createdAt: now,
-        durationMs: LASER_DURATION_MS,
+        durationMs: 250, // Shorter for a bolt flash
         scale: LASER_WIDTH,
       ));
 
@@ -467,11 +518,68 @@ class GameEngine {
         if (!enemy.alive || !enemy.isEnemy) continue;
         final hitDistance =
             _distancePointToSegment(enemy.pos, spawnPos, beamEnd);
-        if (hitDistance > enemy.radius + 7 * LASER_WIDTH) continue;
+        // Crossbow bolt hits everyone in a line
+        if (hitDistance > enemy.radius + 8 * LASER_WIDTH) continue;
         _dealDamage(
           player,
           enemy,
           LASER_DAMAGE + player.atk * LASER_ATTACK_DAMAGE_RATIO,
+        );
+      }
+    }
+  }
+
+  void _handleBladeAttack(PlayerData player, int now) {
+    // This is now the Spear 'Thrust' attack
+    final cooldown = _getAbilityCooldown(player, BLADE_ATTACK_MS);
+    if (now - player.lastBladeAt < cooldown) return;
+    final target = _findNearestOpponent(player, BLADE_RANGE + 40);
+    if (target == null) return;
+    
+    player.lastBladeAt = now;
+    player.lastAttackAt = now;
+    
+    final aimAngle = math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
+    player.targetAngle = aimAngle;
+    
+    final weaponCount = math.max(1, player.weaponCount);
+    final muzzleDist = player.radius;
+
+    for (int i = 0; i < weaponCount; i++) {
+      final angle = aimAngle + (weaponCount == 1 ? 0 : (math.pi * 2 * i / weaponCount));
+      final dir = Vec2(x: math.cos(angle), y: math.sin(angle));
+      final spawnPos = Vec2(
+        x: player.pos.x + dir.x * muzzleDist,
+        y: player.pos.y + dir.y * muzzleDist,
+      );
+
+      // Add the visual effect (Spear thrust)
+      attacks.add(AttackEffectData(
+        id: _nextId('thrust'),
+        ownerId: player.id,
+        type: 'blade', // Keep key for rendering
+        pos: spawnPos,
+        radius: BLADE_RANGE,
+        angle: angle,
+        createdAt: now,
+        durationMs: BLADE_EFFECT_MS,
+      ));
+
+      // Melee damage check
+      final thrustEnd = Vec2(
+        x: spawnPos.x + dir.x * BLADE_RANGE,
+        y: spawnPos.y + dir.y * BLADE_RANGE,
+      );
+      
+      for (final enemy in players) {
+        if (!enemy.alive || !enemy.isEnemy) continue;
+        final hitDistance = _distancePointToSegment(enemy.pos, spawnPos, thrustEnd);
+        if (hitDistance > enemy.radius + 15) continue;
+        
+        _dealDamage(
+          player,
+          enemy,
+          BASE_ATK + player.atk * 1.5, // High melee damage
         );
       }
     }
