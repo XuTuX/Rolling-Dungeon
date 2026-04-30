@@ -38,22 +38,49 @@ void updatePosition(PlayerData player, double dtMs) {
   player.pos.y += player.vel.y * pixels;
 }
 
+/// ⬢ Hexagonal Wall Collision
+/// Checks collision against 6 edges of a regular hexagon.
 void handleWallCollision(PlayerData player) {
   if (!player.alive) return;
 
-  final minX = player.radius;
-  final maxX = ARENA_WIDTH - player.radius;
-  final minY = player.radius;
-  final maxY = ARENA_HEIGHT - player.radius;
+  final centerX = ARENA_WIDTH / 2;
+  final centerY = ARENA_HEIGHT / 2;
+  final radius = (ARENA_WIDTH / 2) - 10.0; // Margin from the edge
+  final playerRadius = player.radius;
 
-  if (player.pos.x < minX || player.pos.x > maxX) {
-    player.pos.x = clamp(player.pos.x, minX, maxX);
-    player.vel.x *= -1;
-  }
+  // The distance from the center to each edge of a regular hexagon
+  final distToEdge = radius * math.cos(math.pi / 6);
+  final limit = distToEdge - playerRadius;
 
-  if (player.pos.y < minY || player.pos.y > maxY) {
-    player.pos.y = clamp(player.pos.y, minY, maxY);
-    player.vel.y *= -1;
+  // Check 6 planes (normals of the hexagon edges)
+  for (int i = 0; i < 6; i++) {
+    // Normal angle of the i-th edge
+    final angle = i * math.pi / 3 + math.pi / 6;
+    final nx = math.cos(angle);
+    final ny = math.sin(angle);
+
+    // Vector from center to player
+    final dx = player.pos.x - centerX;
+    final dy = player.pos.y - centerY;
+
+    // Projection onto normal
+    final projection = dx * nx + dy * ny;
+
+    if (projection > limit) {
+      // Collision detected! 
+      // 1. Push back
+      final overlap = projection - limit;
+      player.pos.x -= nx * overlap;
+      player.pos.y -= ny * overlap;
+
+      // 2. Reflect velocity (Elastic bounce)
+      // v_new = v - 2 * (v dot n) * n
+      final dot = player.vel.x * nx + player.vel.y * ny;
+      if (dot > 0) { // Only reflect if moving towards the wall
+        player.vel.x -= 2 * dot * nx;
+        player.vel.y -= 2 * dot * ny;
+      }
+    }
   }
 
   player.vel = normalize(player.vel);

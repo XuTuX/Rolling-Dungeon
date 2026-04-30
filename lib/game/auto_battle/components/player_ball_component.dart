@@ -315,7 +315,7 @@ class PlayerBallComponent extends PositionComponent {
     for (int i = 0; i < math.max(1, weaponCount); i++) {
       final weaponAngle =
           _facingAngle + math.pi * 2 * i / math.max(1, weaponCount);
-      final thrustOffset = 14.0 * _thrust * scale;
+      final thrustOffset = 10.0 * _thrust * scale;
 
       canvas.save();
       canvas.translate(

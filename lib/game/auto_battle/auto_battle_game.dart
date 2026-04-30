@@ -107,31 +107,65 @@ class AutoBattleGame extends FlameGame {
   }
 
   void _renderArena(Canvas canvas) {
-    final rect = Rect.fromLTWH(_arenaOffset.dx, _arenaOffset.dy,
-        _arenaWidth * _arenaScale, _arenaHeight * _arenaScale);
+    final centerX = _arenaOffset.dx + (_arenaWidth * _arenaScale) / 2;
+    final centerY = _arenaOffset.dy + (_arenaHeight * _arenaScale) / 2;
+    final radius = (_arenaWidth * _arenaScale / 2) - 10.0 * _arenaScale;
 
-    final gridPaint = Paint()
-      ..color = AutoBattlePalette.ink.withValues(alpha: 0.05)
-      ..strokeWidth = 1;
-    const step = 50.0;
+    // 1. Calculate Hexagon Vertices
+    final hexPath = Path();
+    for (int i = 0; i < 6; i++) {
+      final angle = i * math.pi / 3 + math.pi / 6;
+      final vx = centerX + radius * math.cos(angle);
+      final vy = centerY + radius * math.sin(angle);
+      if (i == 0) {
+        hexPath.moveTo(vx, vy);
+      } else {
+        hexPath.lineTo(vx, vy);
+      }
+    }
+    hexPath.close();
 
-    // Paper first, then sketch lines. Drawing this in the opposite order hid the grid.
-    canvas.drawRect(
-      rect.shift(const Offset(8, 8)),
+    // 2. Draw Shadow/Offset Layer
+    canvas.drawPath(
+      hexPath.shift(const Offset(8, 8)),
       Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1),
     );
 
-    canvas.drawRect(rect, Paint()..color = AutoBattlePalette.arenaBg);
+    // 3. Draw Background
+    canvas.drawPath(hexPath, Paint()..color = AutoBattlePalette.arenaBg);
 
-    for (var x = 0.0; x <= _arenaWidth; x += step) {
-      canvas.drawLine(_toScreen(x, 0), _toScreen(x, _arenaHeight), gridPaint);
-    }
-    for (var y = 0.0; y <= _arenaHeight; y += step) {
-      canvas.drawLine(_toScreen(0, y), _toScreen(_arenaWidth, y), gridPaint);
+    // 4. Draw Hexagonal Grid
+    final gridPaint = Paint()
+      ..color = AutoBattlePalette.ink.withValues(alpha: 0.04)
+      ..strokeWidth = 1.5;
+
+    const gridStep = 45.0;
+    // We draw lines in 3 directions: 0, 60, 120 degrees
+    for (int i = 0; i < 3; i++) {
+      final angle = i * math.pi / 3;
+      final nx = math.cos(angle);
+      final ny = math.sin(angle);
+
+      for (double d = -radius; d <= radius; d += gridStep * _arenaScale) {
+        final lx = -ny;
+        final ly = nx;
+
+        canvas.save();
+        canvas.clipPath(hexPath);
+        canvas.drawLine(
+          Offset(centerX + nx * d - lx * radius * 2,
+              centerY + ny * d - ly * radius * 2),
+          Offset(centerX + nx * d + lx * radius * 2,
+              centerY + ny * d + ly * radius * 2),
+          gridPaint,
+        );
+        canvas.restore();
+      }
     }
 
-    canvas.drawRect(
-      rect,
+    // 5. Draw Outline
+    canvas.drawPath(
+      hexPath,
       Paint()
         ..color = AutoBattlePalette.ink
         ..style = PaintingStyle.stroke
