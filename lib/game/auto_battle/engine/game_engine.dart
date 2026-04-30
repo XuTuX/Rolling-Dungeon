@@ -63,6 +63,25 @@ class GameEngine {
     timer = null;
   }
 
+  void revivePlayer() {
+    final p1 = _getPlayer('p1');
+    if (p1 == null) return;
+
+    p1.alive = true;
+    p1.hp = p1.maxHp;
+    // Reset position to safe area
+    p1.pos = Vec2(x: ARENA_WIDTH * 0.15, y: ARENA_HEIGHT * 0.5);
+    p1.vel = normalize(Vec2(x: 1, y: 0));
+    
+    // Resume game
+    roundState = 'running';
+    winnerId = null;
+    roundEndsAt = null;
+    
+    // Brief invincibility could be added here if needed
+    _broadcastSnapshot();
+  }
+
   void _tick(int dt) {
     final now = DateTime.now().millisecondsSinceEpoch;
     final p1 = _getPlayer('p1');

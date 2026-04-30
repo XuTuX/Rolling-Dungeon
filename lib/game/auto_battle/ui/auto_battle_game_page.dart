@@ -122,7 +122,8 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         _stopAndNavigate(() => const UpgradeSelectScreen());
       } else if (dead && controller.lives.value > 1) {
         controller.loseLife();
-        _stopAndNavigate(() => const AutoBattleGamePage());
+        // Instead of reloading the page, revive in the current engine
+        _localService.revivePlayer();
       } else {
         _stopAndNavigate(() => const HomeScreen(), offAll: true);
       }
