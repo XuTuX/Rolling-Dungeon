@@ -526,11 +526,17 @@ class _SketchSidebar extends StatelessWidget {
                 padding: EdgeInsets.all(compact ? 9 : 12),
                 decoration: BoxDecoration(
                   color: isMe
-                      ? p.flutterColor.withValues(alpha: 0.1)
-                      : Colors.transparent,
+                      ? p.flutterColor.withValues(alpha: 0.05)
+                      : Colors.white,
                   border: Border.all(
-                      color: isMe ? p.flutterColor : AutoBattlePalette.ink,
-                      width: 2),
+                      color: AutoBattlePalette.ink,
+                      width: 3),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AutoBattlePalette.ink.withValues(alpha: isMe ? 1.0 : 0.4),
+                      offset: const Offset(4, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -558,16 +564,26 @@ class _SketchSidebar extends StatelessWidget {
                     SizedBox(height: compact ? 6 : 8),
                     // HP Bar
                     Container(
-                      height: compact ? 10 : 12,
+                      height: compact ? 12 : 14,
                       decoration: BoxDecoration(
                         color: Colors.white,
                         border:
-                            Border.all(color: AutoBattlePalette.ink, width: 2),
+                            Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                        boxShadow: const [
+                          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
+                        ],
                       ),
                       child: FractionallySizedBox(
                         alignment: Alignment.centerLeft,
                         widthFactor: (p.hp / p.maxHp).clamp(0, 1),
-                        child: Container(color: p.flutterColor),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            color: p.flutterColor,
+                            border: const Border(
+                              right: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                            ),
+                          ),
+                        ),
                       ),
                     ),
                     if (isMe) ...[
@@ -618,48 +634,108 @@ class _WeaponStatusIcon extends StatelessWidget {
   Widget build(BuildContext context) {
     final info = _getWeaponInfo(weapon);
     final bool isPersistent = info['persistent'] == true;
+    final color = info['color'] as Color;
     final int lastAction = _getLastActionTime(weapon, player);
     final double cooldownMs = _getCooldownMs(weapon).toDouble();
 
-    // Calculate remaining time for countdown
     final elapsed = now - lastAction;
     final remaining = math.max(0.0, (cooldownMs - elapsed) / 1000.0);
     final progress = (elapsed / cooldownMs).clamp(0.0, 1.0);
+    final ready = isPersistent || remaining <= 0;
+    final size = compact ? 38.0 : 42.0;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(info['icon'] ?? '?', style: const TextStyle(fontSize: 14)),
-          if (!isPersistent && remaining > 0) ...[
-            const SizedBox(width: 4),
-            SizedBox(
-              width: 16,
-              height: 16,
-              child: CircularProgressIndicator(
-                value: progress,
-                strokeWidth: 2,
-                color: AutoBattlePalette.ink,
-                backgroundColor: AutoBattlePalette.ink.withValues(alpha: 0.1),
+    return Tooltip(
+      message: info['name'] as String,
+      waitDuration: const Duration(milliseconds: 350),
+      child: SizedBox(
+        width: size + 4,
+        height: size + 4,
+        child: Stack(
+          children: [
+            // Hard Shadow Layer
+            Positioned(
+              left: 4,
+              top: 4,
+              child: Container(
+                width: size,
+                height: size,
+                decoration: BoxDecoration(
+                  color: AutoBattlePalette.ink,
+                  borderRadius: BorderRadius.circular(4),
+                ),
               ),
             ),
-            const SizedBox(width: 4),
-            Text(
-              '${remaining.toStringAsFixed(1)}s',
-              style: const TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w900,
-                color: AutoBattlePalette.ink,
+            // Main Body
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(
+                  color: AutoBattlePalette.ink,
+                  width: 2.5,
+                ),
+                borderRadius: BorderRadius.circular(4),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Stack(
+                children: [
+                  // Icon Background (Color)
+                  Positioned.fill(
+                    child: Container(
+                      color: ready ? color.withValues(alpha: 0.1) : Colors.grey[200],
+                    ),
+                  ),
+                  
+                  // Cooldown Fill (Sketchy Overlay)
+                  if (!ready)
+                    Positioned.fill(
+                      child: FractionallySizedBox(
+                        alignment: Alignment.bottomCenter,
+                        heightFactor: 1.0 - progress,
+                        child: Container(
+                          color: AutoBattlePalette.ink.withValues(alpha: 0.4),
+                          child: CustomPaint(
+                            painter: _HatchingPainter(),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Center Icon
+                  Center(
+                    child: Icon(
+                      info['icon'] as IconData,
+                      size: compact ? 18 : 22,
+                      color: ready ? color : AutoBattlePalette.inkSubtle,
+                    ),
+                  ),
+
+                  // Label Badge (Ink Tag)
+                  Positioned(
+                    right: 0,
+                    bottom: 0,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      decoration: const BoxDecoration(
+                        color: AutoBattlePalette.ink,
+                        borderRadius: BorderRadius.only(topLeft: Radius.circular(4)),
+                      ),
+                      child: Text(
+                        ready ? info['label'] as String : remaining.ceil().toString(),
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: compact ? 8 : 9,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
-        ],
+        ),
       ),
     );
   }
@@ -667,28 +743,94 @@ class _WeaponStatusIcon extends StatelessWidget {
   Map<String, dynamic> _getWeaponInfo(String type) {
     switch (type) {
       case 'minigun':
-        return {'icon': '🔫', 'persistent': false};
+        return {
+          'icon': Icons.bolt,
+          'label': 'FAST',
+          'name': '미니건',
+          'color': const Color(0xFF475569),
+          'persistent': false,
+        };
       case 'long_gun':
-        return {'icon': '🚀', 'persistent': false};
+        return {
+          'icon': Icons.center_focus_strong,
+          'label': 'SNIP',
+          'name': '장거리 포',
+          'color': const Color(0xFFDC2626),
+          'persistent': false,
+        };
       case 'poison':
-        return {'icon': '☣️', 'persistent': true};
+        return {
+          'icon': Icons.bubble_chart,
+          'label': 'GAS',
+          'name': '독 가스 분무기',
+          'color': const Color(0xFF16A34A),
+          'persistent': true,
+        };
       case 'blade':
-        return {'icon': '⚔️', 'persistent': true};
+        return {
+          'icon': Icons.autorenew, // Rotates/Spins
+          'label': 'SPIN',
+          'name': '회전 칼날',
+          'color': const Color(0xFF7C3AED),
+          'persistent': true,
+        };
       case 'heavy_blade':
-        return {'icon': '🗡️', 'persistent': true};
+        return {
+          'icon': Icons.gavel, // Heavy impact
+          'label': 'HEVY',
+          'name': '거대 대검',
+          'color': const Color(0xFF0F172A),
+          'persistent': true,
+        };
       case 'miner':
-        return {'icon': '💣', 'persistent': false};
+        return {
+          'icon': Icons.dangerous,
+          'label': 'MINE',
+          'name': '지뢰 매설기',
+          'color': const Color(0xFFEF4444),
+          'persistent': false,
+        };
       case 'footsteps':
-        return {'icon': '👣', 'persistent': true};
+        return {
+          'icon': Icons.whatshot,
+          'label': 'FIRE',
+          'name': '불타는 발자국',
+          'color': const Color(0xFFF97316),
+          'persistent': true,
+        };
       case 'burst':
-        return {'icon': '💢', 'persistent': false};
+        return {
+          'icon': Icons.flare,
+          'label': 'EXPL',
+          'name': '전방위 버스트',
+          'color': const Color(0xFFFACC15),
+          'persistent': false,
+        };
       case 'ricochet':
-        return {'icon': '✨', 'persistent': false};
+        return {
+          'icon': Icons.keyboard_return,
+          'label': 'BOUNC',
+          'name': '도탄 사격',
+          'color': const Color(0xFF0284C7),
+          'persistent': false,
+        };
       case 'aura':
-        return {'icon': '🌀', 'persistent': true};
+        return {
+          'icon': Icons.shield,
+          'label': 'AURA',
+          'name': '수호자의 오라',
+          'color': const Color(0xFFA855F7),
+          'persistent': true,
+        };
       case 'gunner':
       default:
-        return {'icon': '🔫', 'persistent': false};
+        return {
+          'icon': Icons.gps_fixed,
+          'label': 'SHOT',
+          'name': '기본 사격',
+          'color': AutoBattlePalette.primary,
+          'persistent': false,
+        };
     }
   }
 
@@ -732,4 +874,26 @@ class _WeaponStatusIcon extends StatelessWidget {
         return WEAPON_FIRE_INTERVAL_MS;
     }
   }
+}
+
+/// Simple Hatching effect for a sketchy cooldown look
+class _HatchingPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Colors.white.withValues(alpha: 0.2)
+      ..strokeWidth = 1.0;
+
+    const spacing = 4.0;
+    for (double i = -size.height; i < size.width; i += spacing) {
+      canvas.drawLine(
+        Offset(i, 0),
+        Offset(i + size.height, size.height),
+        paint,
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }

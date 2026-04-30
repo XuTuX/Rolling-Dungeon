@@ -19,6 +19,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
   late final List<UpgradeCard> _cards;
   late final AnimationController _animCtrl;
   int? _hoveredIndex;
+  int? _selectedIndex;
 
   @override
   void initState() {
@@ -38,8 +39,15 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     super.dispose();
   }
 
-  void _selectCard(UpgradeCard card) {
-    _ctrl.applyUpgrade(card);
+  void _onCardTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  void _proceedToNextStage() {
+    if (_selectedIndex == null) return;
+    _ctrl.applyUpgrade(_cards[_selectedIndex!]);
     _ctrl.nextStage();
     Get.off(() => const AutoBattleGamePage());
   }
@@ -96,11 +104,16 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                       // ── Shop Section ──
                       _buildShopSection(compact),
 
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
                       // ── Stats bar ──
                       _buildStatsBar(compact),
-                      const SizedBox(height: 20), // Bottom padding for scroll
+
+                      const SizedBox(height: 16),
+
+                      // ── Proceed Button ──
+                      _buildProceedButton(compact),
+                      const SizedBox(height: 20),
                     ],
                   ),
                 );
@@ -172,8 +185,9 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                   index: i,
                   width: cardW,
                   isHovered: _hoveredIndex == i,
+                  isSelected: _selectedIndex == i,
                   onHover: (h) => setState(() => _hoveredIndex = h ? i : null),
-                  onTap: () => _selectCard(_cards[i]),
+                  onTap: () => _onCardTapped(i),
                 ),
               ),
             ),
@@ -193,7 +207,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     return Container(
       width: double.infinity,
       margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(compact ? 8 : 12),
       decoration: BoxDecoration(
         color: const Color(0xFFF1F5F9),
         border: Border.all(color: AutoBattlePalette.ink, width: 3),
@@ -205,33 +219,35 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Row(
+              Row(
                 children: [
-                  Icon(Icons.shopping_cart, color: AutoBattlePalette.ink, size: 20),
-                  SizedBox(width: 8),
+                  Icon(Icons.shopping_cart,
+                      color: AutoBattlePalette.ink, size: compact ? 16 : 20),
+                  const SizedBox(width: 8),
                   Text('무기 상점',
                       style: TextStyle(
-                          fontSize: 18,
+                          fontSize: compact ? 16 : 18,
                           fontWeight: FontWeight.w900,
                           color: AutoBattlePalette.ink)),
                 ],
               ),
               Obx(() => Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    padding: EdgeInsets.symmetric(
+                        horizontal: compact ? 8 : 10,
+                        vertical: compact ? 3 : 4),
                     decoration: BoxDecoration(
                       color: AutoBattlePalette.gold,
                       border: Border.all(color: AutoBattlePalette.ink, width: 2),
                     ),
                     child: Text('💰 ${_ctrl.gold.value.round()}',
-                        style: const TextStyle(
-                            fontSize: 14,
+                        style: TextStyle(
+                            fontSize: compact ? 12 : 14,
                             fontWeight: FontWeight.w900,
                             color: Colors.white)),
                   )),
             ],
           ),
-          const SizedBox(height: 12),
+          SizedBox(height: compact ? 8 : 12),
           Obx(() => Row(
                 children: _ctrl.shopItems.map((item) {
                   return Expanded(
@@ -239,21 +255,51 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                       padding: const EdgeInsets.symmetric(horizontal: 4),
                       child: _ShopItemWidget(
                         item: item,
+                        compact: compact,
                         isOwned: _ctrl.ownedWeapons.contains(item.weaponType),
                         canAfford: _ctrl.gold.value >= item.price,
-                        onBuy: () {
-                          if (_ctrl.buyWeapon(item)) {
-                            // Success feedback (maybe a sound or simple animation later)
-                          } else if (_ctrl.gold.value < item.price) {
-                            // Fail feedback
-                          }
-                        },
+                        onBuy: () => _ctrl.buyWeapon(item),
                       ),
                     ),
                   );
                 }).toList(),
               )),
         ],
+      ),
+    );
+  }
+
+  Widget _buildProceedButton(bool compact) {
+    final enabled = _selectedIndex != null;
+    return GestureDetector(
+      onTap: enabled ? _proceedToNextStage : null,
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 300),
+        opacity: enabled ? 1.0 : 0.4,
+        child: Container(
+          width: 240,
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            color: enabled ? AutoBattlePalette.primary : Colors.grey,
+            border: Border.all(color: AutoBattlePalette.ink, width: 3),
+            boxShadow: enabled
+                ? const [
+                    BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
+                  ]
+                : null,
+          ),
+          child: const Center(
+            child: Text(
+              'NEXT STAGE ➔',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1,
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -315,12 +361,14 @@ class _ShopItemWidget extends StatelessWidget {
   final ShopItem item;
   final bool isOwned;
   final bool canAfford;
+  final bool compact;
   final VoidCallback onBuy;
 
   const _ShopItemWidget({
     required this.item,
     required this.isOwned,
     required this.canAfford,
+    required this.compact,
     required this.onBuy,
   });
 
@@ -330,46 +378,51 @@ class _ShopItemWidget extends StatelessWidget {
       onTap: isOwned ? null : onBuy,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(10),
+        padding: EdgeInsets.all(compact ? 6 : 10),
         decoration: BoxDecoration(
           color: isOwned ? const Color(0xFFE2E8F0) : Colors.white,
           border: Border.all(
             color: isOwned ? const Color(0xFF94A3B8) : AutoBattlePalette.ink,
-            width: 3,
+            width: compact ? 2 : 3,
           ),
           boxShadow: isOwned
               ? null
-              : const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
+              : [
+                  BoxShadow(
+                      color: AutoBattlePalette.ink,
+                      offset: Offset(compact ? 3 : 4, compact ? 3 : 4))
                 ],
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Text(item.icon, style: const TextStyle(fontSize: 24)),
-            const SizedBox(height: 6),
-            Text(
-              item.title,
-              style: const TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w900,
-                  color: AutoBattlePalette.ink),
-              textAlign: TextAlign.center,
+            Text(item.icon, style: TextStyle(fontSize: compact ? 18 : 22)),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                item.title,
+                style: TextStyle(
+                    fontSize: compact ? 12 : 14,
+                    fontWeight: FontWeight.w900,
+                    color: AutoBattlePalette.ink),
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(width: 4),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
               decoration: BoxDecoration(
                 color: isOwned
                     ? const Color(0xFF94A3B8)
-                    : (canAfford ? AutoBattlePalette.gold : const Color(0xFFEF4444)),
-                border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                    : (canAfford
+                        ? AutoBattlePalette.gold
+                        : const Color(0xFFEF4444)),
+                border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
               ),
               child: Text(
-                isOwned ? 'OWNED' : '${item.price} G',
+                isOwned ? 'OWNED' : '${item.price}G',
                 style: const TextStyle(
                     color: Colors.white,
-                    fontSize: 12,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900),
               ),
             ),
@@ -417,6 +470,7 @@ class _UpgradeCardWidget extends StatelessWidget {
   final int index;
   final double width;
   final bool isHovered;
+  final bool isSelected;
   final ValueChanged<bool> onHover;
   final VoidCallback onTap;
 
@@ -425,6 +479,7 @@ class _UpgradeCardWidget extends StatelessWidget {
     required this.index,
     required this.width,
     required this.isHovered,
+    required this.isSelected,
     required this.onHover,
     required this.onTap,
   });
@@ -477,8 +532,11 @@ class _UpgradeCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shadowOffset = isHovered ? 8.0 : 4.0;
-    final lift = isHovered ? -3.0 : 0.0;
+    final shadowOffset = (isHovered || isSelected) ? 8.0 : 4.0;
+    final lift = (isHovered || isSelected) ? -3.0 : 0.0;
+    final borderColor = isSelected
+        ? AutoBattlePalette.primary
+        : (isHovered ? _typeColor : AutoBattlePalette.ink);
 
     return MouseRegion(
       onEnter: (_) => onHover(true),
@@ -490,17 +548,17 @@ class _UpgradeCardWidget extends StatelessWidget {
           curve: Curves.easeOut,
           transform: Matrix4.translationValues(0, lift, 0),
           width: width,
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(
-                color: isHovered ? _typeColor : AutoBattlePalette.ink,
-                width: 3),
+            border: Border.all(color: borderColor, width: isSelected ? 4 : 3),
             boxShadow: [
               BoxShadow(
-                color: isHovered
-                    ? _typeColor.withValues(alpha: 0.4)
-                    : AutoBattlePalette.ink,
+                color: isSelected
+                    ? AutoBattlePalette.primary.withValues(alpha: 0.4)
+                    : (isHovered
+                        ? _typeColor.withValues(alpha: 0.4)
+                        : AutoBattlePalette.ink),
                 offset: Offset(shadowOffset, shadowOffset),
               ),
             ],
@@ -508,23 +566,23 @@ class _UpgradeCardWidget extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(_typeIcon, color: _typeColor, size: 32),
-              const SizedBox(height: 8),
+              Icon(_typeIcon, color: _typeColor, size: 24),
+              const SizedBox(height: 6),
               Text(
                 card.title,
                 textAlign: TextAlign.center,
                 style: const TextStyle(
                   color: AutoBattlePalette.ink,
-                  fontSize: 16,
+                  fontSize: 14,
                   fontWeight: FontWeight.w900,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 2),
               Text(
                 card.statPreview,
                 style: TextStyle(
                   color: _typeColor,
-                  fontSize: 14,
+                  fontSize: 12,
                   fontWeight: FontWeight.w900,
                 ),
               ),
