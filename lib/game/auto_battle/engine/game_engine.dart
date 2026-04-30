@@ -14,6 +14,7 @@ class GameEngine {
   final List<ProjectileData> projectiles = [];
   final List<HazardData> hazards = [];
   final List<AttackEffectData> attacks = [];
+  final List<PlayerData> pendingSpawns = [];
 
   Timer? timer;
   int lastTickAt = DateTime.now().millisecondsSinceEpoch;
@@ -119,8 +120,15 @@ class GameEngine {
     _updateProjectiles(dt.toDouble());
     _updateHazards(now, dt.toDouble());
     _updateEffects(now);
+    _flushPendingSpawns();
     _checkRoundEnd(now);
     _broadcastSnapshot();
+  }
+
+  void _flushPendingSpawns() {
+    if (pendingSpawns.isEmpty) return;
+    players.addAll(pendingSpawns);
+    pendingSpawns.clear();
   }
 
   void _updatePlayers(double dt, int now) {
@@ -980,7 +988,7 @@ class GameEngine {
         ..vel = normalize(Vec2(x: math.cos(angle), y: math.sin(angle)))
         ..enemyAbility = 'none'
         ..enemyType = 'split_child';
-      players.add(child);
+      pendingSpawns.add(child);
     }
   }
 
