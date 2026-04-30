@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:circle_war/screens/home_screen.dart';
 import 'package:circle_war/screens/upgrade_select_screen.dart';
+import 'package:circle_war/screens/run_results_screen.dart';
 
 class AutoBattleGamePage extends StatefulWidget {
   const AutoBattleGamePage({super.key});
@@ -80,7 +81,13 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
 
     _game = AutoBattleGame();
     _localService = LocalGameService()
-      ..connect(controller.currentStage.value, player)
+      ..connect(
+        controller.currentStage.value,
+        player,
+        currentCycle: controller.currentCycle.value,
+        stageInCycle: controller.stageInCycle.value,
+        totalStageNumber: controller.totalStageNumber.value,
+      )
       ..onConnectionChanged((c) {
         if (!mounted || _navigating) return;
         setState(() => _connected = c);
@@ -116,19 +123,27 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
     final dead = snapshot.roundState == 'gameover';
     if (!win && !dead) return;
 
+    // Track run stats from snapshot
+    final me = snapshot.players
+        .cast<PlayerSnapshot?>()
+        .firstWhere((p) => p?.id == 'p1', orElse: () => null);
+    if (me != null) {
+      controller.runEnemiesKilled.value = me.kills;
+      controller.runDamageDealt.value = me.damageDealt;
+    }
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _navigating) return;
 
-      if (win && controller.isFinalStage) {
-        _stopAndNavigate(() => const HomeScreen(), offAll: true);
-      } else if (win) {
+      if (win) {
+        // Always go to upgrade select (game is infinite, never "final")
         _stopAndNavigate(() => const UpgradeSelectScreen());
       } else if (dead && controller.lives.value > 1) {
         controller.loseLife();
-        // Instead of reloading the page, revive in the current engine
         _localService.revivePlayer();
       } else {
-        _stopAndNavigate(() => const HomeScreen(), offAll: true);
+        // Game over — go to run results
+        _stopAndNavigate(() => const RunResultsScreen(), offAll: true);
       }
     });
   }
@@ -356,9 +371,13 @@ class _SketchTopBar extends StatelessWidget {
             child: FittedBox(
               fit: BoxFit.scaleDown,
               child: Text(
-                'STAGE $stage',
+                snapshot?.isBossStage == true
+                    ? 'CYCLE ${snapshot?.currentCycle ?? 1} — BOSS'
+                    : 'CYCLE ${snapshot?.currentCycle ?? 1} — ${snapshot?.stageInCycle ?? stage}',
                 style: TextStyle(
-                    color: AutoBattlePalette.ink,
+                    color: (snapshot?.isBossStage == true)
+                        ? AutoBattlePalette.primary
+                        : AutoBattlePalette.ink,
                     fontSize: stageFontSize,
                     fontWeight: FontWeight.w900),
                 textAlign: TextAlign.center,

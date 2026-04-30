@@ -1,6 +1,6 @@
 import 'package:circle_war/controllers/game_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
-import 'package:circle_war/game/auto_battle/ui/auto_battle_game_page.dart';
+import 'package:circle_war/screens/equip_weapon_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'dart:math' as math;
@@ -148,10 +148,10 @@ class CharacterSelectScreen extends StatelessWidget {
   }) {
     return GestureDetector(
       onTap: () {
-        // Start run and navigate to game
+        // Start run and navigate to equip screen
         final controller = Get.find<GameProgressController>();
         controller.startNewRun(id);
-        Get.off(() => const AutoBattleGamePage());
+        Get.off(() => const EquipWeaponScreen());
       },
       child: Container(
         width: 220,

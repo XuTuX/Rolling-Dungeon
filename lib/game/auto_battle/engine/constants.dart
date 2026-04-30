@@ -8,7 +8,20 @@ const int TICK_MS = 1000 ~/ TICK_RATE;
 
 const int MAX_PLAYERS = 2;
 const int MAX_LIVES = 3;
-const int VICTORY_STAGE = 10;
+// VICTORY_STAGE removed — game is now infinite.
+// const int VICTORY_STAGE = 10;
+
+// ── Cycle System ──
+const int STAGES_PER_CYCLE = 3;          // normal stages before boss
+const int BOSS_STAGE_IN_CYCLE = 4;       // boss is the 4th stage in each cycle
+const int TOTAL_STAGES_IN_CYCLE = 4;     // 3 normal + 1 boss
+
+// ── Cycle Scaling ──
+const double CYCLE_ENEMY_HP_SCALE = 0.35;
+const double CYCLE_ENEMY_ATK_SCALE = 0.25;
+const double CYCLE_ENEMY_SPD_SCALE = 0.05;
+const double CYCLE_BOSS_HP_SCALE = 0.45;
+const double CYCLE_BOSS_ATK_SCALE = 0.30;
 
 const double BASE_HP = 200.0;
 const double BASE_ATK = 9.0;

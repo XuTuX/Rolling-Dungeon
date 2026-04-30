@@ -8,10 +8,19 @@ class LocalGameService {
   Function(bool)? _onConnectionChanged;
   Function(String)? _onPlayerAssigned;
 
-  void connect(int stage, PlayerData player) {
+  void connect(
+    int stage,
+    PlayerData player, {
+    int currentCycle = 1,
+    int stageInCycle = 1,
+    int totalStageNumber = 1,
+  }) {
     _engine = GameEngine(
       currentStage: stage,
       initialPlayer: player,
+      currentCycle: currentCycle,
+      stageInCycle: stageInCycle,
+      totalStageNumber: totalStageNumber,
       onUpdate: (snapshot) {
         _onGameUpdate?.call(snapshot);
       },

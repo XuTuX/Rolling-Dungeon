@@ -15,6 +15,12 @@ class GameSnapshot {
   final List<HazardSnapshot> hazards;
   final List<AttackSnapshot> attacks;
 
+  // ── Cycle System ──
+  final int currentCycle;
+  final int stageInCycle;
+  final int totalStageNumber;
+  final bool isBossStage;
+
   const GameSnapshot({
     required this.serverTime,
     required this.currentStage,
@@ -29,6 +35,10 @@ class GameSnapshot {
     required this.projectiles,
     required this.hazards,
     required this.attacks,
+    this.currentCycle = 1,
+    this.stageInCycle = 1,
+    this.totalStageNumber = 1,
+    this.isBossStage = false,
   });
 
   factory GameSnapshot.fromJson(Map<String, dynamic> json) {

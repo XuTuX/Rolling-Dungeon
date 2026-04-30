@@ -24,12 +24,21 @@ class GameEngine {
   int? roundEndsAt;
   int idSeq = 0;
 
+  // ── Cycle System ──
+  int currentCycle;
+  int stageInCycle;
+  int totalStageNumber;
+  bool get isBossStage => stageInCycle >= BOSS_STAGE_IN_CYCLE;
+
   final math.Random _rand = math.Random();
 
   GameEngine({
     required this.onUpdate,
     required this.currentStage,
     required PlayerData initialPlayer,
+    this.currentCycle = 1,
+    this.stageInCycle = 1,
+    this.totalStageNumber = 1,
   }) {
     initialPlayer
       ..radius =
@@ -238,34 +247,35 @@ class GameEngine {
 
   void _spawnEnemiesForStage(int stage) {
     final List<Map<String, dynamic>> enemiesToSpawn = [];
-    if (stage == 1) {
-      enemiesToSpawn.add({'type': 'basic', 'count': 1});
-    } else if (stage == 2) {
-      enemiesToSpawn.add({'type': 'dasher', 'count': 1});
-      enemiesToSpawn.add({'type': 'basic', 'count': 1});
-    } else if (stage == 3) {
-      enemiesToSpawn.add({'type': 'shooter', 'count': 1});
-      enemiesToSpawn.add({'type': 'fast', 'count': 1});
-    } else if (stage == 4) {
-      enemiesToSpawn.add({'type': 'tank', 'count': 1});
-      enemiesToSpawn.add({'type': 'dasher', 'count': 2});
-    } else if (stage == 5) {
-      enemiesToSpawn.add({'type': 'shield', 'count': 1});
-      enemiesToSpawn.add({'type': 'shooter', 'count': 2});
-    } else if (stage == 6) {
-      enemiesToSpawn.add({'type': 'splitter', 'count': 2});
-      enemiesToSpawn.add({'type': 'fast', 'count': 2});
-    } else if (stage == 7) {
-      enemiesToSpawn.add({'type': 'bruiser', 'count': 2});
-      enemiesToSpawn.add({'type': 'tank', 'count': 2});
-    } else if (stage == 8) {
-      enemiesToSpawn.add({'type': 'shooter', 'count': 3});
-      enemiesToSpawn.add({'type': 'dasher', 'count': 2});
-    } else if (stage == 9) {
-      enemiesToSpawn.add({'type': 'shield', 'count': 2});
-      enemiesToSpawn.add({'type': 'splitter', 'count': 2});
-    } else if (stage >= 10) {
-      enemiesToSpawn.add({'type': 'final_boss', 'count': 1});
+
+    if (isBossStage) {
+      // Boss stage — spawn a boss with cycle-based pattern
+      enemiesToSpawn.add({'type': _bossTypeForCycle(currentCycle), 'count': 1});
+      // Later cycles add minions alongside the boss
+      if (currentCycle >= 2) {
+        enemiesToSpawn.add({'type': 'basic', 'count': math.min(currentCycle - 1, 3)});
+      }
+    } else {
+      // Normal stage — use stageInCycle to vary composition
+      final baseCount = 1 + (currentCycle ~/ 2).clamp(0, 3);
+      switch (stageInCycle) {
+        case 1:
+          enemiesToSpawn.add({'type': 'basic', 'count': baseCount});
+          if (currentCycle >= 2) enemiesToSpawn.add({'type': 'fast', 'count': 1});
+          break;
+        case 2:
+          enemiesToSpawn.add({'type': 'dasher', 'count': math.max(1, baseCount - 1)});
+          enemiesToSpawn.add({'type': 'shooter', 'count': 1});
+          if (currentCycle >= 3) enemiesToSpawn.add({'type': 'tank', 'count': 1});
+          break;
+        case 3:
+          enemiesToSpawn.add({'type': 'shield', 'count': 1});
+          enemiesToSpawn.add({'type': 'splitter', 'count': math.max(1, baseCount - 1)});
+          if (currentCycle >= 2) enemiesToSpawn.add({'type': 'bruiser', 'count': 1});
+          break;
+        default:
+          enemiesToSpawn.add({'type': 'basic', 'count': baseCount});
+      }
     }
 
     for (final group in enemiesToSpawn) {
@@ -275,19 +285,36 @@ class GameEngine {
     }
   }
 
+  /// Determine boss type based on cycle. Cycles beyond 5 reuse patterns.
+  String _bossTypeForCycle(int cycle) {
+    switch ((cycle - 1) % 5) {
+      case 0: return 'boss_basic';      // Basic large boss
+      case 1: return 'boss_summoner';   // Summons minions
+      case 2: return 'boss_dasher';     // Dash attack
+      case 3: return 'boss_shield';     // Shield phase
+      case 4: return 'boss_combined';   // Combined patterns
+      default: return 'boss_basic';
+    }
+  }
+
   PlayerData _createEnemy(String type, int stage) {
     final stageStep = math.max(0, stage - 1);
-    final hpMult = 1 + stageStep * ENEMY_STAGE_HP_GROWTH;
-    final speedMult = 1 + stageStep * ENEMY_STAGE_SPEED_GROWTH;
-    double hp = stage == 1 ? STAGE_ONE_ENEMY_HP : 110 * hpMult;
+    final cycleStep = math.max(0, currentCycle - 1);
+    // Cycle-aware scaling
+    final cycleHpMult = 1 + cycleStep * CYCLE_ENEMY_HP_SCALE;
+    final cycleAtkMult = 1 + cycleStep * CYCLE_ENEMY_ATK_SCALE;
+    final cycleSpdMult = 1 + cycleStep * CYCLE_ENEMY_SPD_SCALE;
+    final hpMult = (1 + stageStep * ENEMY_STAGE_HP_GROWTH) * cycleHpMult;
+    final speedMult = (1 + stageStep * ENEMY_STAGE_SPEED_GROWTH) * cycleSpdMult;
+    double hp = (totalStageNumber == 1) ? STAGE_ONE_ENEMY_HP : 110 * hpMult;
     double speed =
-        stage == 1 ? STAGE_ONE_ENEMY_SPEED : ENEMY_BASE_SPEED * speedMult;
-    double radius = stage == 1 ? STAGE_ONE_ENEMY_RADIUS : ENEMY_BASE_RADIUS;
+        (totalStageNumber == 1) ? STAGE_ONE_ENEMY_SPEED : ENEMY_BASE_SPEED * speedMult;
+    double radius = (totalStageNumber == 1) ? STAGE_ONE_ENEMY_RADIUS : ENEMY_BASE_RADIUS;
     String color = '#FF5E5E';
-    double atk = stage == 1
+    double atk = (totalStageNumber == 1)
         ? STAGE_ONE_ENEMY_ATTACK
-        : 7.0 + stage * ENEMY_STAGE_ATTACK_GROWTH;
-    double def = stage == 1
+        : (7.0 + stage * ENEMY_STAGE_ATTACK_GROWTH) * cycleAtkMult;
+    double def = (totalStageNumber == 1)
         ? STAGE_ONE_ENEMY_DEFENSE
         : 1.0 + stage * ENEMY_STAGE_DEFENSE_GROWTH;
     String ability = 'none';
@@ -334,14 +361,21 @@ class GameEngine {
       radius = ENEMY_BASE_RADIUS * 1.05;
       color = '#A855F7';
       ability = 'split';
-    } else if (type == 'final_boss') {
-      speed = ENEMY_BASE_SPEED * speedMult * 0.92;
-      hp = 780 * hpMult;
+    } else if (type == 'final_boss' || type.startsWith('boss_')) {
+      // ── Boss types with cycle scaling ──
+      final bossHpMult = 1 + cycleStep * CYCLE_BOSS_HP_SCALE;
+      final bossAtkMult = 1 + cycleStep * CYCLE_BOSS_ATK_SCALE;
+      speed = ENEMY_BASE_SPEED * cycleSpdMult * 0.92;
+      hp = 780 * bossHpMult;
       radius = ENEMY_BASE_RADIUS * 1.9;
       color = '#000000';
-      atk = 19 + stageStep * 0.9;
-      def = 7 + stageStep * 0.35;
-      ability = 'shield';
+      atk = (19 + cycleStep * 3.0) * bossAtkMult;
+      def = 7 + cycleStep * 1.5;
+      // Boss ability varies by type
+      if (type == 'boss_dasher' || type == 'boss_combined') ability = 'dash';
+      if (type == 'boss_shield' || type == 'boss_combined') ability = 'shield';
+      if (type == 'boss_summoner') ability = 'shield';
+      if (type == 'boss_basic' || type == 'final_boss') ability = 'shield';
     }
 
     final player = _getPlayer('p1');
@@ -1053,6 +1087,10 @@ class GameEngine {
     final snapshot = GameSnapshot(
       serverTime: DateTime.now().millisecondsSinceEpoch,
       currentStage: currentStage,
+      currentCycle: currentCycle,
+      stageInCycle: stageInCycle,
+      totalStageNumber: totalStageNumber,
+      isBossStage: isBossStage,
       arenaWidth: ARENA_WIDTH.toDouble(),
       arenaHeight: ARENA_HEIGHT.toDouble(),
       roundState: roundState,

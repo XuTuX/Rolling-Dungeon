@@ -42,9 +42,19 @@ class ShopItem {
 class GameProgressController extends GetxController {
   // ── Run State ──
   var currentStage = 1.obs;
-  var maxStage = 10;
   var lives = 3.obs;
   var gold = 0.obs;
+
+  // ── Cycle System ──
+  var currentCycle = 1.obs;
+  var stageInCycle = 1.obs;
+  var totalStageNumber = 1.obs;
+  bool get isBossStage => stageInCycle.value >= BOSS_STAGE_IN_CYCLE;
+
+  // ── Run Stats (for achievements at end of run) ──
+  var runEnemiesKilled = 0.obs;
+  var runBossesDefeated = 0.obs;
+  var runDamageDealt = 0.0.obs;
 
   // ── Player Stats (accumulated across stages) ──
   var playerMaxHp = PLAYER_BASE_HP.obs;
@@ -82,11 +92,19 @@ class GameProgressController extends GetxController {
   // ───────────────────────────────────────────
   void startNewRun(String selectedCharacter) {
     currentStage.value = 1;
+    currentCycle.value = 1;
+    stageInCycle.value = 1;
+    totalStageNumber.value = 1;
     lives.value = 3;
     gold.value = 0;
     appliedUpgrades.clear();
     ownedWeapons.clear();
     shopItems.clear();
+
+    // Run stats reset
+    runEnemiesKilled.value = 0;
+    runBossesDefeated.value = 0;
+    runDamageDealt.value = 0;
 
     characterType.value =
         selectedCharacter == 'none' ? 'gunner' : selectedCharacter;
@@ -148,19 +166,30 @@ class GameProgressController extends GetxController {
   }
 
   // ───────────────────────────────────────────
-  //  Stage progression
+  //  Stage progression (infinite)
   // ───────────────────────────────────────────
   void nextStage() {
-    if (currentStage.value < maxStage) {
-      currentStage.value += 1;
-      // Heal to full when advancing to next stage
-      fullHeal();
-      playerShield.value = playerMaxShield.value;
-      playerBarrierHp.value = playerBarrierMaxHp.value;
+    currentStage.value += 1;
+    totalStageNumber.value += 1;
+
+    // Advance cycle tracking
+    if (stageInCycle.value >= TOTAL_STAGES_IN_CYCLE) {
+      // Boss was just cleared — advance to next cycle
+      currentCycle.value += 1;
+      stageInCycle.value = 1;
+      runBossesDefeated.value += 1;
+    } else {
+      stageInCycle.value += 1;
     }
+
+    // Heal to full when advancing
+    fullHeal();
+    playerShield.value = playerMaxShield.value;
+    playerBarrierHp.value = playerBarrierMaxHp.value;
   }
 
-  bool get isFinalStage => currentStage.value >= maxStage;
+  // Game is never "final" — infinite progression
+  bool get isFinalStage => false;
 
   // ───────────────────────────────────────────
   //  Upgrade Card Generation
