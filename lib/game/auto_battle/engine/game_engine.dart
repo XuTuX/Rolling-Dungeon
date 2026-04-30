@@ -552,8 +552,8 @@ class GameEngine {
       final offsetAngle = rearAngle + math.pi / 2;
       
       // Add jitter (randomness) to make it feel like spraying
-      final jitterX = (_rand.nextDouble() - 0.5) * 12.0;
-      final jitterY = (_rand.nextDouble() - 0.5) * 12.0;
+      final jitterX = (_rand.nextDouble() - 0.5) * 6.0;
+      final jitterY = (_rand.nextDouble() - 0.5) * 6.0;
       
       // Drop slightly behind the player to feel like it's coming from the rear
       final dropDist = player.radius * 0.6;

@@ -182,30 +182,30 @@ class AutoBattleGame extends FlameGame {
         final remaining =
             (h.expiresAt - _snapshot!.serverTime).clamp(0, 1000) / 1000.0;
         final rand = math.Random(h.id.hashCode);
-        for (var i = 0; i < 16; i++) {
-          final spread = rand.nextDouble() * r;
-          final angle = -math.pi / 6 + rand.nextDouble() * math.pi / 3;
-          final bubblePos = pos +
-              Offset(
-                math.cos(angle) * spread - r * 0.28,
-                math.sin(angle) * spread,
-              );
-          final bubbleR = (1.8 + rand.nextDouble() * 2.8) * _arenaScale;
+        // Render as a soft fog cloud
+        for (var i = 0; i < 4; i++) {
+          final spread = rand.nextDouble() * r * 0.4;
+          final angle = rand.nextDouble() * math.pi * 2;
+          final bubblePos = pos + Offset(math.cos(angle) * spread, math.sin(angle) * spread);
+          
+          final bubbleR = (r * (0.7 + rand.nextDouble() * 0.5));
+          
           canvas.drawCircle(
             bubblePos,
             bubbleR,
             Paint()
               ..color = AutoBattlePalette.mint.withValues(
-                alpha: 0.18 + 0.42 * remaining,
+                alpha: (0.15 + 0.45 * remaining) * (1.0 - (spread / (r * 0.5))),
               ),
           );
+          
           canvas.drawCircle(
             bubblePos,
             bubbleR,
             Paint()
-              ..color = AutoBattlePalette.ink.withValues(alpha: 0.35)
+              ..color = AutoBattlePalette.ink.withValues(alpha: 0.1 * remaining)
               ..style = PaintingStyle.stroke
-              ..strokeWidth = 1,
+              ..strokeWidth = 0.5 * _arenaScale,
           );
         }
       }

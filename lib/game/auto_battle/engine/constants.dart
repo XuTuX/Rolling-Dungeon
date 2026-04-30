@@ -102,9 +102,9 @@ const double UPGRADE_MASTERY_POWER_GAIN = 1.0;
 
 const int ROUND_RESTART_MS = 5000;
 
-const int POISON_DROP_MS = 100;
-const int POISON_DURATION_MS = 450;
-const double POISON_RADIUS = 20.0;
+const int POISON_DROP_MS = 60;
+const int POISON_DURATION_MS = 200;
+const double POISON_RADIUS = 22.0;
 
 const int GUNNER_FIRE_MS = 900;
 const double GUNNER_RANGE = 260.0;
@@ -135,11 +135,11 @@ const double LASER_WIDTH = 1.25;
 
 // ── Stage Scaling ──
 // Player radius scales per stage: big early, shrinks late
-const double PLAYER_RADIUS_STAGE_1 = 22.0;
+const double PLAYER_RADIUS_STAGE_1 = 32.0;
 const double PLAYER_RADIUS_STAGE_10 = 11.0;
 
 // Enemy radius multiplier per stage (1.0 = default)
-const double ENEMY_RADIUS_MULT_STAGE_1 = 1.5;
+const double ENEMY_RADIUS_MULT_STAGE_1 = 2.2;
 const double ENEMY_RADIUS_MULT_STAGE_10 = 0.7;
 
 // Enemy HP multiplier for early game (lower = faster kills)
