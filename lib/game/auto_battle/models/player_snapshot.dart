@@ -32,12 +32,18 @@ class PlayerSnapshot {
   final double vx;
   final double vy;
   final double radius;
+  final List<String> ownedWeapons;
+  final int lastPoisonDropAt;
+  final int lastShotAt;
+  final int lastBladeAt;
+  final int lastMineDropAt;
+  final int lastAttackAt;
+  final double targetAngle;
+  final List<ActiveEffectSnapshot> activeEffects;
   final String color;
   final bool alive;
   final int lives;
   final int maxLives;
-  final int lastAttackAt;
-  final double targetAngle;
 
   const PlayerSnapshot({
     required this.id,
@@ -75,8 +81,14 @@ class PlayerSnapshot {
     required this.alive,
     required this.lives,
     required this.maxLives,
+    this.ownedWeapons = const [],
+    this.lastPoisonDropAt = 0,
+    this.lastShotAt = 0,
+    this.lastBladeAt = 0,
+    this.lastMineDropAt = 0,
     this.lastAttackAt = 0,
     this.targetAngle = 0,
+    this.activeEffects = const [],
   });
 
   factory PlayerSnapshot.fromJson(Map<String, dynamic> json) {
@@ -117,8 +129,14 @@ class PlayerSnapshot {
       alive: json['alive'] == true,
       lives: _asInt(json['lives'], fallback: 5),
       maxLives: _asInt(json['maxLives'], fallback: 5),
+      ownedWeapons: (json['ownedWeapons'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      lastPoisonDropAt: _asInt(json['lastPoisonDropAt']),
+      lastShotAt: _asInt(json['lastShotAt']),
+      lastBladeAt: _asInt(json['lastBladeAt']),
+      lastMineDropAt: _asInt(json['lastMineDropAt']),
       lastAttackAt: _asInt(json['lastAttackAt']),
       targetAngle: _asDouble(json['targetAngle']),
+      activeEffects: _parseList(json['activeEffects'], ActiveEffectSnapshot.fromJson),
     );
   }
 
@@ -126,6 +144,23 @@ class PlayerSnapshot {
     final hex = color.replaceAll('#', '');
     final value = hex.length == 6 ? 'FF$hex' : hex;
     return Color(int.tryParse(value, radix: 16) ?? 0xFF9CA3AF);
+  }
+}
+
+class ActiveEffectSnapshot {
+  final String type;
+  final int expiresAt;
+
+  ActiveEffectSnapshot({
+    required this.type,
+    required this.expiresAt,
+  });
+
+  factory ActiveEffectSnapshot.fromJson(Map<String, dynamic> json) {
+    return ActiveEffectSnapshot(
+      type: json['type'] as String,
+      expiresAt: _asInt(json['expiresAt']),
+    );
   }
 }
 

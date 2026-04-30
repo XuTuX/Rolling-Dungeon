@@ -25,6 +25,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     super.initState();
     _ctrl = Get.find<GameProgressController>();
     _cards = _ctrl.generateUpgradeChoices();
+    _ctrl.generateShopItems();
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -72,100 +73,36 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                     : (constraints.maxWidth * 0.29)
                         .clamp(compact ? 210.0 : 240.0, 310.0)
                         .toDouble();
-                final cardH = isPortrait
-                    ? (constraints.maxHeight * 0.24)
-                        .clamp(188.0, 240.0)
-                        .toDouble()
-                    : (constraints.maxHeight * 0.54)
-                        .clamp(compact ? 226.0 : 260.0, 330.0)
-                        .toDouble();
                 final gap = compact ? 14.0 : 20.0;
 
-                return Column(
-                  children: [
-                    SizedBox(height: compact ? 10 : 20),
+                return SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      SizedBox(height: compact ? 10 : 20),
 
-                    // ── Title ──
-                    _buildTitle(titleSize, compact),
-                    SizedBox(height: compact ? 6 : 12),
+                      // ── Title ──
+                      _buildTitle(titleSize, compact),
+                      SizedBox(height: compact ? 6 : 12),
 
-                    // ── Sub-title ──
-                    _buildSubtitle(compact),
-                    SizedBox(height: compact ? 12 : 22),
+                      // ── Sub-title ──
+                      _buildSubtitle(compact),
+                      SizedBox(height: compact ? 12 : 18),
 
-                    // ── Cards ──
-                    Expanded(
-                      child: Center(
-                        child: SingleChildScrollView(
-                          scrollDirection:
-                              isPortrait ? Axis.vertical : Axis.horizontal,
-                          padding: const EdgeInsets.symmetric(horizontal: 20),
-                          child: AnimatedBuilder(
-                            animation: _animCtrl,
-                            builder: (context, _) {
-                              final cardWidgets =
-                                  List.generate(_cards.length, (i) {
-                                final delay = i * 0.18;
-                                final t = CurvedAnimation(
-                                  parent: _animCtrl,
-                                  curve: Interval(
-                                    delay.clamp(0.0, 0.6),
-                                    (delay + 0.55).clamp(0.0, 1.0),
-                                    curve: Curves.easeOutBack,
-                                  ),
-                                );
-                                return Padding(
-                                  padding: EdgeInsets.only(
-                                    right: !isPortrait && i < _cards.length - 1
-                                        ? gap
-                                        : 0,
-                                    bottom: isPortrait && i < _cards.length - 1
-                                        ? gap
-                                        : 0,
-                                  ),
-                                  child: Transform.translate(
-                                    offset: Offset(
-                                        0,
-                                        isPortrait
-                                            ? 30 * (1 - t.value)
-                                            : 50 * (1 - t.value)),
-                                    child: Opacity(
-                                      opacity: t.value.clamp(0.0, 1.0),
-                                      child: _UpgradeCardWidget(
-                                        card: _cards[i],
-                                        index: i,
-                                        width: cardW,
-                                        height: cardH,
-                                        compact: compact,
-                                        isHovered: _hoveredIndex == i,
-                                        onHover: (h) => setState(
-                                            () => _hoveredIndex = h ? i : null),
-                                        onTap: () => _selectCard(_cards[i]),
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              });
+                      // ── Cards (Simplified) ──
+                      _buildUpgradeSection(isPortrait, cardW, gap),
 
-                              return isPortrait
-                                  ? Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: cardWidgets,
-                                    )
-                                  : Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.center,
-                                      children: cardWidgets,
-                                    );
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
+                      const SizedBox(height: 20),
 
-                    // ── Stats bar ──
-                    _buildStatsBar(compact),
-                  ],
+                      // ── Shop Section ──
+                      _buildShopSection(compact),
+
+                      const SizedBox(height: 10),
+
+                      // ── Stats bar ──
+                      _buildStatsBar(compact),
+                      const SizedBox(height: 20), // Bottom padding for scroll
+                    ],
+                  ),
                 );
               },
             ),
@@ -184,79 +121,139 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     );
   }
 
-  Widget _buildTitle(double fontSize, bool compact) {
-    return Stack(
-      children: [
-        // Shadow
-        Positioned(
-          left: 6,
-          top: 6,
-          child: Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 20 : 28,
-              vertical: compact ? 8 : 10,
-            ),
-            color: AutoBattlePalette.ink,
-            child: Text(
-              '증강 선택',
-              style: TextStyle(
-                color: Colors.transparent,
-                fontSize: fontSize,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ),
-        Container(
-          padding: EdgeInsets.symmetric(
-            horizontal: compact ? 20 : 28,
-            vertical: compact ? 8 : 10,
-          ),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AutoBattlePalette.ink, width: 4),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.auto_awesome,
-                  color: AutoBattlePalette.gold, size: compact ? 22 : 28),
-              SizedBox(width: compact ? 8 : 12),
-              Text(
-                '증강 선택',
-                style: TextStyle(
-                  color: AutoBattlePalette.ink,
-                  fontSize: fontSize,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ],
+  Widget _buildTitle(double titleSize, bool compact) {
+    return Text(
+      'AUGMENT SELECT',
+      style: TextStyle(
+        fontSize: titleSize,
+        fontWeight: FontWeight.w900,
+        color: AutoBattlePalette.ink,
+        letterSpacing: 2,
+      ),
     );
   }
 
   Widget _buildSubtitle(bool compact) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: compact ? 14 : 18, vertical: compact ? 5 : 7),
-      decoration: BoxDecoration(
-        color: AutoBattlePalette.mint,
-        border: Border.all(color: AutoBattlePalette.ink, width: 2),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
-        ],
+    return Text(
+      '강력한 능력을 선택하여 더 깊은 던전으로 향하세요',
+      style: TextStyle(
+        fontSize: compact ? 12 : 14,
+        fontWeight: FontWeight.w800,
+        color: AutoBattlePalette.inkSubtle,
       ),
-      child: Text(
-        'STAGE ${_ctrl.currentStage.value} CLEAR ★',
-        style: TextStyle(
-          color: Colors.white,
-          fontSize: compact ? 12 : 15,
-          fontWeight: FontWeight.w900,
-          letterSpacing: 1,
-        ),
+    );
+  }
+
+  Widget _buildUpgradeSection(bool isPortrait, double cardW, double gap) {
+    return AnimatedBuilder(
+      animation: _animCtrl,
+      builder: (context, _) {
+        final cardWidgets = List.generate(_cards.length, (i) {
+          final delay = i * 0.12;
+          final t = CurvedAnimation(
+            parent: _animCtrl,
+            curve: Interval(
+              delay.clamp(0.0, 0.6),
+              (delay + 0.5).clamp(0.0, 1.0),
+              curve: Curves.easeOutBack,
+            ),
+          );
+          return Padding(
+            padding: EdgeInsets.only(
+              right: !isPortrait && i < _cards.length - 1 ? gap : 0,
+              bottom: isPortrait && i < _cards.length - 1 ? gap : 0,
+            ),
+            child: Transform.translate(
+              offset: Offset(0, 20 * (1 - t.value)),
+              child: Opacity(
+                opacity: t.value.clamp(0.0, 1.0),
+                child: _UpgradeCardWidget(
+                  card: _cards[i],
+                  index: i,
+                  width: cardW,
+                  isHovered: _hoveredIndex == i,
+                  onHover: (h) => setState(() => _hoveredIndex = h ? i : null),
+                  onTap: () => _selectCard(_cards[i]),
+                ),
+              ),
+            ),
+          );
+        });
+
+        return isPortrait
+            ? Column(mainAxisSize: MainAxisSize.min, children: cardWidgets)
+            : Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: cardWidgets);
+      },
+    );
+  }
+
+  Widget _buildShopSection(bool compact) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF1F5F9),
+        border: Border.all(color: AutoBattlePalette.ink, width: 3),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.shopping_cart, color: AutoBattlePalette.ink, size: 20),
+                  SizedBox(width: 8),
+                  Text('무기 상점',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                          color: AutoBattlePalette.ink)),
+                ],
+              ),
+              Obx(() => Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: AutoBattlePalette.gold,
+                      border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                    ),
+                    child: Text('💰 ${_ctrl.gold.value.round()}',
+                        style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.w900,
+                            color: Colors.white)),
+                  )),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Obx(() => Row(
+                children: _ctrl.shopItems.map((item) {
+                  return Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 4),
+                      child: _ShopItemWidget(
+                        item: item,
+                        isOwned: _ctrl.ownedWeapons.contains(item.weaponType),
+                        canAfford: _ctrl.gold.value >= item.price,
+                        onBuy: () {
+                          if (_ctrl.buyWeapon(item)) {
+                            // Success feedback (maybe a sound or simple animation later)
+                          } else if (_ctrl.gold.value < item.price) {
+                            // Fail feedback
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                }).toList(),
+              )),
+        ],
       ),
     );
   }
@@ -299,32 +296,86 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                   value: _ctrl.playerSpd.value.toStringAsFixed(2),
                   color: AutoBattlePalette.gold),
               _StatChip(
-                  icon: Icons.auto_fix_high,
-                  label: 'WPN',
-                  value: '${_ctrl.playerWeaponCount.value}',
+                  icon: Icons.inventory_2,
+                  label: 'WPNs',
+                  value: '${_ctrl.ownedWeapons.length + 1}',
                   color: const Color(0xFFAA44FF)),
               _StatChip(
                   icon: Icons.change_circle,
                   label: 'REF',
                   value: '${_ctrl.playerBulletReflectCount.value}',
                   color: const Color(0xFF38BDF8)),
-              _StatChip(
-                  icon: Icons.grain,
-                  label: 'SHOT',
-                  value: '${_ctrl.playerBulletsPerWeapon.value}',
-                  color: const Color(0xFFBE123C)),
-              _StatChip(
-                  icon: Icons.radio_button_unchecked,
-                  label: 'SIZE',
-                  value: '${_ctrl.playerRadius.value.round()}',
-                  color: const Color(0xFF0F766E)),
-              _StatChip(
-                  icon: Icons.security,
-                  label: 'BAR',
-                  value: '${_ctrl.playerBarrierMaxHp.value.round()}',
-                  color: const Color(0xFF38BDF8)),
             ],
           )),
+    );
+  }
+}
+
+class _ShopItemWidget extends StatelessWidget {
+  final ShopItem item;
+  final bool isOwned;
+  final bool canAfford;
+  final VoidCallback onBuy;
+
+  const _ShopItemWidget({
+    required this.item,
+    required this.isOwned,
+    required this.canAfford,
+    required this.onBuy,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: isOwned ? null : onBuy,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: isOwned ? const Color(0xFFE2E8F0) : Colors.white,
+          border: Border.all(
+            color: isOwned ? const Color(0xFF94A3B8) : AutoBattlePalette.ink,
+            width: 3,
+          ),
+          boxShadow: isOwned
+              ? null
+              : const [
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
+                ],
+        ),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(item.icon, style: const TextStyle(fontSize: 24)),
+            const SizedBox(height: 6),
+            Text(
+              item.title,
+              style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
+                  color: AutoBattlePalette.ink),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: isOwned
+                    ? const Color(0xFF94A3B8)
+                    : (canAfford ? AutoBattlePalette.gold : const Color(0xFFEF4444)),
+                border: Border.all(color: AutoBattlePalette.ink, width: 2),
+              ),
+              child: Text(
+                isOwned ? 'OWNED' : '${item.price} G',
+                style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w900),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -365,8 +416,6 @@ class _UpgradeCardWidget extends StatelessWidget {
   final UpgradeCard card;
   final int index;
   final double width;
-  final double height;
-  final bool compact;
   final bool isHovered;
   final ValueChanged<bool> onHover;
   final VoidCallback onTap;
@@ -375,34 +424,10 @@ class _UpgradeCardWidget extends StatelessWidget {
     required this.card,
     required this.index,
     required this.width,
-    required this.height,
-    required this.compact,
     required this.isHovered,
     required this.onHover,
     required this.onTap,
   });
-
-  Color get _rarityColor {
-    switch (card.rarity) {
-      case 'epic':
-        return const Color(0xFFAA44FF);
-      case 'rare':
-        return const Color(0xFF3B82F6);
-      default:
-        return const Color(0xFF6B7280);
-    }
-  }
-
-  String get _rarityLabel {
-    switch (card.rarity) {
-      case 'epic':
-        return '★★★ EPIC';
-      case 'rare':
-        return '★★ RARE';
-      default:
-        return '★ COMMON';
-    }
-  }
 
   Color get _typeColor {
     switch (card.type) {
@@ -452,8 +477,8 @@ class _UpgradeCardWidget extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final shadowOffset = isHovered ? 10.0 : 6.0;
-    final lift = isHovered ? -4.0 : 0.0;
+    final shadowOffset = isHovered ? 8.0 : 4.0;
+    final lift = isHovered ? -3.0 : 0.0;
 
     return MouseRegion(
       onEnter: (_) => onHover(true),
@@ -461,16 +486,16 @@ class _UpgradeCardWidget extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 180),
+          duration: const Duration(milliseconds: 150),
           curve: Curves.easeOut,
           transform: Matrix4.translationValues(0, lift, 0),
           width: width,
-          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
           decoration: BoxDecoration(
             color: Colors.white,
             border: Border.all(
                 color: isHovered ? _typeColor : AutoBattlePalette.ink,
-                width: isHovered ? 5 : 4),
+                width: 3),
             boxShadow: [
               BoxShadow(
                 color: isHovered
@@ -480,99 +505,30 @@ class _UpgradeCardWidget extends StatelessWidget {
               ),
             ],
           ),
-          child: Padding(
-            padding: EdgeInsets.all(compact ? 12 : 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: compact ? 38 : 46,
-                      height: compact ? 38 : 46,
-                      decoration: BoxDecoration(
-                        color: _typeColor,
-                        border:
-                            Border.all(color: AutoBattlePalette.ink, width: 3),
-                      ),
-                      child: Icon(_typeIcon,
-                          color: Colors.white, size: compact ? 22 : 26),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _rarityLabel,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: _rarityColor,
-                              fontSize: compact ? 10 : 11,
-                              fontWeight: FontWeight.w900,
-                              letterSpacing: 1.2,
-                            ),
-                          ),
-                          Text(
-                            card.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: AutoBattlePalette.ink,
-                              fontSize: compact ? 17 : 20,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(_typeIcon, color: _typeColor, size: 32),
+              const SizedBox(height: 8),
+              Text(
+                card.title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: AutoBattlePalette.ink,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w900,
                 ),
-                SizedBox(height: compact ? 10 : 14),
-                Expanded(
-                  child: Text(
-                    card.description.replaceAll('\\n', '\n'),
-                    style: TextStyle(
-                      color: AutoBattlePalette.inkSubtle,
-                      fontSize: compact ? 12 : 14,
-                      fontWeight: FontWeight.w700,
-                      height: 1.35,
-                    ),
-                  ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                card.statPreview,
+                style: TextStyle(
+                  color: _typeColor,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w900,
                 ),
-                Container(
-                  width: double.infinity,
-                  padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 10 : 14,
-                      vertical: compact ? 8 : 10),
-                  decoration: BoxDecoration(
-                    color: _typeColor.withValues(alpha: 0.1),
-                    border: Border.all(color: _typeColor, width: 2.5),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.arrow_upward_rounded,
-                          color: _typeColor, size: compact ? 16 : 18),
-                      const SizedBox(width: 6),
-                      Flexible(
-                        child: Text(
-                          card.statPreview,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: _typeColor,
-                            fontSize: compact ? 14 : 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

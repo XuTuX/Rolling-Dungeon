@@ -133,6 +133,22 @@ const double LASER_DAMAGE = 16.0;
 const double LASER_ATTACK_DAMAGE_RATIO = 1.0;
 const double LASER_WIDTH = 1.25;
 
+// ── New Weapons ──
+const int FOOTSTEPS_DROP_MS = 120;
+const int FOOTSTEPS_DURATION_MS = 1200;
+const double FOOTSTEPS_RADIUS = 15.0;
+const double FOOTSTEPS_DAMAGE = 1.2;
+
+const int BURST_FIRE_MS = 1500;
+const int BURST_COUNT = 8;
+
+const double HEAVY_BLADE_RANGE = 95.0;
+const double HEAVY_BLADE_DAMAGE_MULT = 2.5;
+const int HEAVY_BLADE_COOLDOWN_MS = 400;
+
+const double AURA_RADIUS = 85.0;
+const double AURA_DAMAGE_TICK = 0.8;
+
 // ── Stage Scaling ──
 // Player radius scales per stage: big early, shrinks late
 const double PLAYER_RADIUS_STAGE_1 = 32.0;

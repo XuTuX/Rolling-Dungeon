@@ -4,6 +4,7 @@ import 'package:circle_war/game/auto_battle/models/game_snapshot.dart';
 import 'package:circle_war/game/auto_battle/models/player_snapshot.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
+import 'package:circle_war/game/auto_battle/engine/constants.dart';
 
 class AutoBattleGame extends FlameGame {
   GameSnapshot? _snapshot;
@@ -190,11 +191,15 @@ class AutoBattleGame extends FlameGame {
           
           final bubbleR = (r * (0.7 + rand.nextDouble() * 0.5));
           
+          final cloudColor = h.type == 'fire' 
+              ? const Color(0xFFFF922B) 
+              : AutoBattlePalette.mint;
+
           canvas.drawCircle(
             bubblePos,
             bubbleR,
             Paint()
-              ..color = AutoBattlePalette.mint.withValues(
+              ..color = cloudColor.withValues(
                 alpha: (0.15 + 0.45 * remaining) * (1.0 - (spread / (r * 0.5))),
               ),
           );
@@ -211,10 +216,7 @@ class AutoBattleGame extends FlameGame {
       }
     }
 
-    // Attacks (VFX)
-    for (final a in _snapshot!.attacks) {
-      // Ephemeral effects if any
-    }
+    // Attacks (VFX) - Placeholder for future effects
 
     // Projectiles (Bullets)
     for (final p in _snapshot!.projectiles) {
@@ -337,6 +339,25 @@ class AutoBattleGame extends FlameGame {
         );
       }
 
+      if (p.ownedWeapons.any((w) => w == 'aura')) {
+        final pulse = (math.sin(DateTime.now().millisecondsSinceEpoch / 250) * 0.5 + 0.5);
+        canvas.drawCircle(
+          pos,
+          r + AURA_RADIUS * _arenaScale,
+          Paint()
+            ..color = const Color(0xFFA855F7).withValues(alpha: 0.05 + 0.1 * pulse)
+            ..style = PaintingStyle.fill,
+        );
+        canvas.drawCircle(
+          pos,
+          r + AURA_RADIUS * _arenaScale,
+          Paint()
+            ..color = const Color(0xFFA855F7).withValues(alpha: 0.2)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2,
+        );
+      }
+
       // Weapon Decoration (Simple indicator)
       _renderWeaponDecoration(canvas, pos, r, p);
 
@@ -387,59 +408,90 @@ class AutoBattleGame extends FlameGame {
     }
 
     final angle = _weaponAngle(player);
-    if (player.characterType == 'blade') {
-      canvas.save();
-      canvas.translate(pos.dx, pos.dy);
-      canvas.rotate(angle);
+    final weaponTypes = player.ownedWeapons.isEmpty 
+        ? [player.characterType] 
+        : player.ownedWeapons;
 
-      canvas.drawLine(
-        Offset(r * 0.42, 0),
-        Offset(r * 1.62, 0),
-        Paint()
-          ..color = const Color(0xFF92400E)
-          ..strokeWidth = 6 * _arenaScale
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawLine(Offset(r * 0.42, 0), Offset(r * 1.62, 0), ink);
-      canvas.restore();
-    } else if (player.characterType == 'miner') {
-      final weaponCount = math.max(1, player.weaponCount);
-      final baseAngle = _weaponAngle(player);
-      for (int i = 0; i < weaponCount; i++) {
-        final a = baseAngle + math.pi * 2 * i / weaponCount;
-        final minePos =
-            pos + Offset(math.cos(a) * (r + 10), math.sin(a) * (r + 10));
-        canvas.drawCircle(
-          minePos,
-          8 * _arenaScale,
-          Paint()..color = const Color(0xFFEF4444),
-        );
-        canvas.drawCircle(minePos, 8 * _arenaScale, ink);
-      }
-    } else if (player.characterType == 'poison') {
-      final rear = angle + math.pi;
-      final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
-      canvas.drawLine(
-        pos + Offset(math.cos(rear) * r * 0.35, math.sin(rear) * r * 0.35),
-        nozzle,
-        Paint()
-          ..color = AutoBattlePalette.mint
-          ..strokeWidth = 5 * _arenaScale
-          ..strokeCap = StrokeCap.round,
-      );
-      canvas.drawCircle(nozzle, 4 * _arenaScale, ink);
-      for (var i = 0; i < 4; i++) {
-        final dist = (r * 1.15) + i * 4 * _arenaScale;
-        final side = (i - 1.5) * 3 * _arenaScale;
-        final bubble =
-            nozzle + Offset(math.cos(rear) * dist, math.sin(rear) * dist);
-        canvas.drawCircle(
-          bubble + Offset(-math.sin(rear) * side, math.cos(rear) * side),
-          2.2 * _arenaScale,
-          Paint()..color = AutoBattlePalette.mint.withValues(alpha: 0.7),
-        );
+    for (int i = 0; i < weaponTypes.length; i++) {
+      final wType = weaponTypes[i];
+      final wAngle = angle + (math.pi * 2 * i / weaponTypes.length);
+      
+      switch (wType) {
+        case 'blade':
+          _renderBlade(canvas, pos, r, wAngle, ink, false);
+          break;
+        case 'heavy_blade':
+          _renderBlade(canvas, pos, r, wAngle, ink, true);
+          break;
+        case 'miner':
+          _renderMiner(canvas, pos, r, wAngle, ink);
+          break;
+        case 'poison':
+          _renderPoisonNozzle(canvas, pos, r, wAngle, ink);
+          break;
+        case 'footsteps':
+          _renderFootstepsDecoration(canvas, pos, r, wAngle, ink);
+          break;
+        case 'minigun':
+        case 'burst':
+          _renderGunDecoration(canvas, pos, r, wAngle, ink, isMinigun: true);
+          break;
+        case 'long_gun':
+        case 'ricochet':
+        case 'gunner':
+          _renderGunDecoration(canvas, pos, r, wAngle, ink);
+          break;
       }
     }
+  }
+
+  void _renderBlade(Canvas canvas, Offset pos, double r, double angle, Paint ink, bool isHeavy) {
+    canvas.save();
+    canvas.translate(pos.dx, pos.dy);
+    canvas.rotate(angle);
+    final rangeMult = isHeavy ? 1.5 : 1.0;
+    
+    canvas.drawLine(
+      Offset(r * 0.42, 0),
+      Offset(r * 1.62 * rangeMult, 0),
+      Paint()
+        ..color = isHeavy ? const Color(0xFF475569) : const Color(0xFF92400E)
+        ..strokeWidth = (isHeavy ? 10 : 6) * _arenaScale
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawLine(Offset(r * 0.42, 0), Offset(r * 1.62 * rangeMult, 0), ink);
+    canvas.restore();
+  }
+
+  void _renderMiner(Canvas canvas, Offset pos, double r, double angle, Paint ink) {
+    final minePos = pos + Offset(math.cos(angle) * (r + 10), math.sin(angle) * (r + 10));
+    canvas.drawCircle(minePos, 8 * _arenaScale, Paint()..color = const Color(0xFFEF4444));
+    canvas.drawCircle(minePos, 8 * _arenaScale, ink);
+  }
+
+  void _renderPoisonNozzle(Canvas canvas, Offset pos, double r, double angle, Paint ink) {
+    final rear = angle + math.pi;
+    final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
+    canvas.drawLine(
+      pos + Offset(math.cos(rear) * r * 0.35, math.sin(rear) * r * 0.35),
+      nozzle,
+      Paint()
+        ..color = AutoBattlePalette.mint
+        ..strokeWidth = 5 * _arenaScale
+        ..strokeCap = StrokeCap.round,
+    );
+    canvas.drawCircle(nozzle, 4 * _arenaScale, ink);
+  }
+
+  void _renderFootstepsDecoration(Canvas canvas, Offset pos, double r, double angle, Paint ink) {
+    final rear = angle + math.pi;
+    final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
+    canvas.drawCircle(
+      nozzle, 
+      6 * _arenaScale, 
+      Paint()..color = const Color(0xFFFF922B)
+    );
+    canvas.drawCircle(nozzle, 6 * _arenaScale, ink);
   }
 
   void _renderGunDecoration(
@@ -447,15 +499,19 @@ class AutoBattleGame extends FlameGame {
     Offset pos,
     double r,
     double angle,
-    Paint ink,
-  ) {
+    Paint ink, {
+    bool isMinigun = false,
+  }) {
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
     canvas.rotate(angle);
 
     // Simplified Gun - Just a sturdy circle barrel
-    final gunRect = Rect.fromLTWH(r * 0.7, -r * 0.2, r * 0.8, r * 0.4);
-    canvas.drawOval(gunRect, Paint()..color = const Color(0xFF64748B));
+    final gunWidth = isMinigun ? r * 0.5 : r * 0.8;
+    final gunHeight = isMinigun ? r * 0.3 : r * 0.4;
+    final gunRect = Rect.fromLTWH(r * 0.7, -gunHeight / 2, gunWidth, gunHeight);
+    canvas.drawOval(
+        gunRect, Paint()..color = isMinigun ? const Color(0xFF475569) : const Color(0xFF64748B));
     canvas.drawOval(gunRect, ink);
 
     // Tip detail
@@ -471,7 +527,7 @@ class AutoBattleGame extends FlameGame {
   Color _colorFromHex(String hex, {required Color fallback}) {
     final normalized = hex.replaceAll('#', '');
     final value = normalized.length == 6 ? 'FF$normalized' : normalized;
-    return Color(int.tryParse(value, radix: 16) ?? fallback.value);
+    return Color(int.tryParse(value, radix: 16) ?? fallback.toARGB32());
   }
 
   double _weaponAngle(PlayerSnapshot player) {

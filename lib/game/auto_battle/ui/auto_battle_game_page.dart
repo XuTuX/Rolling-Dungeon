@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:circle_war/game/auto_battle/auto_battle_game.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/models/game_snapshot.dart';
@@ -6,6 +7,7 @@ import 'package:circle_war/game/auto_battle/services/local_game_service.dart';
 import 'package:circle_war/game/auto_battle/engine/types.dart';
 import 'package:circle_war/game/auto_battle/engine/physics.dart';
 import 'package:circle_war/controllers/game_progress_controller.dart';
+import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -517,6 +519,8 @@ class _SketchSidebar extends StatelessWidget {
             itemBuilder: (context, i) {
               final p = sorted[i];
               final isMe = p.id == myId;
+              final now = DateTime.now().millisecondsSinceEpoch;
+
               return Container(
                 padding: EdgeInsets.all(compact ? 9 : 12),
                 decoration: BoxDecoration(
@@ -551,6 +555,7 @@ class _SketchSidebar extends StatelessWidget {
                       ],
                     ),
                     SizedBox(height: compact ? 6 : 8),
+                    // HP Bar
                     Container(
                       height: compact ? 10 : 12,
                       decoration: BoxDecoration(
@@ -564,6 +569,24 @@ class _SketchSidebar extends StatelessWidget {
                         child: Container(color: p.flutterColor),
                       ),
                     ),
+                    if (isMe) ...[
+                      const SizedBox(height: 8),
+                      // Weapons & Status
+                      Wrap(
+                        spacing: 6,
+                        runSpacing: 6,
+                        children: (p.ownedWeapons.isEmpty
+                                ? [p.characterType]
+                                : p.ownedWeapons)
+                            .map((w) => _WeaponStatusIcon(
+                                  weapon: w,
+                                  player: p,
+                                  now: now,
+                                  compact: compact,
+                                ))
+                            .toList(),
+                      ),
+                    ],
                   ],
                 ),
               );
@@ -572,5 +595,137 @@ class _SketchSidebar extends StatelessWidget {
         ),
       ],
     );
+  }
+}
+class _WeaponStatusIcon extends StatelessWidget {
+  final String weapon;
+  final PlayerSnapshot player;
+  final int now;
+  final bool compact;
+
+  const _WeaponStatusIcon({
+    required this.weapon,
+    required this.player,
+    required this.now,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final info = _getWeaponInfo(weapon);
+    final bool isPersistent = info['persistent'] == true;
+    final int lastAction = _getLastActionTime(weapon, player);
+    final double cooldownMs = _getCooldownMs(weapon).toDouble();
+
+    // Calculate remaining time for countdown
+    final elapsed = now - lastAction;
+    final remaining = math.max(0.0, (cooldownMs - elapsed) / 1000.0);
+    final progress = (elapsed / cooldownMs).clamp(0.0, 1.0);
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(info['icon'] ?? '?', style: const TextStyle(fontSize: 14)),
+          if (!isPersistent && remaining > 0) ...[
+            const SizedBox(width: 4),
+            SizedBox(
+              width: 16,
+              height: 16,
+              child: CircularProgressIndicator(
+                value: progress,
+                strokeWidth: 2,
+                color: AutoBattlePalette.ink,
+                backgroundColor: AutoBattlePalette.ink.withValues(alpha: 0.1),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              '${remaining.toStringAsFixed(1)}s',
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                color: AutoBattlePalette.ink,
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _getWeaponInfo(String type) {
+    switch (type) {
+      case 'minigun':
+        return {'icon': '🔫', 'persistent': false};
+      case 'long_gun':
+        return {'icon': '🚀', 'persistent': false};
+      case 'poison':
+        return {'icon': '☣️', 'persistent': true};
+      case 'blade':
+        return {'icon': '⚔️', 'persistent': true};
+      case 'heavy_blade':
+        return {'icon': '🗡️', 'persistent': true};
+      case 'miner':
+        return {'icon': '💣', 'persistent': false};
+      case 'footsteps':
+        return {'icon': '👣', 'persistent': true};
+      case 'burst':
+        return {'icon': '💢', 'persistent': false};
+      case 'ricochet':
+        return {'icon': '✨', 'persistent': false};
+      case 'aura':
+        return {'icon': '🌀', 'persistent': true};
+      case 'gunner':
+      default:
+        return {'icon': '🔫', 'persistent': false};
+    }
+  }
+
+  int _getLastActionTime(String type, PlayerSnapshot p) {
+    switch (type) {
+      case 'poison':
+      case 'footsteps':
+        return p.lastPoisonDropAt;
+      case 'blade':
+      case 'heavy_blade':
+        return p.lastBladeAt;
+      case 'miner':
+        return p.lastMineDropAt;
+      case 'minigun':
+      case 'long_gun':
+      case 'ricochet':
+      case 'burst':
+      case 'gunner':
+      default:
+        return p.lastShotAt;
+    }
+  }
+
+  int _getCooldownMs(String type) {
+    switch (type) {
+      case 'minigun':
+        return (WEAPON_FIRE_INTERVAL_MS * 0.4).round();
+      case 'long_gun':
+        return (WEAPON_FIRE_INTERVAL_MS * 1.8).round();
+      case 'burst':
+        return BURST_FIRE_MS;
+      case 'miner':
+        return MINER_DROP_MS;
+      case 'poison':
+        return POISON_DROP_MS;
+      case 'footsteps':
+        return FOOTSTEPS_DROP_MS;
+      case 'ricochet':
+      case 'gunner':
+      default:
+        return WEAPON_FIRE_INTERVAL_MS;
+    }
   }
 }

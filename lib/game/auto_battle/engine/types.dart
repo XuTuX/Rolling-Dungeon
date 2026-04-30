@@ -9,9 +9,9 @@ class Vec2 {
 
 class ActiveEffect {
   String type;
-  int durationMs;
+  int expiresAt;
 
-  ActiveEffect({required this.type, required this.durationMs});
+  ActiveEffect({required this.type, required this.expiresAt});
 }
 
 class UpgradeOptionData {
@@ -70,6 +70,7 @@ class PlayerData {
   int lives;
   int maxLives;
 
+  List<String> ownedWeapons;
   Map<String, int> lastCollisionAt;
   int lastPoisonDropAt;
   int lastShotAt;
@@ -112,6 +113,7 @@ class PlayerData {
     required this.vel,
     required this.radius,
     required this.activeEffects,
+    this.ownedWeapons = const [],
     required this.color,
     required this.alive,
     required this.lives,
@@ -153,6 +155,7 @@ class ProjectileData {
   double radius;
   String color;
   int reflectsRemaining;
+  double damageMult;
 
   ProjectileData({
     required this.id,
@@ -162,6 +165,7 @@ class ProjectileData {
     required this.radius,
     required this.color,
     this.reflectsRemaining = 0,
+    this.damageMult = 1.0,
   });
 }
 

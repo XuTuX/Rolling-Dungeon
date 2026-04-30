@@ -418,23 +418,44 @@ class GameEngine {
       if (player.isEnemy) {
         _handleEnemyAbility(player, now);
       } else {
-        switch (player.characterType) {
-          case 'miner':
-            player.targetAngle = _movementAngle(player);
-            _dropMine(player, now);
-            break;
-          case 'poison':
-            player.targetAngle = _movementAngle(player);
-            _dropPoison(player, now);
-            break;
-          case 'blade':
-            player.targetAngle = _rotatingWeaponAngle(player, now);
-            _checkBladeCollision(player, now);
-            break;
-          default:
-            player.targetAngle = _rotatingWeaponAngle(player, now);
-            _fireBullet(player, now);
-            break;
+        final weapons = player.ownedWeapons.isEmpty
+            ? [player.characterType]
+            : player.ownedWeapons;
+
+        for (final weapon in weapons) {
+          switch (weapon) {
+            case 'miner':
+              _dropMine(player, now);
+              break;
+            case 'poison':
+              _dropPoison(player, now);
+              break;
+            case 'footsteps':
+              _dropFootsteps(player, now);
+              break;
+            case 'aura':
+              _applyAura(player, now);
+              break;
+            case 'blade':
+            case 'heavy_blade':
+              player.targetAngle = _rotatingWeaponAngle(player, now);
+              _checkBladeCollision(player, now, weapon == 'heavy_blade');
+              break;
+            case 'burst':
+              _fireBurst(player, now);
+              break;
+            case 'minigun':
+              player.targetAngle = _rotatingWeaponAngle(player, now);
+              _fireBullet(player, now, weaponType: weapon, spread: 0.15);
+              break;
+            case 'long_gun':
+            case 'ricochet':
+            case 'gunner':
+            default:
+              player.targetAngle = _rotatingWeaponAngle(player, now);
+              _fireBullet(player, now, weaponType: weapon);
+              break;
+          }
         }
       }
     }
@@ -461,8 +482,24 @@ class GameEngine {
     }
   }
 
-  void _fireBullet(PlayerData player, int now) {
-    final cooldown = _getAbilityCooldown(player, WEAPON_FIRE_INTERVAL_MS);
+  void _fireBullet(PlayerData player, int now, {String weaponType = 'gunner', double spread = 0.0}) {
+    int baseFireInterval = WEAPON_FIRE_INTERVAL_MS;
+    double damageMult = 1.0;
+    double bulletRad = BULLET_RADIUS;
+    int extraReflects = 0;
+
+    if (weaponType == 'minigun') {
+      baseFireInterval = (WEAPON_FIRE_INTERVAL_MS * 0.4).round();
+      damageMult = 0.5;
+    } else if (weaponType == 'long_gun') {
+      baseFireInterval = (WEAPON_FIRE_INTERVAL_MS * 1.8).round();
+      damageMult = 2.5;
+      bulletRad = BULLET_RADIUS * 2.0;
+    } else if (weaponType == 'ricochet') {
+      extraReflects = 3;
+    }
+
+    final cooldown = _getAbilityCooldown(player, baseFireInterval);
     if (now - player.lastShotAt < cooldown) return;
     if (!players.any((other) => other.alive && other.id != player.id)) return;
     player.lastShotAt = now;
@@ -471,16 +508,19 @@ class GameEngine {
     player.targetAngle = baseAngle;
     final weaponCount = math.max(1, player.weaponCount);
     final bulletsPerWeapon = math.max(1, player.bulletsPerWeapon);
-    const bulletRadius = BULLET_RADIUS;
     final muzzleDist = player.radius + WEAPON_LENGTH + MUZZLE_OFFSET_EXTRA;
 
     for (int i = 0; i < weaponCount; i++) {
       final weaponAngle = baseAngle + math.pi * 2 * i / weaponCount;
-      final spread = (bulletsPerWeapon - 1) * BULLET_BURST_SPREAD_RADIANS;
+      final spreadRange = (bulletsPerWeapon - 1) * BULLET_BURST_SPREAD_RADIANS;
       for (int shot = 0; shot < bulletsPerWeapon; shot++) {
+        final jitter = (spread > 0) ? (_rand.nextDouble() - 0.5) * spread : 0.0;
         final angle = bulletsPerWeapon == 1
-            ? weaponAngle
-            : weaponAngle - spread / 2 + spread * shot / (bulletsPerWeapon - 1);
+            ? weaponAngle + jitter
+            : weaponAngle -
+                spreadRange / 2 +
+                spreadRange * shot / (bulletsPerWeapon - 1) +
+                jitter;
         final direction = Vec2(x: math.cos(angle), y: math.sin(angle));
         final spawnPos = Vec2(
           x: player.pos.x + direction.x * muzzleDist,
@@ -492,10 +532,68 @@ class GameEngine {
           ownerId: player.id,
           pos: spawnPos,
           vel: direction,
-          radius: bulletRadius,
+          radius: bulletRad,
           color: player.color,
-          reflectsRemaining: player.bulletReflectCount,
+          reflectsRemaining: player.bulletReflectCount + extraReflects,
+          damageMult: damageMult,
         ));
+      }
+    }
+  }
+
+  void _fireBurst(PlayerData player, int now) {
+    final cooldown = _getAbilityCooldown(player, BURST_FIRE_MS);
+    if (now - player.lastShotAt < cooldown) return;
+    player.lastShotAt = now;
+    player.lastAttackAt = now;
+
+    for (int i = 0; i < BURST_COUNT; i++) {
+      final angle = (math.pi * 2 * i) / BURST_COUNT;
+      final direction = Vec2(x: math.cos(angle), y: math.sin(angle));
+      final muzzleDist = player.radius + 5;
+      final spawnPos = Vec2(
+        x: player.pos.x + direction.x * muzzleDist,
+        y: player.pos.y + direction.y * muzzleDist,
+      );
+
+      projectiles.add(ProjectileData(
+        id: _nextId('burst'),
+        ownerId: player.id,
+        pos: spawnPos,
+        vel: direction,
+        radius: BULLET_RADIUS * 0.8,
+        color: '#FFEB3B', // Yellow burst
+        reflectsRemaining: 0,
+      ));
+    }
+  }
+
+  void _dropFootsteps(PlayerData player, int now) {
+    if (now - player.lastPoisonDropAt < FOOTSTEPS_DROP_MS) return;
+    if (player.vel.x.abs() + player.vel.y.abs() < 0.1) return;
+    player.lastPoisonDropAt = now;
+
+    hazards.add(HazardData(
+      id: _nextId('fire'),
+      ownerId: player.id,
+      type: 'fire',
+      pos: Vec2(x: player.pos.x, y: player.pos.y),
+      radius: FOOTSTEPS_RADIUS,
+      expiresAt: now + FOOTSTEPS_DURATION_MS,
+      lastDamageAt: {},
+    ));
+  }
+
+  void _applyAura(PlayerData player, int now) {
+    // Auras don't have a drop interval, they tick every frame
+    final owner = player;
+    for (final target in players) {
+      if (!target.alive || target.id == player.id) continue;
+      if (target.isEnemy == player.isEnemy) continue;
+      
+      if (distance(target.pos, player.pos) <= player.radius + AURA_RADIUS) {
+        // Ticking damage
+        _dealDamage(owner, target, AURA_DAMAGE_TICK * (TICK_MS / 1000));
       }
     }
   }
@@ -579,10 +677,13 @@ class GameEngine {
     }
   }
 
-  void _checkBladeCollision(PlayerData player, int now) {
+  void _checkBladeCollision(PlayerData player, int now, bool isHeavy) {
     final weaponCount = math.max(1, player.weaponCount);
     final baseAngle = player.targetAngle;
-    final visualRange = player.radius * 1.6; // Align with visual spear length
+    final rangeMult = isHeavy ? 1.5 : 1.0;
+    final visualRange = player.radius * 1.6 * rangeMult;
+    final dmgMult = isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0;
+    final cooldown = isHeavy ? HEAVY_BLADE_COOLDOWN_MS : BLADE_CONTACT_DAMAGE_MS;
 
     for (int i = 0; i < weaponCount; i++) {
       final angle = baseAngle + math.pi * 2 * i / weaponCount;
@@ -604,15 +705,15 @@ class GameEngine {
         // Damage cooldown per enemy for this specific blade
         final hitKey = 'blade:${player.id}:$i';
         final lastHit = enemy.lastCollisionAt[hitKey] ?? 0;
-        if (now - lastHit < BLADE_CONTACT_DAMAGE_MS) continue;
+        if (now - lastHit < cooldown) continue;
 
         final hitDistance = _distancePointToSegment(enemy.pos, bladeStart, bladeEnd);
-        if (hitDistance <= enemy.radius + BLADE_CONTACT_WIDTH) {
+        if (hitDistance <= enemy.radius + BLADE_CONTACT_WIDTH * (isHeavy ? 2.0 : 1.0)) {
           enemy.lastCollisionAt[hitKey] = now;
           _dealDamage(
             player,
             enemy,
-            BASE_ATK + player.atk * 0.8, // Slightly lower damage since it's continuous
+            (BASE_ATK + player.atk * 0.8) * dmgMult,
           );
         }
       }
@@ -686,9 +787,9 @@ class GameEngine {
             orElse: () => null,
           );
       if (target == null) continue;
-      final damage = owner.isEnemy
+      final damage = (owner.isEnemy
           ? ENEMY_BULLET_DAMAGE
-          : BASE_BULLET_DAMAGE + owner.atk * BULLET_ATTACK_DAMAGE_RATIO;
+          : BASE_BULLET_DAMAGE + owner.atk * BULLET_ATTACK_DAMAGE_RATIO) * p.damageMult;
       _dealDamage(owner, target, damage);
       projectiles.removeAt(i);
     }
@@ -878,20 +979,6 @@ class GameEngine {
     return normalized < 0 ? normalized + fullTurn : normalized;
   }
 
-  PlayerData? _findNearestOpponent(PlayerData player, double range) {
-    PlayerData? best;
-    var bestDistance = range;
-    for (final other in players) {
-      if (!other.alive || other.id == player.id) continue;
-      if (other.isEnemy == player.isEnemy) continue;
-      final d = distance(player.pos, other.pos);
-      if (d >= bestDistance) continue;
-      bestDistance = d;
-      best = other;
-    }
-    return best;
-  }
-
   double _distancePointToSegment(Vec2 point, Vec2 start, Vec2 end) {
     final dx = end.x - start.x;
     final dy = end.y - start.y;
@@ -970,8 +1057,19 @@ class GameEngine {
                 alive: p.alive,
                 lives: p.lives,
                 maxLives: p.maxLives,
+                ownedWeapons: p.ownedWeapons,
+                lastPoisonDropAt: p.lastPoisonDropAt,
+                lastShotAt: p.lastShotAt,
+                lastBladeAt: p.lastBladeAt,
+                lastMineDropAt: p.lastMineDropAt,
                 lastAttackAt: p.lastAttackAt,
                 targetAngle: p.targetAngle,
+                activeEffects: p.activeEffects
+                    .map((e) => ActiveEffectSnapshot(
+                          type: e.type,
+                          expiresAt: e.expiresAt,
+                        ))
+                    .toList(),
               ))
           .toList(),
       foods: foods

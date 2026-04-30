@@ -21,6 +21,24 @@ class UpgradeCard {
   });
 }
 
+class ShopItem {
+  final String id;
+  final String title;
+  final String description;
+  final int price;
+  final String weaponType;
+  final String icon;
+
+  const ShopItem({
+    required this.id,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.weaponType,
+    required this.icon,
+  });
+}
+
 class GameProgressController extends GetxController {
   // ── Run State ──
   var currentStage = 1.obs;
@@ -48,7 +66,10 @@ class GameProgressController extends GetxController {
   var playerBarrierMaxHp = 0.0.obs;
 
   // ── Character Type ──
+  // ── Character Type & Weapons ──
   var characterType = 'none'.obs; // 'gunner', 'blade', 'miner', 'poison'
+  final ownedWeapons = <String>[].obs;
+  final shopItems = <ShopItem>[].obs;
 
   // ── Upgrade history for display ──
   final appliedUpgrades = <String>[].obs;
@@ -64,6 +85,8 @@ class GameProgressController extends GetxController {
     lives.value = 3;
     gold.value = 0;
     appliedUpgrades.clear();
+    ownedWeapons.clear();
+    shopItems.clear();
 
     characterType.value =
         selectedCharacter == 'none' ? 'gunner' : selectedCharacter;
@@ -292,5 +315,98 @@ class GameProgressController extends GetxController {
         break;
     }
     appliedUpgrades.add(card.type);
+  }
+
+  // ───────────────────────────────────────────
+  //  Shop Logic
+  // ───────────────────────────────────────────
+  void generateShopItems() {
+    final allWeapons = [
+      const ShopItem(
+          id: 'minigun',
+          title: '미니건',
+          description: '빠른 연사 속도로 적을 압도합니다.',
+          price: 150,
+          weaponType: 'minigun',
+          icon: '🔫'),
+      const ShopItem(
+          id: 'long_gun',
+          title: '장거리 포',
+          description: '느리지만 강력한 대구경 탄환을 발사합니다.',
+          price: 200,
+          weaponType: 'long_gun',
+          icon: '🚀'),
+      const ShopItem(
+          id: 'poison_gun',
+          title: '독 가스 분무기',
+          description: '지나가는 자리에 치명적인 독구름을 남깁니다.',
+          price: 180,
+          weaponType: 'poison',
+          icon: '☣️'),
+      const ShopItem(
+          id: 'blade_master',
+          title: '회전 칼날',
+          description: '공 주변을 회전하며 근접한 적을 베어버립니다.',
+          price: 220,
+          weaponType: 'blade',
+          icon: '⚔️'),
+      const ShopItem(
+          id: 'mine_layer',
+          title: '지뢰 매설기',
+          description: '뒤쪽으로 강력한 폭발 지뢰를 투척합니다.',
+          price: 170,
+          weaponType: 'miner',
+          icon: '💣'),
+      const ShopItem(
+          id: 'footsteps',
+          title: '불타는 발자국',
+          description: '지나간 자리에 불꽃 자취를 남겨 지속 피해를 줍니다.',
+          price: 190,
+          weaponType: 'footsteps',
+          icon: '👣'),
+      const ShopItem(
+          id: 'burst_gun',
+          title: '전방위 버스트',
+          description: '사방으로 퍼지는 탄환을 발사합니다.',
+          price: 250,
+          weaponType: 'burst',
+          icon: '💢'),
+      const ShopItem(
+          id: 'heavy_blade',
+          title: '거대 대검',
+          description: '매우 크고 강력한 칼날이 천천히 회전합니다.',
+          price: 280,
+          weaponType: 'heavy_blade',
+          icon: '🗡️'),
+      const ShopItem(
+          id: 'ricochet',
+          title: '도탄 사격',
+          description: '벽에 여러 번 튕기는 특수 탄환을 사용합니다.',
+          price: 210,
+          weaponType: 'ricochet',
+          icon: '✨'),
+      const ShopItem(
+          id: 'aura',
+          title: '수호자의 오라',
+          description: '주변의 적에게 지속적인 피해를 주는 영역을 생성합니다.',
+          price: 300,
+          weaponType: 'aura',
+          icon: '🌀'),
+    ];
+
+    // Filter out already owned weapons
+    final available =
+        allWeapons.where((w) => !ownedWeapons.contains(w.weaponType)).toList();
+    available.shuffle(_rand);
+    shopItems.value = available.take(2).toList();
+  }
+
+  bool buyWeapon(ShopItem item) {
+    if (gold.value >= item.price && !ownedWeapons.contains(item.weaponType)) {
+      gold.value -= item.price;
+      ownedWeapons.add(item.weaponType);
+      return true;
+    }
+    return false;
   }
 }
