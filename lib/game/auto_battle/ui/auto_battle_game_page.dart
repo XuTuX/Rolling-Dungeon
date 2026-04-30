@@ -64,6 +64,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       vel: normalize(Vec2(x: 1, y: 0.1)),
       radius: controller.playerRadius.value,
       activeEffects: [],
+      ownedWeapons: List<String>.from(controller.ownedWeapons),
       color: '#4F8CFF',
       alive: true,
       lives: controller.lives.value,
@@ -575,9 +576,11 @@ class _SketchSidebar extends StatelessWidget {
                       Wrap(
                         spacing: 6,
                         runSpacing: 6,
-                        children: (p.ownedWeapons.isEmpty
-                                ? [p.characterType]
-                                : p.ownedWeapons)
+                        children: [
+                          p.characterType,
+                          ...p.ownedWeapons
+                              .where((weapon) => weapon != p.characterType),
+                        ]
                             .map((w) => _WeaponStatusIcon(
                                   weapon: w,
                                   player: p,
@@ -597,6 +600,7 @@ class _SketchSidebar extends StatelessWidget {
     );
   }
 }
+
 class _WeaponStatusIcon extends StatelessWidget {
   final String weapon;
   final PlayerSnapshot player;

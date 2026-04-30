@@ -43,9 +43,9 @@ void updatePosition(PlayerData player, double dtMs) {
 void handleWallCollision(PlayerData player) {
   if (!player.alive) return;
 
-  final centerX = ARENA_WIDTH / 2;
-  final centerY = ARENA_HEIGHT / 2;
-  final radius = (ARENA_WIDTH / 2) - 10.0; // Margin from the edge
+  const centerX = ARENA_WIDTH / 2;
+  const centerY = ARENA_HEIGHT / 2;
+  const radius = (ARENA_WIDTH / 2) - 10.0; // Margin from the edge
   final playerRadius = player.radius;
 
   // The distance from the center to each edge of a regular hexagon
@@ -67,7 +67,7 @@ void handleWallCollision(PlayerData player) {
     final projection = dx * nx + dy * ny;
 
     if (projection > limit) {
-      // Collision detected! 
+      // Collision detected!
       // 1. Push back
       final overlap = projection - limit;
       player.pos.x -= nx * overlap;
@@ -76,7 +76,8 @@ void handleWallCollision(PlayerData player) {
       // 2. Reflect velocity (Elastic bounce)
       // v_new = v - 2 * (v dot n) * n
       final dot = player.vel.x * nx + player.vel.y * ny;
-      if (dot > 0) { // Only reflect if moving towards the wall
+      if (dot > 0) {
+        // Only reflect if moving towards the wall
         player.vel.x -= 2 * dot * nx;
         player.vel.y -= 2 * dot * ny;
       }
@@ -84,6 +85,68 @@ void handleWallCollision(PlayerData player) {
   }
 
   player.vel = normalize(player.vel);
+}
+
+/// ⬢ Projectile Hexagonal Wall Collision
+/// Returns true if hit wall and reflected.
+bool handleProjectileHexWallCollision(ProjectileData p) {
+  const centerX = ARENA_WIDTH / 2;
+  const centerY = ARENA_HEIGHT / 2;
+  const radius = (ARENA_WIDTH / 2) - 10.0;
+  final limit = radius * math.cos(math.pi / 6);
+
+  bool hit = false;
+  for (int i = 0; i < 6; i++) {
+    final angle = i * math.pi / 3 + math.pi / 6;
+    final nx = math.cos(angle);
+    final ny = math.sin(angle);
+
+    final dx = p.pos.x - centerX;
+    final dy = p.pos.y - centerY;
+    final projection = dx * nx + dy * ny;
+
+    if (projection > limit) {
+      // Hit!
+      final overlap = projection - limit;
+      p.pos.x -= nx * overlap;
+      p.pos.y -= ny * overlap;
+
+      final dot = p.vel.x * nx + p.vel.y * ny;
+      if (dot > 0) {
+        p.vel.x -= 2 * dot * nx;
+        p.vel.y -= 2 * dot * ny;
+        hit = true;
+      }
+    }
+  }
+  return hit;
+}
+
+/// Helper to ensure objects stay inside the hex
+Vec2 clampToHexagon(Vec2 pos, double margin) {
+  const centerX = ARENA_WIDTH / 2.0;
+  const centerY = ARENA_HEIGHT / 2.0;
+  const radius = (ARENA_WIDTH / 2.0) - 10.0;
+  final limit = radius * math.cos(math.pi / 6) - margin;
+
+  var out = Vec2(x: pos.x, y: pos.y);
+
+  for (int i = 0; i < 6; i++) {
+    final angle = i * math.pi / 3 + math.pi / 6;
+    final nx = math.cos(angle);
+    final ny = math.sin(angle);
+
+    final dx = out.x - centerX;
+    final dy = out.y - centerY;
+    final projection = dx * nx + dy * ny;
+
+    if (projection > limit) {
+      final overlap = projection - limit;
+      out.x -= nx * overlap;
+      out.y -= ny * overlap;
+    }
+  }
+  return out;
 }
 
 bool checkCircleCollision(PlayerData a, PlayerData b) {
@@ -133,13 +196,17 @@ void resolveCircleCollision(PlayerData a, PlayerData b) {
   handleWallCollision(b);
 }
 
-bool checkLineCircleCollision(Vec2 start, Vec2 end, Vec2 circleCenter, double radius) {
+bool checkLineCircleCollision(
+    Vec2 start, Vec2 end, Vec2 circleCenter, double radius) {
   final dx = end.x - start.x;
   final dy = end.y - start.y;
   final lengthSquared = dx * dx + dy * dy;
   if (lengthSquared == 0) return distance(start, circleCenter) <= radius;
 
-  final t = (((circleCenter.x - start.x) * dx + (circleCenter.y - start.y) * dy) / lengthSquared).clamp(0.0, 1.0);
+  final t =
+      (((circleCenter.x - start.x) * dx + (circleCenter.y - start.y) * dy) /
+              lengthSquared)
+          .clamp(0.0, 1.0);
   final projection = Vec2(
     x: start.x + dx * t,
     y: start.y + dy * t,
@@ -147,7 +214,8 @@ bool checkLineCircleCollision(Vec2 start, Vec2 end, Vec2 circleCenter, double ra
   return distance(projection, circleCenter) <= radius;
 }
 
-void resolveWeaponCollision(PlayerData attacker, PlayerData victim, Vec2 wStart, Vec2 wEnd) {
+void resolveWeaponCollision(
+    PlayerData attacker, PlayerData victim, Vec2 wStart, Vec2 wEnd) {
   if (!attacker.alive || !victim.alive) return;
 
   final dx = wEnd.x - wStart.x;
@@ -155,7 +223,9 @@ void resolveWeaponCollision(PlayerData attacker, PlayerData victim, Vec2 wStart,
   final lengthSq = dx * dx + dy * dy;
   if (lengthSq == 0) return;
 
-  final t = (((victim.pos.x - wStart.x) * dx + (victim.pos.y - wStart.y) * dy) / lengthSq).clamp(0.0, 1.0);
+  final t = (((victim.pos.x - wStart.x) * dx + (victim.pos.y - wStart.y) * dy) /
+          lengthSq)
+      .clamp(0.0, 1.0);
   final closest = Vec2(
     x: wStart.x + dx * t,
     y: wStart.y + dy * t,
@@ -167,11 +237,11 @@ void resolveWeaponCollision(PlayerData attacker, PlayerData victim, Vec2 wStart,
   if (overlap > 0) {
     final nx = (victim.pos.x - closest.x) / (dist == 0 ? 0.001 : dist);
     final ny = (victim.pos.y - closest.y) / (dist == 0 ? 0.001 : dist);
-    
+
     // Push the victim away from the weapon
     victim.pos.x += nx * overlap;
     victim.pos.y += ny * overlap;
-    
+
     // Transfer some momentum
     victim.vel.x += nx * 0.12;
     victim.vel.y += ny * 0.12;

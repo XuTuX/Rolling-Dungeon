@@ -90,6 +90,11 @@ class GameEngine {
       player.lastBladeAt = now;
       player.lastMineDropAt = now;
       player.lastAttackAt = now;
+      if (!player.isEnemy) {
+        for (final weapon in _activeWeaponsFor(player)) {
+          player.lastCollisionAt['weapon:$weapon'] = now;
+        }
+      }
     }
   }
 
@@ -408,8 +413,9 @@ class GameEngine {
       }
     }
 
-    if (fallback != null) return fallback;
-    return Vec2(x: ARENA_WIDTH - radius, y: ARENA_HEIGHT / 2);
+    if (fallback != null) return clampToHexagon(fallback, radius);
+    return clampToHexagon(
+        Vec2(x: ARENA_WIDTH - radius, y: ARENA_HEIGHT / 2), radius);
   }
 
   void _handleAbilities(int now) {
@@ -418,9 +424,7 @@ class GameEngine {
       if (player.isEnemy) {
         _handleEnemyAbility(player, now);
       } else {
-        final weapons = player.ownedWeapons.isEmpty
-            ? [player.characterType]
-            : player.ownedWeapons;
+        final weapons = _activeWeaponsFor(player);
 
         for (final weapon in weapons) {
           switch (weapon) {
@@ -482,7 +486,36 @@ class GameEngine {
     }
   }
 
-  void _fireBullet(PlayerData player, int now, {String weaponType = 'gunner', double spread = 0.0}) {
+  List<String> _activeWeaponsFor(PlayerData player) {
+    final baseWeapon =
+        player.characterType == 'none' ? 'gunner' : player.characterType;
+    return [
+      baseWeapon,
+      ...player.ownedWeapons.where((weapon) => weapon != baseWeapon),
+    ];
+  }
+
+  bool _weaponReady(
+    PlayerData player,
+    String weaponType,
+    int now,
+    double cooldown,
+  ) {
+    final lastUsedAt = player.lastCollisionAt['weapon:$weaponType'] ?? 0;
+    return now - lastUsedAt >= cooldown;
+  }
+
+  void _markWeaponUsed(PlayerData player, String weaponType, int now) {
+    player.lastCollisionAt['weapon:$weaponType'] = now;
+    player.lastAttackAt = now;
+  }
+
+  void _fireBullet(
+    PlayerData player,
+    int now, {
+    String weaponType = 'gunner',
+    double spread = 0.0,
+  }) {
     int baseFireInterval = WEAPON_FIRE_INTERVAL_MS;
     double damageMult = 1.0;
     double bulletRad = BULLET_RADIUS;
@@ -500,10 +533,10 @@ class GameEngine {
     }
 
     final cooldown = _getAbilityCooldown(player, baseFireInterval);
-    if (now - player.lastShotAt < cooldown) return;
+    if (!_weaponReady(player, weaponType, now, cooldown)) return;
     if (!players.any((other) => other.alive && other.id != player.id)) return;
+    _markWeaponUsed(player, weaponType, now);
     player.lastShotAt = now;
-    player.lastAttackAt = now;
     final baseAngle = _rotatingWeaponAngle(player, now);
     player.targetAngle = baseAngle;
     final weaponCount = math.max(1, player.weaponCount);
@@ -543,9 +576,9 @@ class GameEngine {
 
   void _fireBurst(PlayerData player, int now) {
     final cooldown = _getAbilityCooldown(player, BURST_FIRE_MS);
-    if (now - player.lastShotAt < cooldown) return;
+    if (!_weaponReady(player, 'burst', now, cooldown)) return;
+    _markWeaponUsed(player, 'burst', now);
     player.lastShotAt = now;
-    player.lastAttackAt = now;
 
     for (int i = 0; i < BURST_COUNT; i++) {
       final angle = (math.pi * 2 * i) / BURST_COUNT;
@@ -569,8 +602,11 @@ class GameEngine {
   }
 
   void _dropFootsteps(PlayerData player, int now) {
-    if (now - player.lastPoisonDropAt < FOOTSTEPS_DROP_MS) return;
+    if (!_weaponReady(player, 'footsteps', now, FOOTSTEPS_DROP_MS.toDouble())) {
+      return;
+    }
     if (player.vel.x.abs() + player.vel.y.abs() < 0.1) return;
+    _markWeaponUsed(player, 'footsteps', now);
     player.lastPoisonDropAt = now;
 
     hazards.add(HazardData(
@@ -590,7 +626,7 @@ class GameEngine {
     for (final target in players) {
       if (!target.alive || target.id == player.id) continue;
       if (target.isEnemy == player.isEnemy) continue;
-      
+
       if (distance(target.pos, player.pos) <= player.radius + AURA_RADIUS) {
         // Ticking damage
         _dealDamage(owner, target, AURA_DAMAGE_TICK * (TICK_MS / 1000));
@@ -600,10 +636,10 @@ class GameEngine {
 
   void _dropMine(PlayerData player, int now) {
     final cooldown = _getAbilityCooldown(player, MINER_DROP_MS);
-    if (now - player.lastMineDropAt < cooldown) return;
+    if (!_weaponReady(player, 'miner', now, cooldown)) return;
     if (!players.any((other) => other.alive && other.isEnemy)) return;
+    _markWeaponUsed(player, 'miner', now);
     player.lastMineDropAt = now;
-    player.lastAttackAt = now;
     final rearAngle = _rearAngle(player);
     final mineCount = math.max(1, player.weaponCount);
     final mineDistance = player.radius + MINE_THROW_DISTANCE;
@@ -612,13 +648,12 @@ class GameEngine {
     for (int i = 0; i < mineCount; i++) {
       final t = mineCount == 1 ? 0.0 : i / (mineCount - 1);
       final angle = rearAngle - spread / 2 + spread * t;
-      final minePos = Vec2(
-        x: (player.pos.x + math.cos(angle) * mineDistance)
-            .clamp(MINE_RADIUS, ARENA_WIDTH - MINE_RADIUS)
-            .toDouble(),
-        y: (player.pos.y + math.sin(angle) * mineDistance)
-            .clamp(MINE_RADIUS, ARENA_HEIGHT - MINE_RADIUS)
-            .toDouble(),
+      final minePos = clampToHexagon(
+        Vec2(
+          x: (player.pos.x + math.cos(angle) * mineDistance),
+          y: (player.pos.y + math.sin(angle) * mineDistance),
+        ),
+        MINE_RADIUS,
       );
       hazards.add(HazardData(
         id: _nextId('mine'),
@@ -634,43 +669,50 @@ class GameEngine {
 
   void _dropPoison(PlayerData player, int now) {
     final cooldown = _getAbilityCooldown(player, POISON_DROP_MS);
-    if (now - player.lastPoisonDropAt < cooldown) return;
-    
+    if (!_weaponReady(player, 'poison', now, cooldown)) return;
+
     // Only drop poison if we are moving
     if (player.vel.x.abs() + player.vel.y.abs() < 0.1) return;
-    
+
+    _markWeaponUsed(player, 'poison', now);
     player.lastPoisonDropAt = now;
 
     final rearAngle = _rearAngle(player);
     final sprayCount = math.max(1, player.weaponCount);
-    
+
     // 'Spraying' effect: add randomness to the drop position
     for (int i = 0; i < sprayCount; i++) {
       final t = sprayCount == 1 ? 0.0 : (i / (sprayCount - 1)) - 0.5;
       final offsetAngle = rearAngle + math.pi / 2;
-      
+
       // Add jitter (randomness) to make it feel like spraying
       final jitterX = (_rand.nextDouble() - 0.5) * 6.0;
       final jitterY = (_rand.nextDouble() - 0.5) * 6.0;
-      
+
       // Drop slightly behind the player to feel like it's coming from the rear
       final dropDist = player.radius * 0.6;
-      
-      final poisonPos = Vec2(
-        x: (player.pos.x + math.cos(rearAngle) * dropDist + math.cos(offsetAngle) * t * 15.0 + jitterX)
-            .clamp(POISON_RADIUS, ARENA_WIDTH - POISON_RADIUS)
-            .toDouble(),
-        y: (player.pos.y + math.sin(rearAngle) * dropDist + math.sin(offsetAngle) * t * 15.0 + jitterY)
-            .clamp(POISON_RADIUS, ARENA_HEIGHT - POISON_RADIUS)
-            .toDouble(),
+
+      final poisonPos = clampToHexagon(
+        Vec2(
+          x: (player.pos.x +
+              math.cos(rearAngle) * dropDist +
+              math.cos(offsetAngle) * t * 15.0 +
+              jitterX),
+          y: (player.pos.y +
+              math.sin(rearAngle) * dropDist +
+              math.sin(offsetAngle) * t * 15.0 +
+              jitterY),
+        ),
+        POISON_RADIUS,
       );
-      
+
       hazards.add(HazardData(
         id: _nextId('poison'),
         ownerId: player.id,
         type: 'poison',
         pos: poisonPos,
-        radius: POISON_RADIUS * (0.7 + _rand.nextDouble() * 0.6), // More variation in size
+        radius: POISON_RADIUS *
+            (0.7 + _rand.nextDouble() * 0.6), // More variation in size
         expiresAt: now + POISON_DURATION_MS,
         lastDamageAt: {},
       ));
@@ -683,12 +725,13 @@ class GameEngine {
     final rangeMult = isHeavy ? 1.5 : 1.0;
     final visualRange = player.radius * 1.6 * rangeMult;
     final dmgMult = isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0;
-    final cooldown = isHeavy ? HEAVY_BLADE_COOLDOWN_MS : BLADE_CONTACT_DAMAGE_MS;
+    final cooldown =
+        isHeavy ? HEAVY_BLADE_COOLDOWN_MS : BLADE_CONTACT_DAMAGE_MS;
 
     for (int i = 0; i < weaponCount; i++) {
       final angle = baseAngle + math.pi * 2 * i / weaponCount;
       final dir = Vec2(x: math.cos(angle), y: math.sin(angle));
-      
+
       final bladeStart = Vec2(
         x: player.pos.x + dir.x * player.radius * 0.4,
         y: player.pos.y + dir.y * player.radius * 0.4,
@@ -707,9 +750,13 @@ class GameEngine {
         final lastHit = enemy.lastCollisionAt[hitKey] ?? 0;
         if (now - lastHit < cooldown) continue;
 
-        final hitDistance = _distancePointToSegment(enemy.pos, bladeStart, bladeEnd);
-        if (hitDistance <= enemy.radius + BLADE_CONTACT_WIDTH * (isHeavy ? 2.0 : 1.0)) {
+        final hitDistance =
+            _distancePointToSegment(enemy.pos, bladeStart, bladeEnd);
+        if (hitDistance <=
+            enemy.radius + BLADE_CONTACT_WIDTH * (isHeavy ? 2.0 : 1.0)) {
           enemy.lastCollisionAt[hitKey] = now;
+          player.lastBladeAt = now;
+          player.lastAttackAt = now;
           _dealDamage(
             player,
             enemy,
@@ -752,17 +799,7 @@ class GameEngine {
       p.pos.y += p.vel.y * BULLET_SPEED * dt;
 
       // Wall reflection logic
-      bool hitWall = false;
-      if (p.pos.x < 0 || p.pos.x > ARENA_WIDTH) {
-        p.vel.x = -p.vel.x;
-        p.pos.x = p.pos.x < 0 ? 0 : ARENA_WIDTH.toDouble();
-        hitWall = true;
-      }
-      if (p.pos.y < 0 || p.pos.y > ARENA_HEIGHT) {
-        p.vel.y = -p.vel.y;
-        p.pos.y = p.pos.y < 0 ? 0 : ARENA_HEIGHT.toDouble();
-        hitWall = true;
-      }
+      bool hitWall = handleProjectileHexWallCollision(p);
       if (hitWall) {
         if (p.reflectsRemaining > 0) {
           p.reflectsRemaining -= 1;
@@ -788,8 +825,9 @@ class GameEngine {
           );
       if (target == null) continue;
       final damage = (owner.isEnemy
-          ? ENEMY_BULLET_DAMAGE
-          : BASE_BULLET_DAMAGE + owner.atk * BULLET_ATTACK_DAMAGE_RATIO) * p.damageMult;
+              ? ENEMY_BULLET_DAMAGE
+              : BASE_BULLET_DAMAGE + owner.atk * BULLET_ATTACK_DAMAGE_RATIO) *
+          p.damageMult;
       _dealDamage(owner, target, damage);
       projectiles.removeAt(i);
     }
@@ -839,7 +877,7 @@ class GameEngine {
         attacks.removeAt(i);
         continue;
       }
-      
+
       // Other ephemeral effects can be handled here
     }
   }
@@ -971,7 +1009,8 @@ class GameEngine {
     return math.atan2(p.vel.y, p.vel.x);
   }
 
-  double _rearAngle(PlayerData p) => _normalizeAngle(_movementAngle(p) + math.pi);
+  double _rearAngle(PlayerData p) =>
+      _normalizeAngle(_movementAngle(p) + math.pi);
 
   double _normalizeAngle(double angle) {
     const fullTurn = math.pi * 2;

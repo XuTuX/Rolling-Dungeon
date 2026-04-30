@@ -129,14 +129,17 @@ class PlayerSnapshot {
       alive: json['alive'] == true,
       lives: _asInt(json['lives'], fallback: 5),
       maxLives: _asInt(json['maxLives'], fallback: 5),
-      ownedWeapons: (json['ownedWeapons'] as List?)?.map((e) => e.toString()).toList() ?? const [],
+      ownedWeapons:
+          (json['ownedWeapons'] as List?)?.map((e) => e.toString()).toList() ??
+              const [],
       lastPoisonDropAt: _asInt(json['lastPoisonDropAt']),
       lastShotAt: _asInt(json['lastShotAt']),
       lastBladeAt: _asInt(json['lastBladeAt']),
       lastMineDropAt: _asInt(json['lastMineDropAt']),
       lastAttackAt: _asInt(json['lastAttackAt']),
       targetAngle: _asDouble(json['targetAngle']),
-      activeEffects: _parseList(json['activeEffects'], ActiveEffectSnapshot.fromJson),
+      activeEffects:
+          _parseList(json['activeEffects'], ActiveEffectSnapshot.fromJson),
     );
   }
 
