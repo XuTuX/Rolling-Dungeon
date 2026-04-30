@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/components/hp_bar_component.dart';
 import 'package:circle_war/game/auto_battle/models/player_snapshot.dart';
+import 'package:circle_war/game/auto_battle/ui/weapon_designs.dart';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart';
 
@@ -84,10 +85,8 @@ class PlayerBallComponent extends PositionComponent {
     weaponCount = snapshot.weaponCount;
     final velocityLength =
         math.sqrt(snapshot.vx * snapshot.vx + snapshot.vy * snapshot.vy);
-    
-    // Smoothly update facing angle towards targetAngle
+
     _targetAngle = snapshot.targetAngle;
-    
     _motionEnergy = (velocityLength * snapshot.speed).clamp(0.0, 1.8);
     _showLabel = isMine || unspentUpgrades > 0;
 
@@ -114,16 +113,10 @@ class PlayerBallComponent extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
-    
-    // Decay animations
     _hitFlash = (_hitFlash - dt * 5).clamp(0, 1).toDouble();
     _thrust = (_thrust - dt * 6.5).clamp(0, 1).toDouble();
     _pulse = (_pulse + dt) % (math.pi * 2);
-
-    // Smoothly lerp facing angle to target angle
     _facingAngle = _lerpAngle(_facingAngle, _targetAngle, 0.25);
-
-    // Smooth position interpolation
     position.lerp(targetPosition, 0.22);
   }
 
@@ -132,41 +125,6 @@ class PlayerBallComponent extends PositionComponent {
     if (diff > math.pi) diff -= math.pi * 2;
     if (diff < -math.pi) diff += math.pi * 2;
     return start + diff * t;
-  }
-
-  void _drawRoughPath(Canvas canvas, Path path, Paint paint, {double jitter = 0.8}) {
-    final metrics = path.computeMetrics();
-    final roughPath = Path();
-    final rand = math.Random(42); // Seed for consistency
-
-    for (final metric in metrics) {
-      const step = 4.0;
-      for (var d = 0.0; d < metric.length; d += step) {
-        final pos = metric.getTangentForOffset(d)!.position;
-        final offset = Offset(
-          (rand.nextDouble() - 0.5) * jitter,
-          (rand.nextDouble() - 0.5) * jitter,
-        );
-        if (d == 0) {
-          roughPath.moveTo(pos.dx + offset.dx, pos.dy + offset.dy);
-        } else {
-          roughPath.lineTo(pos.dx + offset.dx, pos.dy + offset.dy);
-        }
-      }
-    }
-    if (path.contains(const Offset(0,0))) roughPath.close(); // Approximation
-    canvas.drawPath(roughPath, paint);
-  }
-
-  void _drawHatching(Canvas canvas, Rect rect, double angle, double spacing, Paint paint) {
-    canvas.save();
-    canvas.clipRect(rect);
-    canvas.rotate(angle);
-    final diagonal = math.sqrt(rect.width * rect.width + rect.height * rect.height);
-    for (var i = -diagonal; i < diagonal; i += spacing) {
-      canvas.drawLine(Offset(i, -diagonal), Offset(i + diagonal * 0.5, diagonal), paint);
-    }
-    canvas.restore();
   }
 
   @override
@@ -353,15 +311,13 @@ class PlayerBallComponent extends PositionComponent {
     if (!alive) return;
 
     final scale = (ballRadius / 18).clamp(0.72, 1.35).toDouble();
-    
-    // Distribute weapons evenly around the character
-    for (int i = 0; i < weaponCount; i++) {
-      final weaponAngle = _facingAngle + (math.pi * 2 * i / weaponCount);
-      
-      canvas.save();
-      
-      // Apply thrust: lunge forward along the individual weapon angle
+
+    for (int i = 0; i < math.max(1, weaponCount); i++) {
+      final weaponAngle =
+          _facingAngle + math.pi * 2 * i / math.max(1, weaponCount);
       final thrustOffset = 14.0 * _thrust * scale;
+
+      canvas.save();
       canvas.translate(
         center.dx + math.cos(weaponAngle) * thrustOffset,
         center.dy + math.sin(weaponAngle) * thrustOffset,
@@ -388,16 +344,18 @@ class PlayerBallComponent extends PositionComponent {
           _renderPoisonVial(canvas, scale);
           break;
         case 'gunner':
-          _renderGun(canvas, scale);
+          WeaponDesigns.renderGun(canvas, scale, _thrust, ballRadius, _pulse);
           break;
         case 'blade':
-          _renderSpear(canvas, scale);
+          WeaponDesigns.renderSpear(
+              canvas, scale, _thrust, ballRadius, _pulse, _motionEnergy);
           break;
         case 'miner':
-          _renderHeldMine(canvas, scale);
+          WeaponDesigns.renderTNT(
+              canvas, scale, ballRadius, _pulse, _motionEnergy);
           break;
         case 'laser':
-          _renderCrossbow(canvas, scale);
+          WeaponDesigns.renderCrossbow(canvas, scale, _thrust, ballRadius);
           break;
         default:
           break;
@@ -407,87 +365,7 @@ class PlayerBallComponent extends PositionComponent {
     }
   }
 
-  void _renderGun(Canvas canvas, double scale) {
-    final inkPaint = Paint()
-      ..color = AutoBattlePalette.ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.2 * scale
-      ..strokeCap = StrokeCap.round;
-
-    final recoil = _thrust * 12.0 * scale;
-    
-    canvas.save();
-    canvas.translate(-recoil, 0);
-
-    // Simplified Gun - Just a sturdy circle barrel
-    final gunRect = Rect.fromLTWH(ballRadius * 0.7, -7 * scale, 16 * scale, 14 * scale);
-    canvas.drawOval(gunRect, Paint()..color = const Color(0xFF64748B));
-    _drawRoughPath(canvas, Path()..addOval(gunRect), inkPaint);
-
-    // Tip detail
-    canvas.drawCircle(
-      Offset(ballRadius * 0.7 + 16 * scale, 0),
-      3 * scale,
-      Paint()..color = AutoBattlePalette.gold,
-    );
-
-    canvas.restore();
-  }
-
-  void _renderSpear(Canvas canvas, double scale) {
-    // ── Ultra Premium Rough Sketch Spear ──
-    final inkPaint = Paint()
-      ..color = AutoBattlePalette.ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5 * scale
-      ..strokeCap = StrokeCap.round;
-
-    final thrustExt = 22.0 * _thrust * scale;
-    final shaftStart = ballRadius * 0.2;
-    final shaftEnd = ballRadius * 2.8 + thrustExt;
-    
-    // Shaft with jitter
-    final shaftPath = Path()..moveTo(shaftStart, 0)..lineTo(shaftEnd, 0);
-    canvas.drawLine(Offset(shaftStart, 0), Offset(shaftEnd, 0), Paint()..color = const Color(0xFF451A03)..strokeWidth = 6 * scale);
-    _drawRoughPath(canvas, shaftPath, inkPaint..strokeWidth = 2.8 * scale);
-
-    // Wrapped grip area - Hatching
-    final gripRect = Rect.fromLTWH(ballRadius * 0.4, -4 * scale, 12 * scale, 8 * scale);
-    canvas.drawRect(gripRect, Paint()..color = const Color(0xFF92400E));
-    _drawHatching(canvas, gripRect, 0.8, 3 * scale, Paint()..color = Colors.black26..strokeWidth = 1);
-    _drawRoughPath(canvas, Path()..addRect(gripRect), inkPaint..strokeWidth = 2 * scale);
-
-    // Spear Head - More organic shape
-    final headStart = shaftEnd;
-    final headPath = Path()
-      ..moveTo(headStart, -9 * scale)
-      ..quadraticBezierTo(headStart + 12 * scale, -8 * scale, headStart + 32 * scale, 0)
-      ..quadraticBezierTo(headStart + 12 * scale, 8 * scale, headStart, 9 * scale)
-      ..lineTo(headStart - 4 * scale, 0)
-      ..close();
-    
-    canvas.drawPath(headPath, Paint()..color = const Color(0xFFCBD5E1));
-    _drawRoughPath(canvas, headPath, inkPaint..strokeWidth = 3.5 * scale, jitter: 1.2);
-    
-    // Shading on head
-    _drawHatching(canvas, Rect.fromLTWH(headStart, -5 * scale, 20 * scale, 10 * scale), 0.7, 2.5 * scale, Paint()..color = Colors.black12);
-
-    // Animated Multi-Strand Tassel
-    final tasselWave = math.sin(_pulse * 12 + _motionEnergy * 8);
-    for (var i = 0; i < 4; i++) {
-      final off = i * 2.0 - 4.0;
-      final tasselPath = Path()
-        ..moveTo(headStart - 2 * scale, off * scale)
-        ..quadraticBezierTo(
-          headStart - 15 * scale, (off + 10 * tasselWave + i * 2) * scale,
-          headStart - 35 * scale, (off + 15 * tasselWave + i * 5) * scale,
-        );
-      canvas.drawPath(tasselPath, Paint()..color = AutoBattlePalette.primary..style = PaintingStyle.stroke..strokeWidth = 2.5 * scale..strokeCap = StrokeCap.round);
-    }
-  }
-
   void _renderPoisonVial(Canvas canvas, double scale) {
-    // ── Cartoon Bubble Flask ──
     final inkPaint = Paint()
       ..color = const Color(0xFF1A1A1A)
       ..style = PaintingStyle.stroke
@@ -498,173 +376,30 @@ class PlayerBallComponent extends PositionComponent {
     canvas.save();
     canvas.translate(ballRadius * 1.08, -1 * scale);
     canvas.rotate(-0.22);
-
-    // Flask body – round bottom
-    canvas.drawCircle(
-        Offset(2 * scale, 6 * scale), 12 * scale, Paint()..color = const Color(0xFFD1FAE5).withValues(alpha: 0.9));
-    canvas.drawCircle(
-        Offset(2 * scale, 6 * scale), 12 * scale, inkPaint);
-
-    // Liquid fill – green with bubbles
+    canvas.drawCircle(Offset(2 * scale, 6 * scale), 12 * scale,
+        Paint()..color = const Color(0xFFD1FAE5).withValues(alpha: 0.9));
+    canvas.drawCircle(Offset(2 * scale, 6 * scale), 12 * scale, inkPaint);
     final liquidPath = Path()
       ..addArc(
-        Rect.fromCircle(center: Offset(2 * scale, 6 * scale), radius: 10 * scale),
-        0.3,
-        math.pi - 0.6,
-      )
+          Rect.fromCircle(
+              center: Offset(2 * scale, 6 * scale), radius: 10 * scale),
+          0.3,
+          math.pi - 0.6)
       ..close();
     canvas.drawPath(liquidPath, Paint()..color = const Color(0xFF22C55E));
-
-    // Bubbles
     canvas.drawCircle(Offset(-2 * scale, 4 * scale), 2.2 * scale,
         Paint()..color = const Color(0xFF86EFAC));
-    canvas.drawCircle(Offset(5 * scale, 2 * scale), 1.6 * scale,
-        Paint()..color = const Color(0xFFBBF7D0));
-    canvas.drawCircle(Offset(1 * scale, 8 * scale), 1.8 * scale,
-        Paint()..color = const Color(0xFF86EFAC));
-
-    // Neck
     final neckRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-2 * scale, -14 * scale, 8 * scale, 12 * scale),
-      Radius.circular(2 * scale),
-    );
-    canvas.drawRRect(neckRect, Paint()..color = const Color(0xFFD1FAE5).withValues(alpha: 0.85));
+        Rect.fromLTWH(-2 * scale, -14 * scale, 8 * scale, 12 * scale),
+        Radius.circular(2 * scale));
+    canvas.drawRRect(neckRect,
+        Paint()..color = const Color(0xFFD1FAE5).withValues(alpha: 0.85));
     canvas.drawRRect(neckRect, inkPaint);
-
-    // Cork
     final corkRect = RRect.fromRectAndRadius(
-      Rect.fromLTWH(-3 * scale, -19 * scale, 10 * scale, 6 * scale),
-      Radius.circular(3 * scale),
-    );
+        Rect.fromLTWH(-3 * scale, -19 * scale, 10 * scale, 6 * scale),
+        Radius.circular(3 * scale));
     canvas.drawRRect(corkRect, Paint()..color = const Color(0xFF92400E));
     canvas.drawRRect(corkRect, inkPaint);
-
-    // Skull icon on flask
-    canvas.drawCircle(
-      Offset(2 * scale, 4 * scale),
-      3 * scale,
-      Paint()..color = Colors.white.withValues(alpha: 0.7),
-    );
-    // Skull eyes
-    canvas.drawCircle(Offset(0.5 * scale, 3 * scale), 0.8 * scale,
-        Paint()..color = const Color(0xFF1A1A1A));
-    canvas.drawCircle(Offset(3.5 * scale, 3 * scale), 0.8 * scale,
-        Paint()..color = const Color(0xFF1A1A1A));
-
-    // Drip from cork
-    canvas.drawCircle(Offset(6 * scale, -22 * scale), 2.2 * scale,
-        Paint()..color = const Color(0xFF22C55E));
-    canvas.drawCircle(Offset(10 * scale, -27 * scale), 1.5 * scale,
-        Paint()..color = const Color(0xFF22C55E));
-
     canvas.restore();
-  }
-
-  void _renderHeldMine(Canvas canvas, double scale) {
-    // ── Ultra Premium Rough Sketch TNT ──
-    final inkPaint = Paint()
-      ..color = AutoBattlePalette.ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3 * scale
-      ..strokeCap = StrokeCap.round;
-
-    final center = Offset(ballRadius * 1.2, -4 * scale);
-    final shake = math.sin(_pulse * 30) * 1.5 * _motionEnergy * scale;
-
-    canvas.save();
-    canvas.translate(shake, shake);
-
-    // Sticks with Jitter
-    for (var i = -1; i <= 1; i++) {
-      final x = center.dx + i * 7 * scale;
-      final y = center.dy + (i.abs() * 3 * scale);
-      final stickPath = Path()..addRRect(RRect.fromRectAndRadius(Rect.fromCenter(center: Offset(x, y), width: 8 * scale, height: 28 * scale), Radius.circular(2 * scale)));
-      canvas.drawPath(stickPath, Paint()..color = AutoBattlePalette.primary);
-      _drawRoughPath(canvas, stickPath, inkPaint);
-      
-      // Vertical hatching on sticks
-      _drawHatching(canvas, Rect.fromLTWH(x - 3 * scale, y - 10 * scale, 6 * scale, 20 * scale), 1.5, 3 * scale, Paint()..color = Colors.black26);
-    }
-
-    // Binding Straps - Bold
-    for (var yOff in [-6, 6]) {
-      final strap = Rect.fromLTWH(center.dx - 12 * scale, center.dy + yOff * scale - 2 * scale, 24 * scale, 4 * scale);
-      canvas.drawRect(strap, Paint()..color = AutoBattlePalette.ink);
-    }
-
-    // Fuse - Hand-drawn
-    final fusePath = Path()
-      ..moveTo(center.dx, center.dy - 14 * scale)
-      ..quadraticBezierTo(center.dx + 12 * scale, center.dy - 24 * scale, center.dx + 6 * scale, center.dy - 36 * scale);
-    _drawRoughPath(canvas, fusePath, inkPaint..strokeWidth = 2.2 * scale);
-
-    _renderSpark(canvas, Offset(center.dx + 6 * scale, center.dy - 36 * scale), scale);
-    canvas.restore();
-  }
-
-  void _renderSpark(Canvas canvas, Offset pos, double scale) {
-    final t = (_pulse * 20) % 1.0;
-    final sparkPaint = Paint()..color = AutoBattlePalette.gold..strokeWidth = 2 * scale..strokeCap = StrokeCap.round;
-    for (var i = 0; i < 8; i++) {
-      final a = i * math.pi * 2 / 8 + _pulse * 15;
-      final dist = (8 + math.sin(t * 15) * 8) * scale;
-      canvas.drawLine(pos, pos + Offset(math.cos(a) * dist, math.sin(a) * dist), sparkPaint);
-    }
-    canvas.drawCircle(pos, 4 * scale, Paint()..color = Colors.white);
-  }
-
-  void _renderCrossbow(Canvas canvas, double scale) {
-    // ── Ultra Premium Rough Sketch Crossbow ──
-    final inkPaint = Paint()
-      ..color = AutoBattlePalette.ink
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 3.5 * scale
-      ..strokeCap = StrokeCap.round;
-
-    final stringPull = _thrust * 14 * scale;
-    final basePos = ballRadius * 0.7;
-    
-    // Detailed Stock - Rough Path
-    final stockPath = Path()
-      ..moveTo(basePos, -6 * scale)
-      ..lineTo(basePos + 26 * scale, -5 * scale)
-      ..lineTo(basePos + 28 * scale, 0)
-      ..lineTo(basePos + 26 * scale, 5 * scale)
-      ..lineTo(basePos, 6 * scale)
-      ..close();
-    canvas.drawPath(stockPath, Paint()..color = const Color(0xFF451A03));
-    _drawRoughPath(canvas, stockPath, inkPaint);
-    
-    // Hatching on Stock
-    _drawHatching(canvas, Rect.fromLTWH(basePos + 5 * scale, -4 * scale, 15 * scale, 8 * scale), 0.5, 3 * scale, Paint()..color = Colors.black26);
-
-    // Flexible Limbs
-    final limbsPath = Path()
-      ..moveTo(basePos + 18 * scale, -32 * scale)
-      ..quadraticBezierTo(basePos + 8 * scale + stringPull * 0.3, 0, basePos + 18 * scale, 32 * scale);
-    
-    canvas.drawPath(limbsPath, Paint()..color = const Color(0xFF334155)..style = PaintingStyle.stroke..strokeWidth = 8 * scale..strokeCap = StrokeCap.round);
-    _drawRoughPath(canvas, limbsPath, inkPaint..strokeWidth = 2.5 * scale);
-
-    // Bowstring
-    final stringPath = Path()
-      ..moveTo(basePos + 18 * scale, -31 * scale)
-      ..lineTo(basePos + 6 * scale + stringPull, 0)
-      ..lineTo(basePos + 18 * scale, 31 * scale);
-    canvas.drawPath(stringPath, Paint()..color = const Color(0xFFF1F5F9)..style = PaintingStyle.stroke..strokeWidth = 1.8 * scale);
-
-    // Bolt
-    if (_thrust < 0.25) {
-      final boltPath = Path()..moveTo(basePos + 4 * scale, 0)..lineTo(basePos + 36 * scale, 0);
-      canvas.drawPath(boltPath, Paint()..color = const Color(0xFF94A3B8)..style = PaintingStyle.stroke..strokeWidth = 4 * scale..strokeCap = StrokeCap.round);
-      
-      final tip = Path()
-        ..moveTo(basePos + 36 * scale, -4.5 * scale)
-        ..lineTo(basePos + 46 * scale, 0)
-        ..lineTo(basePos + 36 * scale, 4.5 * scale)
-        ..close();
-      canvas.drawPath(tip, Paint()..color = const Color(0xFF0F172A));
-      _drawRoughPath(canvas, tip, inkPaint..strokeWidth = 2 * scale);
-    }
   }
 }
