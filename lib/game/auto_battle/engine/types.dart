@@ -196,6 +196,8 @@ class AttackEffectData {
   int durationMs;
   double scale;
 
+  final Set<String> hitIds = {};
+
   AttackEffectData({
     required this.id,
     required this.ownerId,

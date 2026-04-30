@@ -102,9 +102,9 @@ const double UPGRADE_MASTERY_POWER_GAIN = 1.0;
 
 const int ROUND_RESTART_MS = 5000;
 
-const int POISON_DROP_MS = 520;
-const int POISON_DURATION_MS = 2600;
-const double POISON_RADIUS = 16.0;
+const int POISON_DROP_MS = 100;
+const int POISON_DURATION_MS = 450;
+const double POISON_RADIUS = 20.0;
 
 const int GUNNER_FIRE_MS = 900;
 const double GUNNER_RANGE = 260.0;
@@ -119,8 +119,8 @@ const int BLADE_CONTACT_DAMAGE_MS = 200;
 const double BLADE_CONTACT_WIDTH = 5.0;
 
 const int MINER_DROP_MS = 2300;
-const int MINE_DURATION_MS = 6200;
-const double MINE_RADIUS = 20.0;
+const int MINE_DURATION_MS = 9000;
+const double MINE_RADIUS = 24.0;
 const double MINE_DAMAGE = 22.0;
 const double MINE_ATTACK_DAMAGE_RATIO = 0.9;
 const double MINE_THROW_DISTANCE = 42.0;

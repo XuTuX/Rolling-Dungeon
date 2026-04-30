@@ -50,6 +50,7 @@ class GameEngine {
   void start() {
     if (timer != null) return;
     lastTickAt = DateTime.now().millisecondsSinceEpoch;
+    _primeAbilityCooldowns(lastTickAt);
     timer = Timer.periodic(const Duration(milliseconds: TICK_MS), (t) {
       final now = DateTime.now().millisecondsSinceEpoch;
       final dt = now - lastTickAt;
@@ -72,14 +73,24 @@ class GameEngine {
     // Reset position to safe area
     p1.pos = Vec2(x: ARENA_WIDTH * 0.15, y: ARENA_HEIGHT * 0.5);
     p1.vel = normalize(Vec2(x: 1, y: 0));
-    
+
     // Resume game
     roundState = 'running';
     winnerId = null;
     roundEndsAt = null;
-    
+    _primeAbilityCooldowns(DateTime.now().millisecondsSinceEpoch);
+
     // Brief invincibility could be added here if needed
     _broadcastSnapshot();
+  }
+
+  void _primeAbilityCooldowns(int now) {
+    for (final player in players) {
+      player.lastShotAt = now;
+      player.lastBladeAt = now;
+      player.lastMineDropAt = now;
+      player.lastAttackAt = now;
+    }
   }
 
   void _tick(int dt) {
@@ -102,7 +113,7 @@ class GameEngine {
     _handleAbilities(now);
     _updateProjectiles(dt.toDouble());
     _updateHazards(now, dt.toDouble());
-    _cleanupEffects(now);
+    _updateEffects(now);
     _checkRoundEnd(now);
     _broadcastSnapshot();
   }
@@ -166,19 +177,20 @@ class GameEngine {
   }
 
   void _handleWeaponPhysicalCollision(PlayerData attacker, PlayerData victim) {
-    if (attacker.isEnemy == victim.isEnemy) return; // Only collide with opponents
+    if (attacker.isEnemy == victim.isEnemy) {
+      return; // Only collide with opponents
+    }
     if (attacker.characterType == 'none') return;
 
     double length = 0;
+    double weaponStartDistance = attacker.radius * 0.5;
     switch (attacker.characterType) {
       case 'gunner':
         length = WEAPON_LENGTH * 1.5;
         break;
       case 'blade':
         length = BLADE_RANGE * 0.9;
-        break;
-      case 'laser':
-        length = WEAPON_LENGTH * 2.0;
+        weaponStartDistance = attacker.radius + length * 0.58;
         break;
       case 'miner':
         length = 15.0;
@@ -193,8 +205,8 @@ class GameEngine {
     );
 
     final wStart = Vec2(
-      x: attacker.pos.x + weaponDir.x * attacker.radius * 0.5,
-      y: attacker.pos.y + weaponDir.y * attacker.radius * 0.5,
+      x: attacker.pos.x + weaponDir.x * weaponStartDistance,
+      y: attacker.pos.y + weaponDir.y * weaponStartDistance,
     );
     final wEnd = Vec2(
       x: attacker.pos.x + weaponDir.x * (attacker.radius + length),
@@ -319,8 +331,15 @@ class GameEngine {
       ability = 'shield';
     }
 
-    final angle = stage == 1 ? math.pi : _rand.nextDouble() * math.pi * 2;
-    final spawnDist = stage == 1 ? 120.0 : 115 + _rand.nextDouble() * 95;
+    final player = _getPlayer('p1');
+    final minPlayerDistance =
+        (player?.radius ?? PLAYER_BASE_RADIUS) + radius + 95;
+    final spawnPos = _randomEnemySpawnPosition(radius, minPlayerDistance);
+    final velocityAngle = player == null
+        ? math.atan2(
+            ARENA_HEIGHT / 2 - spawnPos.y, ARENA_WIDTH / 2 - spawnPos.x)
+        : math.atan2(player.pos.y - spawnPos.y, player.pos.x - spawnPos.x);
+
     return PlayerData(
       id: _nextId('enemy'),
       characterType: 'none',
@@ -346,15 +365,10 @@ class GameEngine {
       kills: 0,
       damageDealt: 0,
       damageTaken: 0,
-      pos: Vec2(
-        x: (ARENA_WIDTH / 2 + math.cos(angle) * spawnDist)
-            .clamp(radius, ARENA_WIDTH - radius)
-            .toDouble(),
-        y: (ARENA_HEIGHT / 2 + math.sin(angle) * spawnDist)
-            .clamp(radius, ARENA_HEIGHT - radius)
-            .toDouble(),
+      pos: spawnPos,
+      vel: normalize(
+        Vec2(x: math.cos(velocityAngle), y: math.sin(velocityAngle) + 0.24),
       ),
-      vel: normalize(Vec2(x: -math.cos(angle), y: -math.sin(angle) + 0.24)),
       radius: radius,
       color: color,
       alive: true,
@@ -374,24 +388,51 @@ class GameEngine {
     );
   }
 
+  Vec2 _randomEnemySpawnPosition(double radius, double minPlayerDistance) {
+    final player = _getPlayer('p1');
+    Vec2? fallback;
+    var fallbackDistance = -1.0;
+
+    for (int attempt = 0; attempt < 32; attempt++) {
+      final pos = Vec2(
+        x: radius + _rand.nextDouble() * (ARENA_WIDTH - radius * 2),
+        y: radius + _rand.nextDouble() * (ARENA_HEIGHT - radius * 2),
+      );
+      if (player == null) return pos;
+
+      final playerDistance = distance(pos, player.pos);
+      if (playerDistance >= minPlayerDistance) return pos;
+      if (playerDistance > fallbackDistance) {
+        fallback = pos;
+        fallbackDistance = playerDistance;
+      }
+    }
+
+    if (fallback != null) return fallback;
+    return Vec2(x: ARENA_WIDTH - radius, y: ARENA_HEIGHT / 2);
+  }
+
   void _handleAbilities(int now) {
     for (final player in players) {
       if (!player.alive) continue;
       if (player.isEnemy) {
         _handleEnemyAbility(player, now);
       } else {
-        player.targetAngle = _rotatingWeaponAngle(player, now);
         switch (player.characterType) {
           case 'miner':
+            player.targetAngle = _movementAngle(player);
             _dropMine(player, now);
             break;
-          case 'laser':
-            _fireLaser(player, now);
+          case 'poison':
+            player.targetAngle = _movementAngle(player);
+            _dropPoison(player, now);
             break;
           case 'blade':
-            _handleBladeAttack(player, now);
+            player.targetAngle = _rotatingWeaponAngle(player, now);
+            _checkBladeCollision(player, now);
             break;
           default:
+            player.targetAngle = _rotatingWeaponAngle(player, now);
             _fireBullet(player, now);
             break;
         }
@@ -465,13 +506,14 @@ class GameEngine {
     if (!players.any((other) => other.alive && other.isEnemy)) return;
     player.lastMineDropAt = now;
     player.lastAttackAt = now;
-    final baseAngle = _rotatingWeaponAngle(player, now);
-    player.targetAngle = baseAngle;
+    final rearAngle = _rearAngle(player);
     final mineCount = math.max(1, player.weaponCount);
     final mineDistance = player.radius + MINE_THROW_DISTANCE;
+    final spread = mineCount == 1 ? 0.0 : math.pi / 7;
 
     for (int i = 0; i < mineCount; i++) {
-      final angle = baseAngle + math.pi * 2 * i / mineCount;
+      final t = mineCount == 1 ? 0.0 : i / (mineCount - 1);
+      final angle = rearAngle - spread / 2 + spread * t;
       final minePos = Vec2(
         x: (player.pos.x + math.cos(angle) * mineDistance)
             .clamp(MINE_RADIUS, ARENA_WIDTH - MINE_RADIUS)
@@ -492,114 +534,87 @@ class GameEngine {
     }
   }
 
-  void _fireLaser(PlayerData player, int now) {
-    // This is now the Crossbow 'Bolt' attack
-    final cooldown = _getAbilityCooldown(player, LASER_FIRE_MS);
-    if (now - player.lastShotAt < cooldown) return;
-    final target = _findNearestOpponent(player, LASER_RANGE);
-    if (target == null) return;
-    player.lastShotAt = now;
-    player.lastAttackAt = now;
+  void _dropPoison(PlayerData player, int now) {
+    final cooldown = _getAbilityCooldown(player, POISON_DROP_MS);
+    if (now - player.lastPoisonDropAt < cooldown) return;
+    
+    // Only drop poison if we are moving
+    if (player.vel.x.abs() + player.vel.y.abs() < 0.1) return;
+    
+    player.lastPoisonDropAt = now;
 
-    final aimAngle =
-        math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
-    player.targetAngle = aimAngle;
-    final beamCount = math.max(1, player.weaponCount);
-    final muzzleDist = player.radius + WEAPON_LENGTH + MUZZLE_OFFSET_EXTRA;
-
-    for (int i = 0; i < beamCount; i++) {
-      final angle =
-          beamCount == 1 ? aimAngle : aimAngle + math.pi * 2 * i / beamCount;
-      final dir = Vec2(x: math.cos(angle), y: math.sin(angle));
-      final spawnPos = Vec2(
-        x: player.pos.x + dir.x * muzzleDist,
-        y: player.pos.y + dir.y * muzzleDist,
+    final rearAngle = _rearAngle(player);
+    final sprayCount = math.max(1, player.weaponCount);
+    
+    // 'Spraying' effect: add randomness to the drop position
+    for (int i = 0; i < sprayCount; i++) {
+      final t = sprayCount == 1 ? 0.0 : (i / (sprayCount - 1)) - 0.5;
+      final offsetAngle = rearAngle + math.pi / 2;
+      
+      // Add jitter (randomness) to make it feel like spraying
+      final jitterX = (_rand.nextDouble() - 0.5) * 12.0;
+      final jitterY = (_rand.nextDouble() - 0.5) * 12.0;
+      
+      // Drop slightly behind the player to feel like it's coming from the rear
+      final dropDist = player.radius * 0.6;
+      
+      final poisonPos = Vec2(
+        x: (player.pos.x + math.cos(rearAngle) * dropDist + math.cos(offsetAngle) * t * 15.0 + jitterX)
+            .clamp(POISON_RADIUS, ARENA_WIDTH - POISON_RADIUS)
+            .toDouble(),
+        y: (player.pos.y + math.sin(rearAngle) * dropDist + math.sin(offsetAngle) * t * 15.0 + jitterY)
+            .clamp(POISON_RADIUS, ARENA_HEIGHT - POISON_RADIUS)
+            .toDouble(),
       );
-
-      // Add the visual effect (Crossbow bolt trail)
-      attacks.add(AttackEffectData(
-        id: _nextId('bolt'),
+      
+      hazards.add(HazardData(
+        id: _nextId('poison'),
         ownerId: player.id,
-        type: 'laser', // Keep key for rendering consistency
-        pos: spawnPos,
-        radius: LASER_RANGE,
-        angle: angle,
-        createdAt: now,
-        durationMs: 250, // Shorter for a bolt flash
-        scale: LASER_WIDTH,
+        type: 'poison',
+        pos: poisonPos,
+        radius: POISON_RADIUS * (0.7 + _rand.nextDouble() * 0.6), // More variation in size
+        expiresAt: now + POISON_DURATION_MS,
+        lastDamageAt: {},
       ));
-
-      final beamEnd = Vec2(
-        x: spawnPos.x + dir.x * LASER_RANGE,
-        y: spawnPos.y + dir.y * LASER_RANGE,
-      );
-      for (final enemy in players) {
-        if (!enemy.alive || !enemy.isEnemy) continue;
-        final hitDistance =
-            _distancePointToSegment(enemy.pos, spawnPos, beamEnd);
-        // Crossbow bolt hits everyone in a line
-        if (hitDistance > enemy.radius + 8 * LASER_WIDTH) continue;
-        _dealDamage(
-          player,
-          enemy,
-          LASER_DAMAGE + player.atk * LASER_ATTACK_DAMAGE_RATIO,
-        );
-      }
     }
   }
 
-  void _handleBladeAttack(PlayerData player, int now) {
-    // This is now the Spear 'Thrust' attack
-    final cooldown = _getAbilityCooldown(player, BLADE_ATTACK_MS);
-    if (now - player.lastBladeAt < cooldown) return;
-    final target = _findNearestOpponent(player, BLADE_RANGE + 40);
-    if (target == null) return;
-    
-    player.lastBladeAt = now;
-    player.lastAttackAt = now;
-    
-    final aimAngle = math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
-    player.targetAngle = aimAngle;
-    
+  void _checkBladeCollision(PlayerData player, int now) {
     final weaponCount = math.max(1, player.weaponCount);
-    final muzzleDist = player.radius;
+    final baseAngle = player.targetAngle;
+    final visualRange = player.radius * 1.6; // Align with visual spear length
 
     for (int i = 0; i < weaponCount; i++) {
-      final angle = aimAngle + (weaponCount == 1 ? 0 : (math.pi * 2 * i / weaponCount));
+      final angle = baseAngle + math.pi * 2 * i / weaponCount;
       final dir = Vec2(x: math.cos(angle), y: math.sin(angle));
-      final spawnPos = Vec2(
-        x: player.pos.x + dir.x * muzzleDist,
-        y: player.pos.y + dir.y * muzzleDist,
-      );
-
-      // Add the visual effect (Spear thrust)
-      attacks.add(AttackEffectData(
-        id: _nextId('thrust'),
-        ownerId: player.id,
-        type: 'blade', // Keep key for rendering
-        pos: spawnPos,
-        radius: BLADE_RANGE,
-        angle: angle,
-        createdAt: now,
-        durationMs: BLADE_EFFECT_MS,
-      ));
-
-      // Melee damage check
-      final thrustEnd = Vec2(
-        x: spawnPos.x + dir.x * BLADE_RANGE,
-        y: spawnPos.y + dir.y * BLADE_RANGE,
-      );
       
+      final bladeStart = Vec2(
+        x: player.pos.x + dir.x * player.radius * 0.4,
+        y: player.pos.y + dir.y * player.radius * 0.4,
+      );
+      final bladeEnd = Vec2(
+        x: player.pos.x + dir.x * visualRange,
+        y: player.pos.y + dir.y * visualRange,
+      );
+
       for (final enemy in players) {
-        if (!enemy.alive || !enemy.isEnemy) continue;
-        final hitDistance = _distancePointToSegment(enemy.pos, spawnPos, thrustEnd);
-        if (hitDistance > enemy.radius + 15) continue;
-        
-        _dealDamage(
-          player,
-          enemy,
-          BASE_ATK + player.atk * 1.5, // High melee damage
-        );
+        if (!enemy.alive || enemy.id == player.id) continue;
+        if (enemy.isEnemy == player.isEnemy) continue;
+
+        // Damage cooldown per enemy for this specific blade
+        final hitKey = 'blade:${player.id}:$i';
+        final lastHit = enemy.lastCollisionAt[hitKey] ?? 0;
+        if (now - lastHit < BLADE_CONTACT_DAMAGE_MS) continue;
+
+        final hitDistance = _distancePointToSegment(enemy.pos, bladeStart, bladeEnd);
+        if (hitDistance <= enemy.radius + BLADE_CONTACT_WIDTH) {
+          enemy.lastCollisionAt[hitKey] = now;
+          _dealDamage(
+            player,
+            enemy,
+            BASE_ATK + player.atk * 0.8, // Slightly lower damage since it's continuous
+          );
+        }
       }
     }
   }
@@ -714,11 +729,17 @@ class GameEngine {
     }
   }
 
-  void _cleanupEffects(int now) {
+  void _updateEffects(int now) {
     for (int i = attacks.length - 1; i >= 0; i -= 1) {
-      if (now - attacks[i].createdAt >= attacks[i].durationMs) {
+      final attack = attacks[i];
+      final elapsed = now - attack.createdAt;
+
+      if (elapsed >= attack.durationMs) {
         attacks.removeAt(i);
+        continue;
       }
+      
+      // Other ephemeral effects can be handled here
     }
   }
 
@@ -841,6 +862,15 @@ class GameEngine {
     return _normalizeAngle(
         now / 1000.0 * ROTATING_WEAPON_RADIANS_PER_SECOND + phase);
   }
+
+  double _movementAngle(PlayerData p) {
+    if (p.vel.x.abs() + p.vel.y.abs() <= 0.001) {
+      return p.targetAngle;
+    }
+    return math.atan2(p.vel.y, p.vel.x);
+  }
+
+  double _rearAngle(PlayerData p) => _normalizeAngle(_movementAngle(p) + math.pi);
 
   double _normalizeAngle(double angle) {
     const fullTurn = math.pi * 2;

@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="crossbow icon" shape-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F9FCFF"/>
+      <stop offset="55%" stop-color="#D7E0E9"/>
+      <stop offset="100%" stop-color="#A9B4C0"/>
+    </linearGradient>
+    <linearGradient id="darkMetalGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#747E89"/>
+      <stop offset="100%" stop-color="#3A434D"/>
+    </linearGradient>
+    <linearGradient id="woodGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E29A45"/>
+      <stop offset="100%" stop-color="#A9571E"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE874"/>
+      <stop offset="100%" stop-color="#DDA228"/>
+    </linearGradient>
+    <linearGradient id="bombGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#666F79"/>
+      <stop offset="100%" stop-color="#2E343B"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)" stroke="#151515" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M81 17 C109 42,110 86,81 111" fill="none" stroke="#9C5A22" stroke-width="15"/>
+    <path d="M81 17 C106 42,107 86,81 111" fill="none" stroke="#CC8032" stroke-width="8"/>
+    <path d="M81 17 L30 64" stroke="#F2D99C" stroke-width="4.5"/>
+    <path d="M81 111 L30 64" stroke="#F2D99C" stroke-width="4.5"/>
+    <rect x="18" y="50" width="77" height="27" rx="8" fill="url(#woodGrad)"/>
+    <rect x="31" y="56" width="57" height="5" rx="2.5" fill="#F1B569" stroke="none"/>
+    <rect x="44" y="44" width="25" height="40" rx="7" fill="#B6C0CA"/>
+    <circle cx="56" cy="64" r="6.5" fill="#F4F8FB"/>
+    <rect x="58" y="58.5" width="50" height="11" rx="5.5" fill="#B4682E"/>
+    <path d="M102 50 L121 64 L102 78 Z" fill="url(#metalGrad)"/>
+    <path d="M58 78 C57 90,61 95,70 97" fill="none" stroke="#3F464E" stroke-width="6"/>
+
+  </g>
+</svg>

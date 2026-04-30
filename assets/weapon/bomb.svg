@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128" role="img" aria-label="bomb icon" shape-rendering="geometricPrecision">
+  <defs>
+    <linearGradient id="metalGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F9FCFF"/>
+      <stop offset="55%" stop-color="#D7E0E9"/>
+      <stop offset="100%" stop-color="#A9B4C0"/>
+    </linearGradient>
+    <linearGradient id="darkMetalGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#747E89"/>
+      <stop offset="100%" stop-color="#3A434D"/>
+    </linearGradient>
+    <linearGradient id="woodGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#E29A45"/>
+      <stop offset="100%" stop-color="#A9571E"/>
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE874"/>
+      <stop offset="100%" stop-color="#DDA228"/>
+    </linearGradient>
+    <linearGradient id="bombGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#666F79"/>
+      <stop offset="100%" stop-color="#2E343B"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000000" flood-opacity="0.14"/>
+    </filter>
+  </defs>
+
+  <g filter="url(#shadow)" stroke="#151515" stroke-width="7" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="58" cy="72" r="30" fill="url(#bombGrad)"/>
+    <path d="M40 56 C47 50,55 47,64 47 C78 47,89 56,94 69" fill="none" stroke="#7C8792" stroke-width="5"/>
+    <rect x="62" y="33" width="18" height="16" rx="4" fill="#AA6C34"/>
+    <path d="M71 33 C72 24,78 18,86 19 C89 20,90 24,88 27 C86 31,83 31,82 35" fill="none" stroke="#C68A47" stroke-width="6"/>
+    <path d="M87 16 L91 9" stroke="#F7C84F" stroke-width="5"/>
+    <path d="M90 17 L98 16" stroke="#F7C84F" stroke-width="5"/>
+    <path d="M90 13 L96 8" stroke="#F7C84F" stroke-width="5"/>
+    <circle cx="58" cy="72" r="9" fill="#8E99A4" stroke="none" opacity="0.22"/>
+    <circle cx="48" cy="61" r="5" fill="#FFFFFF" stroke="none" opacity="0.18"/>
+
+  </g>
+</svg>

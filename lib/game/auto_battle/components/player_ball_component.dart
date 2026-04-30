@@ -28,6 +28,7 @@ class PlayerBallComponent extends PositionComponent {
   int _lastAttackAt = 0;
   double _thrust = 0;
   double _targetAngle = 0;
+  int weaponCount = 1;
 
   PlayerBallComponent({
     required this.playerId,
@@ -46,6 +47,7 @@ class PlayerBallComponent extends PositionComponent {
         _facingAngle = _directionFromVelocity(snapshot),
         _targetAngle = snapshot.targetAngle,
         _lastAttackAt = snapshot.lastAttackAt,
+        weaponCount = snapshot.weaponCount,
         super(
           position: initialPosition,
           size: Vector2.all(ballRadius * 2),
@@ -79,6 +81,7 @@ class PlayerBallComponent extends PositionComponent {
     maxHp = snapshot.maxHp;
     unspentUpgrades = snapshot.unspentUpgrades;
     characterType = snapshot.characterType;
+    weaponCount = snapshot.weaponCount;
     final velocityLength =
         math.sqrt(snapshot.vx * snapshot.vx + snapshot.vy * snapshot.vy);
     
@@ -350,141 +353,85 @@ class PlayerBallComponent extends PositionComponent {
     if (!alive) return;
 
     final scale = (ballRadius / 18).clamp(0.72, 1.35).toDouble();
-    canvas.save();
     
-    // Apply thrust: lunge forward along the facing angle
-    // Increase distance to 14.0 for better visibility
-    final thrustOffset = 14.0 * _thrust * scale;
-    canvas.translate(
-      center.dx + math.cos(_facingAngle) * thrustOffset,
-      center.dy + math.sin(_facingAngle) * thrustOffset,
-    );
-    canvas.rotate(_facingAngle);
+    // Distribute weapons evenly around the character
+    for (int i = 0; i < weaponCount; i++) {
+      final weaponAngle = _facingAngle + (math.pi * 2 * i / weaponCount);
+      
+      canvas.save();
+      
+      // Apply thrust: lunge forward along the individual weapon angle
+      final thrustOffset = 14.0 * _thrust * scale;
+      canvas.translate(
+        center.dx + math.cos(weaponAngle) * thrustOffset,
+        center.dy + math.sin(weaponAngle) * thrustOffset,
+      );
+      canvas.rotate(weaponAngle);
 
-    final handOffset = Offset(ballRadius * 0.76, ballRadius * 0.20);
-    canvas.drawCircle(
-      handOffset,
-      4.1 * scale,
-      Paint()..color = Colors.white.withValues(alpha: 0.92),
-    );
-    canvas.drawCircle(
-      handOffset,
-      4.1 * scale,
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 2.0 * scale
-        ..color = const Color(0xFF1A1A1A).withValues(alpha: 0.5),
-    );
+      final handOffset = Offset(ballRadius * 0.76, ballRadius * 0.20);
+      canvas.drawCircle(
+        handOffset,
+        4.1 * scale,
+        Paint()..color = Colors.white.withValues(alpha: 0.92),
+      );
+      canvas.drawCircle(
+        handOffset,
+        4.1 * scale,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.0 * scale
+          ..color = const Color(0xFF1A1A1A).withValues(alpha: 0.5),
+      );
 
-    switch (characterType) {
-      case 'poison':
-        _renderPoisonVial(canvas, scale);
-        break;
-      case 'gunner':
-        _renderGun(canvas, scale);
-        break;
-      case 'blade':
-        _renderSpear(canvas, scale);
-        break;
-      case 'miner':
-        _renderHeldMine(canvas, scale);
-        break;
-      case 'laser':
-        _renderCrossbow(canvas, scale);
-        break;
-      default:
-        break;
+      switch (characterType) {
+        case 'poison':
+          _renderPoisonVial(canvas, scale);
+          break;
+        case 'gunner':
+          _renderGun(canvas, scale);
+          break;
+        case 'blade':
+          _renderSpear(canvas, scale);
+          break;
+        case 'miner':
+          _renderHeldMine(canvas, scale);
+          break;
+        case 'laser':
+          _renderCrossbow(canvas, scale);
+          break;
+        default:
+          break;
+      }
+
+      canvas.restore();
     }
-
-    canvas.restore();
   }
 
   void _renderGun(Canvas canvas, double scale) {
-    // ── Ultra Premium Rough Sketch Revolver ──
     final inkPaint = Paint()
       ..color = AutoBattlePalette.ink
       ..style = PaintingStyle.stroke
       ..strokeWidth = 3.2 * scale
       ..strokeCap = StrokeCap.round;
 
-    final recoil = _thrust * 15.0 * scale;
-    final tilt = _thrust * 0.22;
+    final recoil = _thrust * 12.0 * scale;
     
     canvas.save();
     canvas.translate(-recoil, 0);
-    canvas.rotate(-tilt);
 
-    // Frame - Rough Path
-    final framePath = Path()
-      ..moveTo(ballRadius * 0.55, -9 * scale)
-      ..lineTo(ballRadius * 1.15, -9 * scale)
-      ..lineTo(ballRadius * 1.25, -4.5 * scale)
-      ..lineTo(ballRadius * 2.3, -4.5 * scale)
-      ..lineTo(ballRadius * 2.3, 4.5 * scale)
-      ..lineTo(ballRadius * 0.55, 4.5 * scale)
-      ..close();
-    
-    canvas.drawPath(framePath, Paint()..color = const Color(0xFF94A3B8));
-    _drawRoughPath(canvas, framePath, inkPaint);
+    // Simplified Gun - Just a sturdy circle barrel
+    final gunRect = Rect.fromLTWH(ballRadius * 0.7, -7 * scale, 16 * scale, 14 * scale);
+    canvas.drawOval(gunRect, Paint()..color = const Color(0xFF64748B));
+    _drawRoughPath(canvas, Path()..addOval(gunRect), inkPaint);
 
-    // Hatching Shadow on Frame
-    _drawHatching(canvas, Rect.fromLTWH(ballRadius * 0.6, -8 * scale, 20 * scale, 12 * scale), 0.5, 4 * scale, Paint()..color = Colors.black26..strokeWidth = 1);
-
-    // Cylinder - More detailed
-    final cylinderRect = Rect.fromLTWH(ballRadius * 0.7, -8 * scale, 14 * scale, 16 * scale);
-    canvas.drawRRect(RRect.fromRectAndRadius(cylinderRect, Radius.circular(4 * scale)), Paint()..color = const Color(0xFF334155));
-    _drawRoughPath(canvas, Path()..addRRect(RRect.fromRectAndRadius(cylinderRect, Radius.circular(4 * scale))), inkPaint);
-    
-    // Cylinder detail lines
-    for (var i = 0; i < 3; i++) {
-      final y = -4 * scale + i * 4 * scale;
-      canvas.drawLine(Offset(ballRadius * 0.75, y), Offset(ballRadius * 0.75 + 10 * scale, y), Paint()..color = Colors.white24..strokeWidth = 2 * scale);
-    }
-
-    // Grip - Hand-drawn curve
-    final gripPath = Path()
-      ..moveTo(ballRadius * 0.6, 4 * scale)
-      ..quadraticBezierTo(ballRadius * 0.9, 5 * scale, ballRadius * 0.8, 26 * scale)
-      ..lineTo(ballRadius * 0.4, 24 * scale)
-      ..quadraticBezierTo(ballRadius * 0.45, 10 * scale, ballRadius * 0.55, 4 * scale);
-    canvas.drawPath(gripPath, Paint()..color = const Color(0xFF78350F));
-    _drawRoughPath(canvas, gripPath, inkPaint);
-
-    // Hammer & Trigger Guard
-    _drawRoughPath(canvas, Path()..addOval(Rect.fromCircle(center: Offset(ballRadius * 0.8, 8 * scale), radius: 5 * scale)), inkPaint..strokeWidth = 2 * scale);
-    
-    if (_thrust > 0.7) {
-      _renderMuzzleFlash(canvas, Offset(ballRadius * 2.35, 0), scale);
-      _renderSmoke(canvas, Offset(ballRadius * 2.5, -5 * scale), scale);
-    }
+    // Tip detail
+    canvas.drawCircle(
+      Offset(ballRadius * 0.7 + 16 * scale, 0),
+      3 * scale,
+      Paint()..color = AutoBattlePalette.gold,
+    );
 
     canvas.restore();
-  }
-
-  void _renderSmoke(Canvas canvas, Offset pos, double scale) {
-    final t = (_pulse * 5) % 1.0;
-    final ink = Paint()..color = Colors.black12..style = PaintingStyle.stroke..strokeWidth = 1.5 * scale;
-    for (var i = 0; i < 3; i++) {
-      final r = (5 + i * 8) * scale * t;
-      canvas.drawCircle(pos + Offset(i * 10 * scale * t, -i * 5 * scale * t), r, ink);
-    }
-  }
-
-  void _renderMuzzleFlash(Canvas canvas, Offset muzzle, double scale) {
-    final flashPaint = Paint()..color = AutoBattlePalette.gold;
-    final size = 16 * scale * _thrust;
-    
-    final path = Path();
-    for (var i = 0; i < 12; i++) {
-      final angle = i * math.pi / 6;
-      final r = i % 3 == 0 ? size : size * 0.4;
-      final x = muzzle.dx + math.cos(angle) * r;
-      final y = muzzle.dy + math.sin(angle) * r;
-      if (i == 0) path.moveTo(x, y); else path.lineTo(x, y);
-    }
-    path.close();
-    canvas.drawPath(path, flashPaint);
-    _drawRoughPath(canvas, path, Paint()..color = Colors.white..style = PaintingStyle.stroke..strokeWidth = 2.5 * scale, jitter: 1.2);
   }
 
   void _renderSpear(Canvas canvas, double scale) {

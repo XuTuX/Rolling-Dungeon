@@ -48,7 +48,7 @@ class GameProgressController extends GetxController {
   var playerBarrierMaxHp = 0.0.obs;
 
   // ── Character Type ──
-  var characterType = 'none'.obs; // 'gunner', 'blade', 'miner', 'laser'
+  var characterType = 'none'.obs; // 'gunner', 'blade', 'miner', 'poison'
 
   // ── Upgrade history for display ──
   final appliedUpgrades = <String>[].obs;
