@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 
@@ -110,29 +111,62 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
 };
 
-class CharacterBallPreview extends StatelessWidget {
+class CharacterBallPreview extends StatefulWidget {
   final CharDisplayInfo info;
   final double size;
 
   const CharacterBallPreview({super.key, required this.info, required this.size});
 
   @override
+  State<CharacterBallPreview> createState() => _CharacterBallPreviewState();
+}
+
+class _CharacterBallPreviewState extends State<CharacterBallPreview>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return CustomPaint(
-      size: Size(size, size),
-      painter: _CharBallPainter(info: info),
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, child) {
+        // Sine wave for smooth floating effect (-4.0 to +4.0)
+        final floatOffset = math.sin(_controller.value * math.pi) * 4.0;
+
+        return CustomPaint(
+          size: Size(widget.size, widget.size),
+          painter: _CharBallPainter(info: widget.info, floatOffset: floatOffset),
+        );
+      },
     );
   }
 }
 
 class _CharBallPainter extends CustomPainter {
   final CharDisplayInfo info;
-  _CharBallPainter({required this.info});
+  final double floatOffset;
+
+  _CharBallPainter({required this.info, this.floatOffset = 0});
 
   @override
   void paint(Canvas canvas, Size size) {
     final cx = size.width / 2;
-    final cy = size.height / 2;
+    final cy = size.height / 2 + floatOffset;
     final r = size.width * 0.42;
 
     // Shadow (offset)
@@ -231,5 +265,5 @@ class _CharBallPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _CharBallPainter old) =>
-      old.info.name != info.name;
+      old.info.name != info.name || old.floatOffset != floatOffset;
 }

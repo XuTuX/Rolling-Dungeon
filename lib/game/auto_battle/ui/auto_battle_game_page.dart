@@ -14,6 +14,7 @@ import 'package:get/get.dart';
 import 'package:circle_war/screens/home_screen.dart';
 import 'package:circle_war/screens/upgrade_select_screen.dart';
 import 'package:circle_war/screens/run_results_screen.dart';
+import 'package:circle_war/game/auto_battle/ui/character_display.dart';
 
 class AutoBattleGamePage extends StatefulWidget {
   const AutoBattleGamePage({super.key});
@@ -65,7 +66,8 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       vel: normalize(Vec2(x: 1, y: 0.1)),
       radius: controller.playerRadius.value,
       activeEffects: [],
-      ownedWeapons: List<String>.from(controller.ownedWeapons),
+      // For simulation: grant all available weapons
+      ownedWeapons: charDisplayInfoMap.keys.toList(),
       color: '#4F8CFF',
       alive: true,
       lives: controller.lives.value,
@@ -514,11 +516,82 @@ class _SketchSidebar extends StatelessWidget {
         players.where((p) => !p.isEnemy || p.maxHp >= 500).toList();
     final sorted = List<PlayerSnapshot>.from(filtered)
       ..sort((a, b) => b.hp.compareTo(a.hp));
+    
+    final myPlayer = players.cast<PlayerSnapshot?>().firstWhere((p) => p?.id == myId, orElse: () => null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: topPadding + (compact ? 12 : 20)),
+        
+        // ── MY CHARACTER Section ──
+        if (myPlayer != null) ...[
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 24),
+            child: Text(
+              'MY CHARACTER',
+              style: TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: compact ? 15 : 18,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          SizedBox(height: compact ? 8 : 12),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
+            child: Container(
+              padding: EdgeInsets.all(compact ? 10 : 14),
+              decoration: BoxDecoration(
+                color: myPlayer.flutterColor.withValues(alpha: 0.1),
+                border: Border.all(color: AutoBattlePalette.ink, width: 3),
+                boxShadow: const [
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
+                ],
+              ),
+              child: Row(
+                children: [
+                  CharacterBallPreview(
+                    info: charDisplayInfoMap[myPlayer.characterType] ?? charDisplayInfoMap['gunner']!,
+                    size: compact ? 48 : 64,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          myPlayer.id.toUpperCase(),
+                          style: TextStyle(
+                            color: AutoBattlePalette.ink,
+                            fontSize: compact ? 14 : 16,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Wrap(
+                          spacing: 6,
+                          runSpacing: 6,
+                          children: [
+                            myPlayer.characterType,
+                            ...myPlayer.ownedWeapons.where((w) => w != myPlayer.characterType),
+                          ].map((w) => _WeaponStatusIcon(
+                            weapon: w,
+                            player: myPlayer,
+                            now: DateTime.now().millisecondsSinceEpoch,
+                            compact: compact,
+                          )).toList(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          SizedBox(height: compact ? 16 : 24),
+        ],
+
         Padding(
           padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 24),
           child: Text(
@@ -605,26 +678,6 @@ class _SketchSidebar extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (isMe) ...[
-                      const SizedBox(height: 8),
-                      // Weapons & Status
-                      Wrap(
-                        spacing: 6,
-                        runSpacing: 6,
-                        children: [
-                          p.characterType,
-                          ...p.ownedWeapons
-                              .where((weapon) => weapon != p.characterType),
-                        ]
-                            .map((w) => _WeaponStatusIcon(
-                                  weapon: w,
-                                  player: p,
-                                  now: now,
-                                  compact: compact,
-                                ))
-                            .toList(),
-                      ),
-                    ],
                   ],
                 ),
               );
