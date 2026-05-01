@@ -324,6 +324,27 @@ class AutoBattleGame extends FlameGame {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
 
+      // Face (Sketch Style)
+      final cx = pos.dx;
+      final cy = pos.dy;
+      canvas.drawCircle(
+        Offset(cx - r * 0.2, cy - r * 0.2),
+        r * 0.35,
+        Paint()..color = Colors.white.withValues(alpha: 0.3),
+      );
+      final eyeY = cy - r * 0.12;
+      final eyeSpacing = r * 0.28;
+      final eyeR = r * 0.14;
+      for (final dx in [-eyeSpacing, eyeSpacing]) {
+        canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = Colors.white);
+        canvas.drawCircle(Offset(cx + dx + 1.5, eyeY + 1), eyeR * 0.55, Paint()..color = AutoBattlePalette.ink);
+        canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2);
+      }
+      final mouthPath = Path();
+      mouthPath.moveTo(cx - r * 0.15, cy + r * 0.22);
+      mouthPath.quadraticBezierTo(cx, cy + r * 0.38, cx + r * 0.15, cy + r * 0.22);
+      canvas.drawPath(mouthPath, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
+
       if (p.shield > 0) {
         final shieldRatio =
             p.maxShield <= 0 ? 0.0 : (p.shield / p.maxShield).clamp(0.0, 1.0);
@@ -438,6 +459,7 @@ class AutoBattleGame extends FlameGame {
           r,
           baseAngle + math.pi * 2 * i / weaponCount,
           ink,
+          player.flutterColor,
         );
       }
       return;
@@ -455,35 +477,42 @@ class AutoBattleGame extends FlameGame {
 
       switch (wType) {
         case 'blade':
-          _renderBlade(canvas, pos, r, wAngle, ink, false);
+          _renderBlade(canvas, pos, r, wAngle, ink, player.flutterColor, false);
           break;
         case 'heavy_blade':
-          _renderBlade(canvas, pos, r, wAngle, ink, true);
+          _renderBlade(canvas, pos, r, wAngle, ink, player.flutterColor, true);
           break;
         case 'miner':
-          _renderMiner(canvas, pos, r, wAngle, ink);
+          _renderMiner(canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
         case 'poison':
-          _renderPoisonNozzle(canvas, pos, r, wAngle, ink);
+          _renderPoisonNozzle(canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
         case 'footsteps':
-          _renderFootstepsDecoration(canvas, pos, r, wAngle, ink);
+          _renderFootstepsDecoration(canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
         case 'minigun':
         case 'burst':
-          _renderGunDecoration(canvas, pos, r, wAngle, ink, isMinigun: true);
+          _renderGunDecoration(canvas, pos, r, wAngle, ink, player.flutterColor, isMinigun: true);
           break;
         case 'long_gun':
         case 'ricochet':
         case 'gunner':
-          _renderGunDecoration(canvas, pos, r, wAngle, ink);
+          _renderGunDecoration(canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
       }
     }
   }
 
+  void _drawHand(Canvas canvas, double r, Offset center, Color bodyColor, Paint ink) {
+    final handR = r * 0.3;
+    canvas.drawCircle(center + const Offset(3, 3), handR, Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.5));
+    canvas.drawCircle(center, handR, Paint()..color = bodyColor);
+    canvas.drawCircle(center, handR, ink);
+  }
+
   void _renderBlade(Canvas canvas, Offset pos, double r, double angle,
-      Paint ink, bool isHeavy) {
+      Paint ink, Color bodyColor, bool isHeavy) {
     canvas.save();
     canvas.translate(pos.dx, pos.dy);
     canvas.rotate(angle);
@@ -498,11 +527,12 @@ class AutoBattleGame extends FlameGame {
         ..strokeCap = StrokeCap.round,
     );
     canvas.drawLine(Offset(r * 0.42, 0), Offset(r * 1.62 * rangeMult, 0), ink);
+    _drawHand(canvas, r, Offset(r * 0.6, r * 0.25), bodyColor, ink);
     canvas.restore();
   }
 
   void _renderMiner(
-      Canvas canvas, Offset pos, double r, double angle, Paint ink) {
+      Canvas canvas, Offset pos, double r, double angle, Paint ink, Color bodyColor) {
     final minePos =
         pos + Offset(math.cos(angle) * (r + 10), math.sin(angle) * (r + 10));
     canvas.drawCircle(
@@ -511,7 +541,7 @@ class AutoBattleGame extends FlameGame {
   }
 
   void _renderPoisonNozzle(
-      Canvas canvas, Offset pos, double r, double angle, Paint ink) {
+      Canvas canvas, Offset pos, double r, double angle, Paint ink, Color bodyColor) {
     final rear = angle + math.pi;
     final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
     canvas.drawLine(
@@ -526,7 +556,7 @@ class AutoBattleGame extends FlameGame {
   }
 
   void _renderFootstepsDecoration(
-      Canvas canvas, Offset pos, double r, double angle, Paint ink) {
+      Canvas canvas, Offset pos, double r, double angle, Paint ink, Color bodyColor) {
     final rear = angle + math.pi;
     final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
     canvas.drawCircle(
@@ -539,7 +569,8 @@ class AutoBattleGame extends FlameGame {
     Offset pos,
     double r,
     double angle,
-    Paint ink, {
+    Paint ink,
+    Color bodyColor, {
     bool isMinigun = false,
   }) {
     canvas.save();
@@ -563,6 +594,9 @@ class AutoBattleGame extends FlameGame {
       r * 0.15,
       Paint()..color = AutoBattlePalette.gold,
     );
+
+    // Hand holding the gun
+    _drawHand(canvas, r, Offset(r * 0.65, r * 0.25), bodyColor, ink);
 
     canvas.restore();
   }

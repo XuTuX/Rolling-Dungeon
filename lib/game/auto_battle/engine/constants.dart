@@ -121,7 +121,7 @@ const double POISON_RADIUS = 22.0;
 
 const int GUNNER_FIRE_MS = 900;
 const double GUNNER_RANGE = 260.0;
-const double BULLET_SPEED = 0.36;
+const double BULLET_SPEED = 0.48;
 const double BULLET_RADIUS = 5.0;
 
 const int BLADE_ATTACK_MS = 850;

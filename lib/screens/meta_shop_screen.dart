@@ -1,6 +1,4 @@
 import 'package:circle_war/controllers/meta_progress_controller.dart';
-import 'package:circle_war/controllers/game_progress_controller.dart';
-import 'package:circle_war/game/auto_battle/ui/auto_battle_game_page.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/models/achievement_data.dart';
 import 'package:flutter/material.dart';
@@ -345,42 +343,6 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                       ),
                     ),
                   ),
-                  // Simulation button (only if not owned)
-                  if (!selOwned) ...[
-                    const SizedBox(height: 8),
-                    GestureDetector(
-                      onTap: () {
-                        ctrl.equipWeaponForSimulation(selected.weaponType);
-                        final runCtrl = Get.find<GameProgressController>();
-                        runCtrl.startNewRun(selected.weaponType);
-                        Get.to(() => const AutoBattleGamePage());
-                      },
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: AutoBattlePalette.primary,
-                          border: Border.all(
-                              color: AutoBattlePalette.ink, width: 2.5),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: AutoBattlePalette.ink,
-                                offset: Offset(2, 2)),
-                          ],
-                        ),
-                        child: const Center(
-                          child: Text(
-                            '✨ 체험하기 (시뮬레이션)',
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),

@@ -546,7 +546,7 @@ class _SketchSidebar extends StatelessWidget {
             child: Container(
               padding: EdgeInsets.all(compact ? 10 : 14),
               decoration: BoxDecoration(
-                color: myPlayer.flutterColor.withValues(alpha: 0.1),
+                color: Colors.white,
                 border: Border.all(color: AutoBattlePalette.ink, width: 3),
                 boxShadow: const [
                   BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
@@ -624,16 +624,14 @@ class _SketchSidebar extends StatelessWidget {
               return Container(
                 padding: EdgeInsets.all(compact ? 9 : 12),
                 decoration: BoxDecoration(
-                  color: isMe
-                      ? p.flutterColor.withValues(alpha: 0.05)
-                      : Colors.white,
+                  color: Colors.white,
                   border: Border.all(
                       color: AutoBattlePalette.ink,
                       width: 3),
-                  boxShadow: [
+                  boxShadow: const [
                     BoxShadow(
-                      color: AutoBattlePalette.ink.withValues(alpha: isMe ? 1.0 : 0.4),
-                      offset: const Offset(4, 4),
+                      color: AutoBattlePalette.ink,
+                      offset: Offset(4, 4),
                     ),
                   ],
                 ),

@@ -138,7 +138,8 @@ class MetaProgressController extends GetxController {
   /// Load persistent data from SharedPreferences.
   Future<void> loadFromDisk() async {
     final data = await PersistenceService.loadMeta();
-    currency.value = data.currency;
+    // For simulation/testing: force currency to 10000
+    currency.value = 10000;
     unlockedWeapons.value = List<String>.from(data.unlockedWeapons);
     if (!unlockedWeapons.contains('gunner')) {
       unlockedWeapons.insert(0, 'gunner');
@@ -197,11 +198,6 @@ class MetaProgressController extends GetxController {
       equippedWeapon.value = weaponType;
       saveToDisk();
     }
-  }
-
-  /// Equips a weapon for simulation mode only (does not save to disk or require unlocking).
-  void equipWeaponForSimulation(String weaponType) {
-    equippedWeapon.value = weaponType;
   }
 
   // ──────────────────────────────────────────
