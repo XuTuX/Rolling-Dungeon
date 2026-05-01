@@ -66,8 +66,11 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       vel: normalize(Vec2(x: 1, y: 0.1)),
       radius: controller.playerRadius.value,
       activeEffects: [],
-      // For simulation: grant all available weapons
-      ownedWeapons: charDisplayInfoMap.keys.toList(),
+      // Ensure the selected characterType is always available, even if simulating an unowned weapon
+      ownedWeapons: {
+        ...controller.ownedWeapons,
+        controller.characterType.value,
+      }.toList(),
       color: '#4F8CFF',
       alive: true,
       lives: controller.lives.value,
@@ -569,18 +572,22 @@ class _SketchSidebar extends StatelessWidget {
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: [
-                            myPlayer.characterType,
-                            ...myPlayer.ownedWeapons.where((w) => w != myPlayer.characterType),
-                          ].map((w) => _WeaponStatusIcon(
-                            weapon: w,
-                            player: myPlayer,
-                            now: DateTime.now().millisecondsSinceEpoch,
-                            compact: compact,
-                          )).toList(),
+                        SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Row(
+                            children: [
+                              myPlayer.characterType,
+                              ...myPlayer.ownedWeapons.where((w) => w != myPlayer.characterType),
+                            ].map((w) => Padding(
+                              padding: const EdgeInsets.only(right: 6),
+                              child: _WeaponStatusIcon(
+                                weapon: w,
+                                player: myPlayer,
+                                now: DateTime.now().millisecondsSinceEpoch,
+                                compact: compact,
+                              ),
+                            )).toList(),
+                          ),
                         ),
                       ],
                     ),

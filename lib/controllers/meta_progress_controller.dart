@@ -199,6 +199,11 @@ class MetaProgressController extends GetxController {
     }
   }
 
+  /// Equips a weapon for simulation mode only (does not save to disk or require unlocking).
+  void equipWeaponForSimulation(String weaponType) {
+    equippedWeapon.value = weaponType;
+  }
+
   // ──────────────────────────────────────────
   //  Run End: Accumulate Stats & Check Achievements
   // ──────────────────────────────────────────
