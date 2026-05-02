@@ -71,6 +71,7 @@ class PlayerData {
   int maxLives;
 
   List<String> ownedWeapons;
+  Map<String, int> weaponLevels;
   Map<String, int> lastCollisionAt;
   int lastPoisonDropAt;
   int lastShotAt;
@@ -114,6 +115,7 @@ class PlayerData {
     required this.radius,
     required this.activeEffects,
     this.ownedWeapons = const [],
+    this.weaponLevels = const {},
     required this.color,
     required this.alive,
     required this.lives,

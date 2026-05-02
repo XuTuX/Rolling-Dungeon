@@ -7,6 +7,7 @@ import 'package:circle_war/game/auto_battle/services/local_game_service.dart';
 import 'package:circle_war/game/auto_battle/engine/types.dart';
 import 'package:circle_war/game/auto_battle/engine/physics.dart';
 import 'package:circle_war/controllers/game_progress_controller.dart';
+import 'package:circle_war/controllers/meta_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
@@ -36,6 +37,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
   void initState() {
     super.initState();
     final controller = Get.find<GameProgressController>();
+    final metaController = Get.find<MetaProgressController>();
     final player = PlayerData(
       id: 'p1',
       characterType: controller.characterType.value,
@@ -71,6 +73,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         ...controller.ownedWeapons,
         controller.characterType.value,
       }.toList(),
+      weaponLevels: metaController.weaponLevels,
       color: '#4F8CFF',
       alive: true,
       lives: controller.lives.value,

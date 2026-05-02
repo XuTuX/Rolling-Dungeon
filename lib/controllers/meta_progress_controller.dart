@@ -116,6 +116,7 @@ class MetaProgressController extends GetxController {
   final unlockedSkills = <String>[].obs;
   final equippedWeapon = 'gunner'.obs;
   final achievements = <String, bool>{}.obs;
+  final weaponLevels = <String, int>{}.obs;
   final totalEnemiesKilled = 0.obs;
   final totalBossesDefeated = 0.obs;
   final totalDamageDealt = 0.0.obs;
@@ -147,6 +148,7 @@ class MetaProgressController extends GetxController {
     unlockedSkills.value = List<String>.from(data.unlockedSkills);
     equippedWeapon.value = data.equippedWeapon;
     achievements.value = Map<String, bool>.from(data.achievements);
+    weaponLevels.value = Map<String, int>.from(data.weaponLevels);
     totalEnemiesKilled.value = data.totalEnemiesKilled;
     totalBossesDefeated.value = data.totalBossesDefeated;
     totalDamageDealt.value = data.totalDamageDealt;
@@ -168,6 +170,7 @@ class MetaProgressController extends GetxController {
       unlockedSkills: List<String>.from(unlockedSkills),
       equippedWeapon: equippedWeapon.value,
       achievements: Map<String, bool>.from(achievements),
+      weaponLevels: Map<String, int>.from(weaponLevels),
       totalEnemiesKilled: totalEnemiesKilled.value,
       totalBossesDefeated: totalBossesDefeated.value,
       totalDamageDealt: totalDamageDealt.value,
@@ -198,6 +201,30 @@ class MetaProgressController extends GetxController {
       equippedWeapon.value = weaponType;
       saveToDisk();
     }
+  }
+
+  // ──────────────────────────────────────────
+  //  Shop: Upgrade Weapon
+  // ──────────────────────────────────────────
+  int getWeaponLevel(String weaponType) {
+    return weaponLevels[weaponType] ?? 0;
+  }
+
+  int getWeaponUpgradeCost(WeaponShopDef weapon) {
+    final level = getWeaponLevel(weapon.weaponType);
+    return weapon.price + (level * (weapon.price ~/ 2));
+  }
+
+  bool upgradeWeapon(WeaponShopDef weapon) {
+    if (!unlockedWeapons.contains(weapon.weaponType)) return false;
+    final cost = getWeaponUpgradeCost(weapon);
+    if (currency.value < cost) return false;
+    
+    currency.value -= cost;
+    final currentLevel = getWeaponLevel(weapon.weaponType);
+    weaponLevels[weapon.weaponType] = currentLevel + 1;
+    saveToDisk();
+    return true;
   }
 
   // ──────────────────────────────────────────

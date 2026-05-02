@@ -559,7 +559,8 @@ class GameEngine {
     double spread = 0.0,
   }) {
     int baseFireInterval = WEAPON_FIRE_INTERVAL_MS;
-    double damageMult = 1.0;
+    final wLevel = player.weaponLevels[weaponType] ?? 0;
+    double damageMult = 1.0 + (wLevel * 0.15);
     double bulletRad = BULLET_RADIUS;
     int extraReflects = 0;
 
@@ -631,6 +632,7 @@ class GameEngine {
         y: player.pos.y + direction.y * muzzleDist,
       );
 
+      final wLevel = player.weaponLevels['burst'] ?? 0;
       projectiles.add(ProjectileData(
         id: _nextId('burst'),
         ownerId: player.id,
@@ -639,6 +641,7 @@ class GameEngine {
         radius: BULLET_RADIUS * 0.8,
         color: '#FFEB3B', // Yellow burst
         reflectsRemaining: 0,
+        damageMult: 1.0 + (wLevel * 0.15),
       ));
     }
   }
@@ -671,7 +674,8 @@ class GameEngine {
 
       if (distance(target.pos, player.pos) <= player.radius + AURA_RADIUS) {
         // Ticking damage
-        _dealDamage(owner, target, AURA_DAMAGE_TICK * (TICK_MS / 1000));
+        final wLevel = owner.weaponLevels['aura'] ?? 0;
+        _dealDamage(owner, target, AURA_DAMAGE_TICK * (1.0 + wLevel * 0.15) * (TICK_MS / 1000));
       }
     }
   }
@@ -766,7 +770,9 @@ class GameEngine {
     final baseAngle = player.targetAngle;
     final rangeMult = isHeavy ? 1.5 : 1.0;
     final visualRange = player.radius * 1.6 * rangeMult;
-    final dmgMult = isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0;
+    
+    final wLevel = player.weaponLevels[isHeavy ? 'heavy_blade' : 'blade'] ?? 0;
+    final dmgMult = (isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0) * (1.0 + wLevel * 0.15);
     final cooldown =
         isHeavy ? HEAVY_BLADE_COOLDOWN_MS : BLADE_CONTACT_DAMAGE_MS;
 
@@ -894,16 +900,18 @@ class GameEngine {
           continue;
         }
         if (hazard.type == 'mine') {
+          final wLevel = owner.weaponLevels['miner'] ?? 0;
           _dealDamage(
             owner,
             target,
-            MINE_DAMAGE + owner.atk * MINE_ATTACK_DAMAGE_RATIO,
+            (MINE_DAMAGE + owner.atk * MINE_ATTACK_DAMAGE_RATIO) * (1.0 + wLevel * 0.15),
           );
           hazards.removeAt(i);
           break;
         }
+        final poisonLevel = owner.weaponLevels['poison'] ?? 0;
         final poisonDamage =
-            (1.7 + owner.abilityPower * 0.45 + owner.weaponLevel * 0.18) *
+            (1.7 + owner.abilityPower * 0.45 + owner.weaponLevel * 0.18) * (1.0 + poisonLevel * 0.15) *
                 (dt / 1000);
         _dealDamage(owner, target, poisonDamage);
       }

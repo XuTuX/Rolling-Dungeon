@@ -303,45 +303,55 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                     ],
                   ),
                   const SizedBox(height: 12),
-                  // Buy / Owned button
-                  GestureDetector(
-                    onTap: selOwned
-                        ? null
-                        : (selCanAfford
-                            ? () => ctrl.buyWeapon(selected)
-                            : null),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: selOwned
-                            ? const Color(0xFF4CAF50)
-                            : (selCanAfford
-                                ? AutoBattlePalette.gold
-                                : const Color(0xFF9CA3AF)),
-                        border: Border.all(
-                            color: AutoBattlePalette.ink, width: 2.5),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: AutoBattlePalette.ink,
-                              offset: Offset(2, 2)),
-                        ],
-                      ),
-                      child: Center(
-                        child: Text(
-                          selOwned
-                              ? '✓ 보유중'
-                              : (selCanAfford
-                                  ? '💎 ${selected.price}  구매하기'
-                                  : '💎 ${selected.price}  크리스탈 부족'),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 14,
-                            fontWeight: FontWeight.w900,
+                  // Buy / Upgrade button
+                  Builder(
+                    builder: (context) {
+                      final level = ctrl.getWeaponLevel(selected.weaponType);
+                      final upgradeCost = ctrl.getWeaponUpgradeCost(selected);
+                      final canAffordUpgrade = ctrl.currency.value >= upgradeCost;
+
+                      return GestureDetector(
+                        onTap: selOwned
+                            ? (canAffordUpgrade ? () => ctrl.upgradeWeapon(selected) : null)
+                            : (selCanAfford ? () => ctrl.buyWeapon(selected) : null),
+                        child: Container(
+                          width: double.infinity,
+                          padding: const EdgeInsets.symmetric(vertical: 10),
+                          decoration: BoxDecoration(
+                            color: selOwned
+                                ? (canAffordUpgrade
+                                    ? const Color(0xFF4CAF50)
+                                    : const Color(0xFF9CA3AF))
+                                : (selCanAfford
+                                    ? AutoBattlePalette.gold
+                                    : const Color(0xFF9CA3AF)),
+                            border: Border.all(
+                                color: AutoBattlePalette.ink, width: 2.5),
+                            boxShadow: const [
+                              BoxShadow(
+                                  color: AutoBattlePalette.ink,
+                                  offset: Offset(2, 2)),
+                            ],
+                          ),
+                          child: Center(
+                            child: Text(
+                              selOwned
+                                  ? (canAffordUpgrade
+                                      ? '💎 $upgradeCost  LV.${level + 1} 강화하기'
+                                      : '💎 $upgradeCost  크리스탈 부족 (LV.$level)')
+                                  : (selCanAfford
+                                      ? '💎 ${selected.price}  구매하기'
+                                      : '💎 ${selected.price}  크리스탈 부족'),
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
+                      );
+                    }
                   ),
                 ],
               ),
@@ -648,8 +658,17 @@ class _WeaponIconTile extends StatelessWidget {
             Text(weapon.icon, style: const TextStyle(fontSize: 22)),
             const SizedBox(height: 1),
             if (owned)
-              const Icon(Icons.check_circle,
-                  color: Color(0xFF4CAF50), size: 10)
+              Obx(() {
+                final level = Get.find<MetaProgressController>().getWeaponLevel(weapon.weaponType);
+                return Text(
+                  'LV.$level',
+                  style: const TextStyle(
+                    color: Color(0xFF4CAF50),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                );
+              })
             else
               Text(
                 '💎${weapon.price}',
