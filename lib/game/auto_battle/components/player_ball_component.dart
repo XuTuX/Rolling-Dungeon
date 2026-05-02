@@ -174,18 +174,17 @@ class PlayerBallComponent extends PositionComponent {
 
     canvas.save();
     canvas.translate(center.dx, center.dy);
-    canvas.rotate(_facingAngle);
+    canvas.rotate(_facingAngle + math.pi / 2);
     canvas.scale(stretch, squash);
 
-    canvas.drawCircle(
-      Offset(0, ballRadius * 0.22),
-      ballRadius * 1.02,
+    final bodyPath = _localTrianglePath(ballRadius);
+    canvas.drawPath(
+      bodyPath.shift(Offset(0, ballRadius * 0.16)),
       Paint()..color = const Color(0xFF9DB5D3).withValues(alpha: 0.22),
     );
-    canvas.drawCircle(Offset.zero, ballRadius, Paint()..color = baseColor);
-    canvas.drawCircle(
-      Offset.zero,
-      ballRadius * 0.82,
+    canvas.drawPath(bodyPath, Paint()..color = baseColor);
+    canvas.drawPath(
+      bodyPath,
       Paint()
         ..shader = RadialGradient(
           center: const Alignment(-0.35, -0.45),
@@ -231,26 +230,35 @@ class PlayerBallComponent extends PositionComponent {
           );
         }
         // O Mouth
-        canvas.drawCircle(Offset(0, ballRadius * 0.25), ballRadius * 0.15, inkPaint);
+        canvas.drawCircle(
+            Offset(0, ballRadius * 0.25), ballRadius * 0.15, inkPaint);
       } else {
         // Normal Eyes
-        canvas.drawCircle(Offset(eyeOffset, eyeY), eyeSize, Paint()..color = Colors.black);
-        canvas.drawCircle(Offset(eyeOffset + eyeSize * 0.3, eyeY - eyeSize * 0.3), eyeSize * 0.3, Paint()..color = Colors.white);
-        
-        canvas.drawCircle(Offset(-eyeOffset, eyeY), eyeSize, Paint()..color = Colors.black);
-        canvas.drawCircle(Offset(-eyeOffset + eyeSize * 0.3, eyeY - eyeSize * 0.3), eyeSize * 0.3, Paint()..color = Colors.white);
+        canvas.drawCircle(
+            Offset(eyeOffset, eyeY), eyeSize, Paint()..color = Colors.black);
+        canvas.drawCircle(
+            Offset(eyeOffset + eyeSize * 0.3, eyeY - eyeSize * 0.3),
+            eyeSize * 0.3,
+            Paint()..color = Colors.white);
+
+        canvas.drawCircle(
+            Offset(-eyeOffset, eyeY), eyeSize, Paint()..color = Colors.black);
+        canvas.drawCircle(
+            Offset(-eyeOffset + eyeSize * 0.3, eyeY - eyeSize * 0.3),
+            eyeSize * 0.3,
+            Paint()..color = Colors.white);
 
         // Smile
         final mouthPath = Path()
           ..moveTo(-ballRadius * 0.22, ballRadius * 0.22)
-          ..quadraticBezierTo(0, ballRadius * 0.42, ballRadius * 0.22, ballRadius * 0.22);
+          ..quadraticBezierTo(
+              0, ballRadius * 0.42, ballRadius * 0.22, ballRadius * 0.22);
         canvas.drawPath(mouthPath, inkPaint);
       }
     }
 
-    canvas.drawCircle(
-      Offset.zero,
-      ballRadius,
+    canvas.drawPath(
+      bodyPath,
       Paint()
         ..style = PaintingStyle.stroke
         ..strokeWidth = isMine ? 3 : 1.8
@@ -344,6 +352,14 @@ class PlayerBallComponent extends PositionComponent {
     hpBar
       ..size = Vector2(ballRadius * 2.4, 6)
       ..position = Vector2(size.x / 2, -10);
+  }
+
+  Path _localTrianglePath(double radius) {
+    return Path()
+      ..moveTo(0, -radius * 1.16)
+      ..lineTo(radius * 0.96, radius * 0.76)
+      ..lineTo(-radius * 0.96, radius * 0.76)
+      ..close();
   }
 
   static double _directionFromVelocity(PlayerSnapshot snapshot) {

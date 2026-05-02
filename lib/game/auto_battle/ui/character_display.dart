@@ -115,7 +115,8 @@ class CharacterBallPreview extends StatefulWidget {
   final CharDisplayInfo info;
   final double size;
 
-  const CharacterBallPreview({super.key, required this.info, required this.size});
+  const CharacterBallPreview(
+      {super.key, required this.info, required this.size});
 
   @override
   State<CharacterBallPreview> createState() => _CharacterBallPreviewState();
@@ -150,7 +151,8 @@ class _CharacterBallPreviewState extends State<CharacterBallPreview>
 
         return CustomPaint(
           size: Size(widget.size, widget.size),
-          painter: _CharBallPainter(info: widget.info, floatOffset: floatOffset),
+          painter:
+              _CharBallPainter(info: widget.info, floatOffset: floatOffset),
         );
       },
     );
@@ -168,32 +170,35 @@ class _CharBallPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2 + floatOffset;
     final r = size.width * 0.42;
+    final bodyPath = _trianglePath(Offset(cx, cy), r);
 
     // Shadow (offset)
-    canvas.drawCircle(
-      Offset(cx + 4, cy + 4),
-      r,
+    canvas.drawPath(
+      _trianglePath(Offset(cx + 4, cy + 4), r),
       Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.2),
     );
 
     // Body fill
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r,
+    canvas.drawPath(
+      bodyPath,
       Paint()..color = info.bodyColor,
     );
 
     // Inner highlight
-    canvas.drawCircle(
-      Offset(cx - r * 0.2, cy - r * 0.2),
-      r * 0.35,
+    canvas.save();
+    canvas.clipPath(bodyPath);
+    canvas.drawOval(
+      Rect.fromCircle(
+        center: Offset(cx - r * 0.2, cy - r * 0.2),
+        radius: r * 0.35,
+      ),
       Paint()..color = info.accentColor.withValues(alpha: 0.4),
     );
+    canvas.restore();
 
     // Ink outline
-    canvas.drawCircle(
-      Offset(cx, cy),
-      r,
+    canvas.drawPath(
+      bodyPath,
       Paint()
         ..color = AutoBattlePalette.ink
         ..style = PaintingStyle.stroke
@@ -266,4 +271,12 @@ class _CharBallPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _CharBallPainter old) =>
       old.info.name != info.name || old.floatOffset != floatOffset;
+
+  Path _trianglePath(Offset center, double radius) {
+    return Path()
+      ..moveTo(center.dx, center.dy - radius * 1.16)
+      ..lineTo(center.dx + radius * 0.96, center.dy + radius * 0.76)
+      ..lineTo(center.dx - radius * 0.96, center.dy + radius * 0.76)
+      ..close();
+  }
 }

@@ -333,35 +333,49 @@ class AutoBattleGame extends FlameGame {
       if (!p.alive) continue;
       final pos = _toScreen(p.x, p.y);
       final r = p.radius * _arenaScale;
+      final bodyAngle = _bodyAngle(p);
 
       // Body Shadow
-      canvas.drawCircle(pos + const Offset(4, 4), r,
-          Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1));
+      canvas.drawPath(
+        _trianglePath(pos + const Offset(4, 4), r, bodyAngle),
+        Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1),
+      );
 
       // Character Body
-      canvas.drawCircle(pos, r, Paint()..color = p.flutterColor);
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(bodyAngle + math.pi / 2);
+      final bodyPath = _localTrianglePath(r);
+      canvas.drawPath(bodyPath, Paint()..color = p.flutterColor);
+      canvas.drawPath(
+        bodyPath,
+        Paint()
+          ..shader = RadialGradient(
+            center: const Alignment(-0.35, -0.45),
+            colors: [
+              Colors.white.withValues(alpha: 0.32),
+              Colors.white.withValues(alpha: 0.02),
+            ],
+          ).createShader(Rect.fromCircle(center: Offset.zero, radius: r)),
+      );
       canvas.drawCircle(
-          pos,
-          r,
+        Offset(-r * 0.22, -r * 0.24),
+        r * 0.28,
+        Paint()..color = Colors.white.withValues(alpha: 0.22),
+      );
+      canvas.drawPath(
+          bodyPath,
           Paint()
             ..color = AutoBattlePalette.ink
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
 
       // Face (Reactive Sketch Style)
-      final cx = pos.dx;
-      final cy = pos.dy;
-      canvas.drawCircle(
-        Offset(cx - r * 0.2, cy - r * 0.2),
-        r * 0.35,
-        Paint()..color = Colors.white.withValues(alpha: 0.3),
-      );
-
       final prevHp = _prevHp[p.id] ?? p.hp;
       final isHurt = p.hp < prevHp;
       _prevHp[p.id] = p.hp;
 
-      final eyeY = cy - r * 0.12;
+      final eyeY = -r * 0.12;
       final eyeSpacing = r * 0.28;
       final eyeR = r * 0.14;
 
@@ -373,22 +387,22 @@ class AutoBattleGame extends FlameGame {
           ..strokeWidth = 2.5
           ..strokeCap = StrokeCap.round;
         for (final dx in [-eyeSpacing, eyeSpacing]) {
-          canvas.drawLine(Offset(cx + dx - eyeR, eyeY - eyeR),
-              Offset(cx + dx + eyeR, eyeY + eyeR), inkPaint);
-          canvas.drawLine(Offset(cx + dx + eyeR, eyeY - eyeR),
-              Offset(cx + dx - eyeR, eyeY + eyeR), inkPaint);
+          canvas.drawLine(Offset(dx - eyeR, eyeY - eyeR),
+              Offset(dx + eyeR, eyeY + eyeR), inkPaint);
+          canvas.drawLine(Offset(dx + eyeR, eyeY - eyeR),
+              Offset(dx - eyeR, eyeY + eyeR), inkPaint);
         }
         // O Mouth
-        canvas.drawCircle(Offset(cx, cy + r * 0.25), r * 0.15, inkPaint);
+        canvas.drawCircle(Offset(0, r * 0.25), r * 0.15, inkPaint);
       } else {
         // Normal Face
         for (final dx in [-eyeSpacing, eyeSpacing]) {
           canvas.drawCircle(
-              Offset(cx + dx, eyeY), eyeR, Paint()..color = Colors.white);
-          canvas.drawCircle(Offset(cx + dx + 1.5, eyeY + 1), eyeR * 0.55,
+              Offset(dx, eyeY), eyeR, Paint()..color = Colors.white);
+          canvas.drawCircle(Offset(dx + 1.5, eyeY + 1), eyeR * 0.55,
               Paint()..color = AutoBattlePalette.ink);
           canvas.drawCircle(
-              Offset(cx + dx, eyeY),
+              Offset(dx, eyeY),
               eyeR,
               Paint()
                 ..color = AutoBattlePalette.ink
@@ -396,9 +410,8 @@ class AutoBattleGame extends FlameGame {
                 ..strokeWidth = 2);
         }
         final mouthPath = Path();
-        mouthPath.moveTo(cx - r * 0.15, cy + r * 0.22);
-        mouthPath.quadraticBezierTo(
-            cx, cy + r * 0.38, cx + r * 0.15, cy + r * 0.22);
+        mouthPath.moveTo(-r * 0.15, r * 0.22);
+        mouthPath.quadraticBezierTo(0, r * 0.38, r * 0.15, r * 0.22);
         canvas.drawPath(
             mouthPath,
             Paint()
@@ -407,6 +420,7 @@ class AutoBattleGame extends FlameGame {
               ..strokeWidth = 2.5
               ..strokeCap = StrokeCap.round);
       }
+      canvas.restore();
 
       if (p.shield > 0) {
         final shieldRatio =
@@ -685,6 +699,52 @@ class AutoBattleGame extends FlameGame {
         DateTime.now().millisecondsSinceEpoch - _snapshotReceivedAt;
     return _normalizeAngle(player.targetAngle + elapsedMs / 1000.0 * 6.2);
   }
+
+  double _bodyAngle(PlayerSnapshot player) {
+    final velocityLength =
+        math.sqrt(player.vx * player.vx + player.vy * player.vy);
+    if (velocityLength > 0.04) {
+      return math.atan2(player.vy, player.vx);
+    }
+    return player.targetAngle;
+  }
+
+  Path _trianglePath(Offset center, double radius, double angle) {
+    final local = _localTrianglePoints(radius);
+    final rotation = angle + math.pi / 2;
+    final cosA = math.cos(rotation);
+    final sinA = math.sin(rotation);
+    final path = Path();
+
+    for (var i = 0; i < local.length; i++) {
+      final point = local[i];
+      final rotated = Offset(
+        center.dx + point.dx * cosA - point.dy * sinA,
+        center.dy + point.dx * sinA + point.dy * cosA,
+      );
+      if (i == 0) {
+        path.moveTo(rotated.dx, rotated.dy);
+      } else {
+        path.lineTo(rotated.dx, rotated.dy);
+      }
+    }
+    return path..close();
+  }
+
+  Path _localTrianglePath(double radius) {
+    final points = _localTrianglePoints(radius);
+    return Path()
+      ..moveTo(points[0].dx, points[0].dy)
+      ..lineTo(points[1].dx, points[1].dy)
+      ..lineTo(points[2].dx, points[2].dy)
+      ..close();
+  }
+
+  List<Offset> _localTrianglePoints(double radius) => [
+        Offset(0, -radius * 1.16),
+        Offset(radius * 0.96, radius * 0.76),
+        Offset(-radius * 0.96, radius * 0.76),
+      ];
 
   double _normalizeAngle(double angle) {
     const fullTurn = math.pi * 2;

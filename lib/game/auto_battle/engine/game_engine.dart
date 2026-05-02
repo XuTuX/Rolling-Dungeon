@@ -194,12 +194,30 @@ class GameEngine {
 
   void _handleObstacleCollision(PlayerData player) {
     for (final obs in obstacles) {
-      final dist = distance(player.pos, obs.pos);
+      final dx = player.pos.x - obs.pos.x;
+      final dy = player.pos.y - obs.pos.y;
+      var dist = math.sqrt(dx * dx + dy * dy);
       final min = player.radius + obs.radius;
       if (dist < min) {
+        double nx;
+        double ny;
+        if (dist <= 0.0001) {
+          final fallback = normalize(Vec2(
+            x: player.vel.x.abs() + player.vel.y.abs() > 0.001
+                ? player.vel.x
+                : _rand.nextDouble() - 0.5,
+            y: player.vel.x.abs() + player.vel.y.abs() > 0.001
+                ? player.vel.y
+                : _rand.nextDouble() - 0.5,
+          ));
+          nx = fallback.x;
+          ny = fallback.y;
+          dist = 0.0;
+        } else {
+          nx = dx / dist;
+          ny = dy / dist;
+        }
         final overlap = min - dist;
-        final nx = (player.pos.x - obs.pos.x) / dist;
-        final ny = (player.pos.y - obs.pos.y) / dist;
         player.pos.x += nx * overlap;
         player.pos.y += ny * overlap;
 
@@ -215,52 +233,29 @@ class GameEngine {
 
   void _updateEnemyMovement(PlayerData player, int now) {
     if (!player.isEnemy) return;
-    final target = _getPlayer('p1');
-    if (target == null || !target.alive) return;
+    if (player.enemyAbility != 'dash') {
+      final stageSpeedMult =
+          1 + math.max(0, currentStage - 1) * ENEMY_STAGE_SPEED_GROWTH;
+      player.speed = ENEMY_BASE_SPEED * stageSpeedMult;
+      return;
+    }
 
-    final dist = distance(player.pos, target.pos);
-    var targetVel = normalize(Vec2(
-      x: target.pos.x - player.pos.x,
-      y: target.pos.y - player.pos.y,
-    ));
-
-    if (player.enemyAbility == 'dash') {
-      final inDashWindow = now - player.lastAbilityAt < DASH_ENEMY_DURATION_MS;
-      if (now - player.lastAbilityAt >= DASH_ENEMY_INTERVAL_MS) {
-        player.lastAbilityAt = now;
-        player.vel = targetVel;
-      }
-      player.speed =
-          ENEMY_BASE_SPEED * (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
-    } else if (player.enemyAbility == 'shoot') {
-      if (dist < 130) {
-        // Retreat
-        targetVel = normalize(Vec2(
-          x: player.pos.x - target.pos.x,
-          y: player.pos.y - target.pos.y,
+    final inDashWindow = now - player.lastAbilityAt < DASH_ENEMY_DURATION_MS;
+    if (now - player.lastAbilityAt >= DASH_ENEMY_INTERVAL_MS) {
+      final target = _getPlayer('p1');
+      player.lastAbilityAt = now;
+      if (target != null && target.alive) {
+        player.vel = normalize(Vec2(
+          x: target.pos.x - player.pos.x,
+          y: target.pos.y - player.pos.y,
         ));
-      } else if (dist < 190) {
-        // Circle
-        final angle = math.atan2(
-                player.pos.y - target.pos.y, player.pos.x - target.pos.x) +
-            0.04;
-        player.pos.x = target.pos.x + math.cos(angle) * dist;
-        player.pos.y = target.pos.y + math.sin(angle) * dist;
-        targetVel = Vec2(x: 0, y: 0);
       }
     }
-
-    if (targetVel.x != 0 || targetVel.y != 0) {
-      player.vel.x = player.vel.x * 0.85 + targetVel.x * 0.15;
-      player.vel.y = player.vel.y * 0.85 + targetVel.y * 0.15;
-      player.vel = normalize(player.vel);
-    }
-
     final stageSpeedMult =
         1 + math.max(0, currentStage - 1) * ENEMY_STAGE_SPEED_GROWTH;
-    if (player.enemyAbility != 'dash') {
-      player.speed = ENEMY_BASE_SPEED * stageSpeedMult;
-    }
+    player.speed = ENEMY_BASE_SPEED *
+        stageSpeedMult *
+        (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
   }
 
   void _handleCollisions(int now) {
@@ -800,12 +795,13 @@ class GameEngine {
     for (int i = 0; i < mineCount; i++) {
       final t = mineCount == 1 ? 0.0 : i / (mineCount - 1);
       final angle = rearAngle - spread / 2 + spread * t;
-      final minePos = clampToHexagon(
+      final minePos = _placeAwayFromObstacles(
         Vec2(
           x: (player.pos.x + math.cos(angle) * mineDistance),
           y: (player.pos.y + math.sin(angle) * mineDistance),
         ),
         MINE_RADIUS,
+        angle,
       );
       hazards.add(HazardData(
         id: _nextId('mine'),
@@ -817,6 +813,69 @@ class GameEngine {
         lastDamageAt: {},
       ));
     }
+  }
+
+  Vec2 _placeAwayFromObstacles(
+    Vec2 desired,
+    double radius,
+    double fallbackAngle,
+  ) {
+    var pos = clampToHexagon(desired, radius);
+    const clearance = 3.0;
+
+    for (int pass = 0; pass < 6; pass++) {
+      var moved = false;
+      for (final obs in obstacles) {
+        final dx = pos.x - obs.pos.x;
+        final dy = pos.y - obs.pos.y;
+        final dist = math.sqrt(dx * dx + dy * dy);
+        final minDistance = radius + obs.radius + clearance;
+        if (dist >= minDistance) continue;
+
+        final nx = dist <= 0.0001 ? math.cos(fallbackAngle) : dx / dist;
+        final ny = dist <= 0.0001 ? math.sin(fallbackAngle) : dy / dist;
+        final push = minDistance - dist;
+        pos = clampToHexagon(
+          Vec2(
+            x: pos.x + nx * push,
+            y: pos.y + ny * push,
+          ),
+          radius,
+        );
+        moved = true;
+      }
+      if (!moved) return pos;
+    }
+
+    if (_isClearOfObstacles(pos, radius, clearance)) return pos;
+
+    final searchStep = radius * 0.65;
+    for (int ring = 1; ring <= 3; ring++) {
+      for (int i = 0; i < 12; i++) {
+        final angle = fallbackAngle + math.pi * 2 * i / 12;
+        final candidate = clampToHexagon(
+          Vec2(
+            x: desired.x + math.cos(angle) * searchStep * ring,
+            y: desired.y + math.sin(angle) * searchStep * ring,
+          ),
+          radius,
+        );
+        if (_isClearOfObstacles(candidate, radius, clearance)) {
+          return candidate;
+        }
+      }
+    }
+
+    return pos;
+  }
+
+  bool _isClearOfObstacles(Vec2 pos, double radius, double clearance) {
+    for (final obs in obstacles) {
+      if (distance(pos, obs.pos) < radius + obs.radius + clearance) {
+        return false;
+      }
+    }
+    return true;
   }
 
   void _dropPoison(PlayerData player, int now) {
