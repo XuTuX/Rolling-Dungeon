@@ -337,7 +337,7 @@ class AutoBattleGame extends FlameGame {
 
       // Body Shadow
       canvas.drawPath(
-        _trianglePath(pos + const Offset(4, 4), r, bodyAngle),
+        _getGlobalShapePath(p.characterShape, pos + const Offset(4, 4), r, bodyAngle),
         Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1),
       );
 
@@ -345,7 +345,7 @@ class AutoBattleGame extends FlameGame {
       canvas.save();
       canvas.translate(pos.dx, pos.dy);
       canvas.rotate(bodyAngle + math.pi / 2);
-      final bodyPath = _localTrianglePath(r);
+      final bodyPath = _getLocalShapePath(p.characterShape, r);
       canvas.drawPath(bodyPath, Paint()..color = p.flutterColor);
       canvas.drawPath(
         bodyPath,
@@ -709,18 +709,23 @@ class AutoBattleGame extends FlameGame {
     return player.targetAngle;
   }
 
-  Path _trianglePath(Offset center, double radius, double angle) {
-    final local = _localTrianglePoints(radius);
+  Path _getGlobalShapePath(
+      String shape, Offset center, double radius, double angle) {
+    if (shape == 'circle') {
+      return Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+    }
+
+    final points = _getLocalShapePoints(shape, radius);
     final rotation = angle + math.pi / 2;
     final cosA = math.cos(rotation);
     final sinA = math.sin(rotation);
     final path = Path();
 
-    for (var i = 0; i < local.length; i++) {
-      final point = local[i];
+    for (var i = 0; i < points.length; i++) {
+      final p = points[i];
       final rotated = Offset(
-        center.dx + point.dx * cosA - point.dy * sinA,
-        center.dy + point.dx * sinA + point.dy * cosA,
+        center.dx + p.dx * cosA - p.dy * sinA,
+        center.dy + p.dx * sinA + p.dy * cosA,
       );
       if (i == 0) {
         path.moveTo(rotated.dx, rotated.dy);
@@ -731,20 +736,41 @@ class AutoBattleGame extends FlameGame {
     return path..close();
   }
 
-  Path _localTrianglePath(double radius) {
-    final points = _localTrianglePoints(radius);
-    return Path()
-      ..moveTo(points[0].dx, points[0].dy)
-      ..lineTo(points[1].dx, points[1].dy)
-      ..lineTo(points[2].dx, points[2].dy)
-      ..close();
+  Path _getLocalShapePath(String shape, double radius) {
+    if (shape == 'circle') {
+      return Path()
+        ..addOval(Rect.fromCircle(center: Offset.zero, radius: radius));
+    }
+    final points = _getLocalShapePoints(shape, radius);
+    final path = Path();
+    for (var i = 0; i < points.length; i++) {
+      if (i == 0) {
+        path.moveTo(points[i].dx, points[i].dy);
+      } else {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+    }
+    return path..close();
   }
 
-  List<Offset> _localTrianglePoints(double radius) => [
-        Offset(0, -radius * 1.16),
-        Offset(radius * 0.96, radius * 0.76),
-        Offset(-radius * 0.96, radius * 0.76),
+  List<Offset> _getLocalShapePoints(String shape, double radius) {
+    if (shape == 'square') {
+      final r = radius * 0.95;
+      return [
+        Offset(-r, -r),
+        Offset(r, -r),
+        Offset(r, r),
+        Offset(-r, r),
       ];
+    } else if (shape == 'triangle') {
+      return [
+        Offset(0, -radius * 1.16),
+        Offset(radius * 1.05, radius * 0.7),
+        Offset(-radius * 1.05, radius * 0.7),
+      ];
+    }
+    return []; // Circle case handled separately in paths
+  }
 
   double _normalizeAngle(double angle) {
     const fullTurn = math.pi * 2;

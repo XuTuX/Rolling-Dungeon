@@ -78,7 +78,8 @@ class GameProgressController extends GetxController {
 
   // ── Character Type ──
   // ── Character Type & Weapons ──
-  var characterType = 'none'.obs; // 'gunner', 'blade', 'miner', 'poison'
+  var characterType = 'none'.obs; // character ID: 'square', 'triangle', 'circle'
+  var characterShape = 'circle'.obs; // 'circle', 'square', 'triangle'
   final runUnlockedWeapons = <String>['gunner'].obs;
   final activeEquipment = <String, EquipmentShopDef>{}.obs;
   final ownedWeapons = <String>[].obs;
@@ -94,7 +95,8 @@ class GameProgressController extends GetxController {
   //  New Run
   // ───────────────────────────────────────────
   void startNewRun(
-    String selectedCharacter, {
+    String selectedCharacter,
+    String selectedShape, {
     Iterable<String>? unlockedWeapons,
     Map<String, String>? equippedEquipment,
   }) {
@@ -118,8 +120,8 @@ class GameProgressController extends GetxController {
       'gunner',
       ...?unlockedWeapons,
     };
-    final selected = selectedCharacter == 'none' ? 'gunner' : selectedCharacter;
-    characterType.value = unlockedSet.contains(selected) ? selected : 'gunner';
+    characterType.value = selectedCharacter;
+    characterShape.value = selectedShape;
     runUnlockedWeapons.value = _orderedRunWeapons(unlockedSet);
     activeEquipment.value = _resolvedEquipment(equippedEquipment ?? const {});
 
@@ -136,6 +138,16 @@ class GameProgressController extends GetxController {
     playerWeaponCount.value = PLAYER_STARTING_WEAPON_COUNT;
     playerBulletReflectCount.value = PLAYER_STARTING_BULLET_REFLECTS;
     playerBulletsPerWeapon.value = PLAYER_STARTING_BULLETS_PER_WEAPON;
+
+    // Apply Character Bonuses
+    final charDef = kAllCharacters.firstWhere(
+      (c) => c.id == selectedCharacter,
+      orElse: () => kAllCharacters.first,
+    );
+    playerMaxHp.value += charDef.hpBonus;
+    playerAtk.value += charDef.atkBonus;
+    playerSpd.value += charDef.speedBonus;
+    playerDef.value += charDef.defBonus;
     playerRegen.value = 0;
     playerLifesteal.value = 0;
     playerBarrierHp.value = 0;
@@ -489,8 +501,8 @@ class GameProgressController extends GetxController {
   // ───────────────────────────────────────────
   void generateShopItems() {
     final unlocked = runUnlockedWeapons.toSet();
-    final allWeapons = kAllShopWeapons
-        .where((w) => unlocked.contains(w.weaponType))
+    final allWeapons = kAllEquipment
+        .where((e) => e.slot == 'weapon' && unlocked.contains(e.weaponType))
         .map(_shopItemFromMetaWeapon)
         .toList();
 
@@ -517,31 +529,36 @@ class GameProgressController extends GetxController {
 
   List<String> _orderedRunWeapons(Set<String> unlockedSet) {
     final ordered = <String>['gunner'];
-    for (final weapon in kAllShopWeapons) {
-      if (unlockedSet.contains(weapon.weaponType)) {
-        ordered.add(weapon.weaponType);
+    final allWeaponDefs = kAllEquipment.where((e) => e.slot == 'weapon');
+    
+    for (final def in allWeaponDefs) {
+      final wType = def.weaponType;
+      if (wType != null && unlockedSet.contains(wType)) {
+        if (!ordered.contains(wType)) {
+          ordered.add(wType);
+        }
       }
     }
-    for (final weapon in unlockedSet) {
-      if (!ordered.contains(weapon)) {
-        ordered.add(weapon);
+    for (final wType in unlockedSet) {
+      if (!ordered.contains(wType)) {
+        ordered.add(wType);
       }
     }
     return ordered;
   }
 
-  ShopItem _shopItemFromMetaWeapon(WeaponShopDef weapon) {
+  ShopItem _shopItemFromMetaWeapon(EquipmentShopDef weapon) {
     return ShopItem(
       id: weapon.id,
       title: weapon.title,
       description: weapon.description,
       price: _runWeaponPrice(weapon),
-      weaponType: weapon.weaponType,
+      weaponType: weapon.weaponType ?? 'gunner',
       icon: weapon.icon,
     );
   }
 
-  int _runWeaponPrice(WeaponShopDef weapon) {
+  int _runWeaponPrice(EquipmentShopDef weapon) {
     const overrides = {
       'minigun': 150,
       'long_gun': 200,
@@ -554,6 +571,6 @@ class GameProgressController extends GetxController {
       'ricochet': 210,
       'aura': 300,
     };
-    return overrides[weapon.weaponType] ?? weapon.price;
+    return overrides[weapon.weaponType ?? ''] ?? weapon.price;
   }
 }

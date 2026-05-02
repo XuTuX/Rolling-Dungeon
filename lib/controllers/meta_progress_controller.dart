@@ -4,32 +4,81 @@ import 'package:circle_war/game/auto_battle/models/meta_data.dart';
 import 'package:circle_war/game/auto_battle/models/achievement_data.dart';
 import 'package:circle_war/services/persistence_service.dart';
 
-/// Weapon definition for the persistent shop.
-class WeaponShopDef {
+class CharacterShopDef {
   final String id;
-  final String weaponType;
   final String title;
   final String description;
   final int price;
   final String icon;
+  final double hpBonus;
+  final double atkBonus;
+  final double speedBonus;
+  final double defBonus;
+  final String shape; // 'circle', 'square', 'triangle'
+  final String trait;
 
-  const WeaponShopDef({
+  const CharacterShopDef({
     required this.id,
-    required this.weaponType,
     required this.title,
     required this.description,
     required this.price,
     required this.icon,
+    required this.shape,
+    this.hpBonus = 0,
+    this.atkBonus = 0,
+    this.speedBonus = 0,
+    this.defBonus = 0,
+    this.trait = '',
   });
 }
 
+const List<CharacterShopDef> kAllCharacters = [
+  CharacterShopDef(
+    id: 'circle',
+    title: '동그라미',
+    description: '가장 균형 잡힌 기본 형태입니다. 모든 능력치가 평범합니다.',
+    price: 0,
+    icon: '🔴',
+    shape: 'circle',
+    hpBonus: 0,
+    atkBonus: 0,
+    speedBonus: 0,
+    trait: '균형 잡힌 성장',
+  ),
+  CharacterShopDef(
+    id: 'square',
+    title: '네모',
+    description: '단단하고 묵직한 형태입니다. 체력과 방어력이 높지만 느립니다.',
+    price: 300,
+    icon: '🟦',
+    shape: 'square',
+    hpBonus: 40,
+    defBonus: 2.0,
+    speedBonus: -0.2,
+    trait: '충돌 저항력 증가',
+  ),
+  CharacterShopDef(
+    id: 'triangle',
+    title: '세모',
+    description: '날카롭고 민첩한 형태입니다. 공격력과 속도가 높지만 약합니다.',
+    price: 450,
+    icon: '▲',
+    shape: 'triangle',
+    hpBonus: -20,
+    atkBonus: 5.0,
+    speedBonus: 0.35,
+    trait: '치명적인 돌진',
+  ),
+];
+
 class EquipmentShopDef {
   final String id;
-  final String slot;
+  final String slot; // weapon, hand, armor, boots
   final String title;
   final String description;
   final int price;
   final String icon;
+  final String? weaponType; // Only for weapon slot
   final double hpBonus;
   final double atkBonus;
   final double defBonus;
@@ -46,6 +95,7 @@ class EquipmentShopDef {
     required this.description,
     required this.price,
     required this.icon,
+    this.weaponType,
     this.hpBonus = 0,
     this.atkBonus = 0,
     this.defBonus = 0,
@@ -58,10 +108,10 @@ class EquipmentShopDef {
 
   String get statSummary {
     final parts = <String>[];
-    if (hpBonus != 0) parts.add('HP +${hpBonus.toStringAsFixed(0)}');
-    if (atkBonus != 0) parts.add('ATK +${atkBonus.toStringAsFixed(1)}');
-    if (defBonus != 0) parts.add('DEF +${defBonus.toStringAsFixed(1)}');
-    if (speedBonus != 0) parts.add('SPD +${speedBonus.toStringAsFixed(2)}');
+    if (hpBonus != 0) parts.add('HP ${hpBonus > 0 ? "+" : ""}${hpBonus.toStringAsFixed(0)}');
+    if (atkBonus != 0) parts.add('ATK ${atkBonus > 0 ? "+" : ""}${atkBonus.toStringAsFixed(1)}');
+    if (defBonus != 0) parts.add('DEF ${defBonus > 0 ? "+" : ""}${defBonus.toStringAsFixed(1)}');
+    if (speedBonus != 0) parts.add('SPD ${speedBonus > 0 ? "+" : ""}${speedBonus.toStringAsFixed(2)}');
     if (weaponCountBonus != 0) parts.add('WPN +$weaponCountBonus');
     if (bulletsPerWeaponBonus != 0) parts.add('SHOT +$bulletsPerWeaponBonus');
     if (bulletReflectBonus != 0) parts.add('REF +$bulletReflectBonus');
@@ -71,12 +121,115 @@ class EquipmentShopDef {
 }
 
 const Map<String, String> kEquipmentSlotLabels = {
+  'weapon': '무기 장착',
   'hand': '장신구/손',
-  'boots': '신발/발',
   'armor': '갑옷/옷',
+  'boots': '신발/발',
 };
 
 const List<EquipmentShopDef> kAllEquipment = [
+  // ── Weapons ──
+  EquipmentShopDef(
+    id: 'wpn_gunner',
+    slot: 'weapon',
+    title: '기본 거너',
+    description: '안정적인 사격이 가능한 표준 총기입니다.',
+    price: 0,
+    icon: '🔫',
+    weaponType: 'gunner',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_minigun',
+    slot: 'weapon',
+    title: '미니건',
+    description: '빠른 연사 속도로 적을 압도합니다.',
+    price: 120,
+    icon: '🔫',
+    weaponType: 'minigun',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_long_gun',
+    slot: 'weapon',
+    title: '장거리 포',
+    description: '느리지만 강력한 대구경 탄환을 발사합니다.',
+    price: 180,
+    icon: '🚀',
+    weaponType: 'long_gun',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_poison_gun',
+    slot: 'weapon',
+    title: '독 가스 분무기',
+    description: '지나가는 자리에 치명적인 독구름을 남깁니다.',
+    price: 150,
+    icon: '☣️',
+    weaponType: 'poison',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_blade_master',
+    slot: 'weapon',
+    title: '회전 칼날',
+    description: '공 주변을 회전하며 근접한 적을 베어버립니다.',
+    price: 200,
+    icon: '⚔️',
+    weaponType: 'blade',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_mine_layer',
+    slot: 'weapon',
+    title: '지뢰 매설기',
+    description: '뒤쪽으로 강력한 폭발 지뢰를 투척합니다.',
+    price: 160,
+    icon: '💣',
+    weaponType: 'miner',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_footsteps',
+    slot: 'weapon',
+    title: '불타는 발자국',
+    description: '지나간 자리에 불꽃 자취를 남겨 지속 피해를 줍니다.',
+    price: 170,
+    icon: '👣',
+    weaponType: 'footsteps',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_burst_gun',
+    slot: 'weapon',
+    title: '전방위 버스트',
+    description: '사방으로 퍼지는 탄환을 발사합니다.',
+    price: 220,
+    icon: '💢',
+    weaponType: 'burst',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_heavy_blade',
+    slot: 'weapon',
+    title: '거대 대검',
+    description: '매우 크고 강력한 칼날이 천천히 회전합니다.',
+    price: 250,
+    icon: '🗡️',
+    weaponType: 'heavy_blade',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_ricochet',
+    slot: 'weapon',
+    title: '도탄 사격',
+    description: '벽에 여러 번 튕기는 특수 탄환을 사용합니다.',
+    price: 190,
+    icon: '✨',
+    weaponType: 'ricochet',
+  ),
+  EquipmentShopDef(
+    id: 'wpn_aura',
+    slot: 'weapon',
+    title: '수호자의 오라',
+    description: '주변의 적에게 지속적인 피해를 주는 영역을 생성합니다.',
+    price: 280,
+    icon: '🌀',
+    weaponType: 'aura',
+  ),
+
+  // ── Accessories ──
   EquipmentShopDef(
     id: 'rapid_glove',
     slot: 'hand',
@@ -138,90 +291,6 @@ const List<EquipmentShopDef> kAllEquipment = [
   ),
 ];
 
-/// All weapons available for purchase in the meta shop.
-const List<WeaponShopDef> kAllShopWeapons = [
-  WeaponShopDef(
-    id: 'minigun',
-    weaponType: 'minigun',
-    title: '미니건',
-    description: '빠른 연사 속도로 적을 압도합니다.',
-    price: 120,
-    icon: '🔫',
-  ),
-  WeaponShopDef(
-    id: 'long_gun',
-    weaponType: 'long_gun',
-    title: '장거리 포',
-    description: '느리지만 강력한 대구경 탄환을 발사합니다.',
-    price: 180,
-    icon: '🚀',
-  ),
-  WeaponShopDef(
-    id: 'poison_gun',
-    weaponType: 'poison',
-    title: '독 가스 분무기',
-    description: '지나가는 자리에 치명적인 독구름을 남깁니다.',
-    price: 150,
-    icon: '☣️',
-  ),
-  WeaponShopDef(
-    id: 'blade_master',
-    weaponType: 'blade',
-    title: '회전 칼날',
-    description: '공 주변을 회전하며 근접한 적을 베어버립니다.',
-    price: 200,
-    icon: '⚔️',
-  ),
-  WeaponShopDef(
-    id: 'mine_layer',
-    weaponType: 'miner',
-    title: '지뢰 매설기',
-    description: '뒤쪽으로 강력한 폭발 지뢰를 투척합니다.',
-    price: 160,
-    icon: '💣',
-  ),
-  WeaponShopDef(
-    id: 'footsteps',
-    weaponType: 'footsteps',
-    title: '불타는 발자국',
-    description: '지나간 자리에 불꽃 자취를 남겨 지속 피해를 줍니다.',
-    price: 170,
-    icon: '👣',
-  ),
-  WeaponShopDef(
-    id: 'burst_gun',
-    weaponType: 'burst',
-    title: '전방위 버스트',
-    description: '사방으로 퍼지는 탄환을 발사합니다.',
-    price: 220,
-    icon: '💢',
-  ),
-  WeaponShopDef(
-    id: 'heavy_blade',
-    weaponType: 'heavy_blade',
-    title: '거대 대검',
-    description: '매우 크고 강력한 칼날이 천천히 회전합니다.',
-    price: 250,
-    icon: '🗡️',
-  ),
-  WeaponShopDef(
-    id: 'ricochet',
-    weaponType: 'ricochet',
-    title: '도탄 사격',
-    description: '벽에 여러 번 튕기는 특수 탄환을 사용합니다.',
-    price: 190,
-    icon: '✨',
-  ),
-  WeaponShopDef(
-    id: 'aura',
-    weaponType: 'aura',
-    title: '수호자의 오라',
-    description: '주변의 적에게 지속적인 피해를 주는 영역을 생성합니다.',
-    price: 280,
-    icon: '🌀',
-  ),
-];
-
 /// Stat upgrade definition for the meta shop.
 class StatShopDef {
   final String id;
@@ -277,15 +346,15 @@ const List<StatShopDef> kAllStatUpgrades = [
 ];
 
 /// Controller for persistent meta-progression (shop, achievements, currency).
-/// This persists across runs and app restarts.
 class MetaProgressController extends GetxController {
   // ── Observable meta data ──
   final currency = 0.obs;
-  final unlockedWeapons = <String>['gunner'].obs;
-  final unlockedSkills = <String>[].obs;
-  final unlockedEquipment = <String>[].obs;
-  final equippedWeapon = 'gunner'.obs;
-  final equippedEquipment = <String, String>{}.obs;
+  final unlockedCharacters = <String>['circle'].obs;
+  final selectedCharacter = 'circle'.obs;
+  final unlockedEquipment = <String>['wpn_gunner'].obs;
+  final equippedEquipment = <String, String>{
+    'weapon': 'wpn_gunner',
+  }.obs;
   final achievements = <String, bool>{}.obs;
   final weaponLevels = <String, int>{}.obs;
   final statLevels = <String, int>{}.obs;
@@ -295,6 +364,10 @@ class MetaProgressController extends GetxController {
   final highestStage = 0.obs;
   final highestCycle = 0.obs;
   final totalRunCount = 0.obs;
+
+  List<String> get unlockedWeapons => unlockedEquipment
+      .where((id) => equipmentDefById(id)?.slot == 'weapon')
+      .toList();
 
   /// Whether data has been loaded from disk.
   final isLoaded = false.obs;
@@ -313,15 +386,15 @@ class MetaProgressController extends GetxController {
     final data = await PersistenceService.loadMeta();
     // For simulation/testing: force currency to 10000
     currency.value = 10000;
-    unlockedWeapons.value = _normalizedUnlockedWeapons(data.unlockedWeapons);
-    unlockedSkills.value = List<String>.from(data.unlockedSkills);
-    unlockedEquipment.value =
-        _normalizedUnlockedEquipment(data.unlockedEquipment);
-    equippedWeapon.value = unlockedWeapons.contains(data.equippedWeapon)
-        ? data.equippedWeapon
-        : 'gunner';
-    equippedEquipment.value =
-        _normalizedEquippedEquipment(data.equippedEquipment);
+    
+    unlockedCharacters.value = _normalizedUnlockedCharacters(data.unlockedCharacters);
+    selectedCharacter.value = unlockedCharacters.contains(data.selectedCharacter)
+        ? data.selectedCharacter
+        : 'circle';
+        
+    unlockedEquipment.value = _normalizedUnlockedEquipment(data.unlockedEquipment);
+    equippedEquipment.value = _normalizedEquippedEquipment(data.equippedEquipment);
+    
     achievements.value = Map<String, bool>.from(data.achievements);
     weaponLevels.value = Map<String, int>.from(data.weaponLevels);
     statLevels.value = Map<String, int>.from(data.statLevels);
@@ -342,10 +415,10 @@ class MetaProgressController extends GetxController {
   MetaProgressData _toMetaData() {
     return MetaProgressData(
       currency: currency.value,
-      unlockedWeapons: List<String>.from(unlockedWeapons),
-      unlockedSkills: List<String>.from(unlockedSkills),
+      unlockedCharacters: List<String>.from(unlockedCharacters),
+      selectedCharacter: selectedCharacter.value,
       unlockedEquipment: List<String>.from(unlockedEquipment),
-      equippedWeapon: equippedWeapon.value,
+      equippedWeapon: equippedWeaponType, // For backward compatibility if needed
       equippedEquipment: Map<String, String>.from(equippedEquipment),
       achievements: Map<String, bool>.from(achievements),
       weaponLevels: Map<String, int>.from(weaponLevels),
@@ -359,29 +432,36 @@ class MetaProgressController extends GetxController {
     );
   }
 
-  // ──────────────────────────────────────────
-  //  Shop: Buy Weapon
-  // ──────────────────────────────────────────
-  bool buyWeapon(WeaponShopDef weapon) {
-    if (currency.value < weapon.price) return false;
-    if (unlockedWeapons.contains(weapon.weaponType)) return false;
-    currency.value -= weapon.price;
-    unlockedWeapons.add(weapon.weaponType);
+  String get equippedWeaponType {
+    final id = equippedEquipment['weapon'];
+    if (id == null) return 'gunner';
+    final def = equipmentDefById(id);
+    return def?.weaponType ?? 'gunner';
+  }
+
+  // ── Character Logic ──
+  bool buyCharacter(CharacterShopDef char) {
+    if (currency.value < char.price) return false;
+    if (unlockedCharacters.contains(char.id)) return false;
+    currency.value -= char.price;
+    unlockedCharacters.add(char.id);
+    selectedCharacter.value = char.id;
     saveToDisk();
     return true;
   }
 
-  bool isWeaponUnlocked(String weaponType) {
-    return unlockedWeapons.contains(weaponType);
-  }
-
-  void equipWeapon(String weaponType) {
-    if (unlockedWeapons.contains(weaponType)) {
-      equippedWeapon.value = weaponType;
+  void selectCharacter(String charId) {
+    if (unlockedCharacters.contains(charId)) {
+      selectedCharacter.value = charId;
       saveToDisk();
     }
   }
 
+  CharacterShopDef get currentCharacterDef {
+    return kAllCharacters.firstWhere((c) => c.id == selectedCharacter.value, orElse: () => kAllCharacters.first);
+  }
+
+  // ── Equipment Logic ──
   bool buyEquipment(EquipmentShopDef equipment) {
     if (currency.value < equipment.price) return false;
     if (unlockedEquipment.contains(equipment.id)) return false;
@@ -411,19 +491,17 @@ class MetaProgressController extends GetxController {
     return null;
   }
 
-  List<String> _normalizedUnlockedWeapons(List<String> weapons) {
-    final normalized = <String>['gunner'];
-    for (final weapon in weapons) {
-      if (!normalized.contains(weapon)) {
-        normalized.add(weapon);
-      }
+  List<String> _normalizedUnlockedCharacters(List<String> chars) {
+    final normalized = <String>['circle'];
+    for (final c in chars) {
+      if (!normalized.contains(c)) normalized.add(c);
     }
     return normalized;
   }
 
   List<String> _normalizedUnlockedEquipment(List<String> equipment) {
     final validIds = kAllEquipment.map((e) => e.id).toSet();
-    final normalized = <String>[];
+    final normalized = <String>['wpn_gunner'];
     for (final id in equipment) {
       if (validIds.contains(id) && !normalized.contains(id)) {
         normalized.add(id);
@@ -434,6 +512,9 @@ class MetaProgressController extends GetxController {
 
   Map<String, String> _normalizedEquippedEquipment(Map<String, String> saved) {
     final normalized = <String, String>{};
+    // Default weapon if not set
+    normalized['weapon'] = 'wpn_gunner';
+    
     for (final entry in saved.entries) {
       final equipment = equipmentDefById(entry.value);
       if (equipment == null) continue;
@@ -444,33 +525,30 @@ class MetaProgressController extends GetxController {
     return normalized;
   }
 
-  // ──────────────────────────────────────────
-  //  Shop: Upgrade Weapon
-  // ──────────────────────────────────────────
+  // ── Weapon Upgrade Logic ──
   int getWeaponLevel(String weaponType) {
     return weaponLevels[weaponType] ?? 0;
   }
 
-  int getWeaponUpgradeCost(WeaponShopDef weapon) {
-    final level = getWeaponLevel(weapon.weaponType);
-    return weapon.price + (level * (weapon.price ~/ 2));
+  int getWeaponUpgradeCost(String weaponType) {
+    final def = kAllEquipment.firstWhereOrNull((e) => e.weaponType == weaponType);
+    if (def == null) return 100;
+    final level = getWeaponLevel(weaponType);
+    return def.price + (level * (def.price ~/ 2 + 10));
   }
 
-  bool upgradeWeapon(WeaponShopDef weapon) {
-    if (!unlockedWeapons.contains(weapon.weaponType)) return false;
-    final cost = getWeaponUpgradeCost(weapon);
+  bool upgradeWeapon(String weaponType) {
+    final cost = getWeaponUpgradeCost(weaponType);
     if (currency.value < cost) return false;
 
     currency.value -= cost;
-    final currentLevel = getWeaponLevel(weapon.weaponType);
-    weaponLevels[weapon.weaponType] = currentLevel + 1;
+    final currentLevel = getWeaponLevel(weaponType);
+    weaponLevels[weaponType] = currentLevel + 1;
     saveToDisk();
     return true;
   }
 
-  // ──────────────────────────────────────────
-  //  Shop: Upgrade Stat
-  // ──────────────────────────────────────────
+  // ── Stat Upgrade Logic ──
   int getStatLevel(String statType) {
     return statLevels[statType] ?? 0;
   }
@@ -491,11 +569,7 @@ class MetaProgressController extends GetxController {
     return true;
   }
 
-  // ──────────────────────────────────────────
-  //  Run End: Accumulate Stats & Check Achievements
-  // ──────────────────────────────────────────
-  /// Called at the end of a run with the run's stats.
-  /// Returns the list of newly completed achievements.
+  // ── Run End logic ──
   List<AchievementDef> endRun({
     required int enemiesKilled,
     required int bossesDefeated,
@@ -503,7 +577,6 @@ class MetaProgressController extends GetxController {
     required int stageReached,
     required int cycleReached,
   }) {
-    // Accumulate stats
     totalEnemiesKilled.value += enemiesKilled;
     totalBossesDefeated.value += bossesDefeated;
     totalDamageDealt.value += damageDealt;
@@ -511,25 +584,16 @@ class MetaProgressController extends GetxController {
     highestCycle.value = math.max(highestCycle.value, cycleReached);
     totalRunCount.value += 1;
 
-    // Check achievements
     final newlyCompleted = <AchievementDef>[];
     for (final ach in kAllAchievements) {
-      if (achievements[ach.id] == true) continue; // already completed
+      if (achievements[ach.id] == true) continue;
 
       bool completed = false;
       switch (ach.category) {
-        case 'kill':
-          completed = totalEnemiesKilled.value >= ach.threshold;
-          break;
-        case 'stage':
-          completed = highestStage.value >= ach.threshold;
-          break;
-        case 'boss':
-          completed = totalBossesDefeated.value >= ach.threshold;
-          break;
-        case 'damage':
-          completed = totalDamageDealt.value >= ach.threshold;
-          break;
+        case 'kill': completed = totalEnemiesKilled.value >= ach.threshold; break;
+        case 'stage': completed = highestStage.value >= ach.threshold; break;
+        case 'boss': completed = totalBossesDefeated.value >= ach.threshold; break;
+        case 'damage': completed = totalDamageDealt.value >= ach.threshold; break;
       }
 
       if (completed) {
@@ -544,7 +608,6 @@ class MetaProgressController extends GetxController {
     return newlyCompleted;
   }
 
-  /// Reset everything (debug only).
   Future<void> resetAll() async {
     await PersistenceService.resetMeta();
     await loadFromDisk();

@@ -1,6 +1,7 @@
 import 'package:circle_war/controllers/meta_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/models/achievement_data.dart';
+import 'package:circle_war/game/auto_battle/ui/character_display.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -145,9 +146,9 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.shopping_cart, size: 18),
+                              Icon(Icons.person, size: 18),
                               SizedBox(width: 6),
-                              Text('무기 상점'),
+                              Text('캐릭터'),
                             ],
                           ),
                         ),
@@ -156,9 +157,9 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Icon(Icons.backpack, size: 18),
+                              Icon(Icons.shopping_bag, size: 18),
                               SizedBox(width: 6),
-                              Text('장비'),
+                              Text('정비'),
                             ],
                           ),
                         ),
@@ -169,7 +170,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                             children: [
                               Icon(Icons.upgrade, size: 18),
                               SizedBox(width: 6),
-                              Text('강화'),
+                              Text('영구 강화'),
                             ],
                           ),
                         ),
@@ -195,7 +196,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                   child: TabBarView(
                     controller: _tabCtrl,
                     children: [
-                      _WeaponShopTab(ctrl: ctrl),
+                      _CharacterShopTab(ctrl: ctrl),
                       _EquipmentShopTab(ctrl: ctrl),
                       _StatUpgradeTab(ctrl: ctrl),
                       _AchievementTab(ctrl: ctrl),
@@ -212,79 +213,128 @@ class _MetaShopScreenState extends State<MetaShopScreen>
 }
 
 // ─────────────────────────────────────────────
-//  Weapon Shop Tab
+//  Character Shop Tab
 // ─────────────────────────────────────────────
-class _WeaponShopTab extends StatefulWidget {
+class _CharacterShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
-  const _WeaponShopTab({required this.ctrl});
+  const _CharacterShopTab({required this.ctrl});
 
   @override
-  State<_WeaponShopTab> createState() => _WeaponShopTabState();
+  State<_CharacterShopTab> createState() => _CharacterShopTabState();
 }
 
-class _WeaponShopTabState extends State<_WeaponShopTab> {
+class _CharacterShopTabState extends State<_CharacterShopTab> {
   int _selectedIndex = 0;
 
   @override
   Widget build(BuildContext context) {
     return Obx(() {
       final ctrl = widget.ctrl;
-      final ownedCount = kAllShopWeapons
-          .where((w) => ctrl.unlockedWeapons.contains(w.weaponType))
-          .length;
-
-      final selected = kAllShopWeapons[_selectedIndex];
-      final selOwned = ctrl.unlockedWeapons.contains(selected.weaponType);
-      final selCanAfford = ctrl.currency.value >= selected.price;
+      final selected = kAllCharacters[_selectedIndex];
+      final isUnlocked = ctrl.unlockedCharacters.contains(selected.id);
+      final isSelected = ctrl.selectedCharacter.value == selected.id;
+      final canAfford = ctrl.currency.value >= selected.price;
 
       return SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // ── Weapon icon grid (compact Wrap) ──
+            // Character Selection Grid
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(10),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: Colors.white,
-                border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                border: Border.all(color: AutoBattlePalette.ink, width: 3),
                 boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
                 ],
               ),
-              child: Wrap(
-                spacing: 6,
-                runSpacing: 6,
-                children: List.generate(kAllShopWeapons.length, (i) {
-                  final w = kAllShopWeapons[i];
-                  final owned = ctrl.unlockedWeapons.contains(w.weaponType);
-                  final isSelected = i == _selectedIndex;
-                  return _WeaponIconTile(
-                    weapon: w,
-                    owned: owned,
-                    isSelected: isSelected,
-                    onTap: () => setState(() => _selectedIndex = i),
-                  );
-                }),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    '플레이어 캐릭터 선택',
+                    style: TextStyle(
+                      color: AutoBattlePalette.ink,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Wrap(
+                    spacing: 12,
+                    runSpacing: 12,
+                    children: List.generate(kAllCharacters.length, (i) {
+                      final char = kAllCharacters[i];
+                      final unlocked = ctrl.unlockedCharacters.contains(char.id);
+                      final active = ctrl.selectedCharacter.value == char.id;
+                      final viewing = i == _selectedIndex;
+
+                      return GestureDetector(
+                        onTap: () => setState(() => _selectedIndex = i),
+                        child: Container(
+                          width: 80,
+                          height: 80,
+                          decoration: BoxDecoration(
+                            color: viewing ? const Color(0xFFF1F5F9) : Colors.white,
+                            border: Border.all(
+                              color: viewing ? AutoBattlePalette.primary : AutoBattlePalette.ink,
+                              width: viewing ? 4 : 2.5,
+                            ),
+                            boxShadow: viewing ? null : const [
+                              BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
+                            ],
+                          ),
+                          child: Stack(
+                            children: [
+                              Center(
+                                child: CharacterBallPreview(
+                                  info: charDisplayInfoMap[char.shape] ??
+                                      charDisplayInfoMap['circle']!,
+                                  size: 60,
+                                ),
+                              ),
+                              if (active)
+                                Positioned(
+                                  top: 4,
+                                  right: 4,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF4CAF50),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(Icons.check, color: Colors.white, size: 12),
+                                  ),
+                                ),
+                              if (!unlocked)
+                                Container(
+                                  color: Colors.black.withValues(alpha: 0.1),
+                                  child: const Center(
+                                    child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 24),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 16),
 
-            // ── Selected weapon detail ──
+            // Character Detail
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(14),
+              padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: selOwned ? const Color(0xFFE8F5E9) : Colors.white,
-                border: Border.all(
-                  color: selOwned
-                      ? const Color(0xFF4CAF50)
-                      : AutoBattlePalette.ink,
-                  width: 2.5,
-                ),
+                color: Colors.white,
+                border: Border.all(color: AutoBattlePalette.ink, width: 3),
                 boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
                 ],
               ),
               child: Column(
@@ -292,8 +342,22 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                 children: [
                   Row(
                     children: [
-                      Text(selected.icon, style: const TextStyle(fontSize: 28)),
-                      const SizedBox(width: 10),
+                      Container(
+                        width: 64,
+                        height: 64,
+                        decoration: BoxDecoration(
+                          color: AutoBattlePalette.surfaceLight,
+                          border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                        ),
+                        child: Center(
+                          child: CharacterBallPreview(
+                            info: charDisplayInfoMap[selected.shape] ??
+                                charDisplayInfoMap['circle']!,
+                            size: 60,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -302,18 +366,17 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                               selected.title,
                               style: const TextStyle(
                                 color: AutoBattlePalette.ink,
-                                fontSize: 16,
+                                fontSize: 20,
                                 fontWeight: FontWeight.w900,
                               ),
                             ),
-                            const SizedBox(height: 2),
+                            const SizedBox(height: 4),
                             Text(
-                              selected.description,
+                              '특성: ${selected.trait}',
                               style: const TextStyle(
-                                color: AutoBattlePalette.inkSubtle,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                height: 1.3,
+                                color: AutoBattlePalette.secondary,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w800,
                               ),
                             ),
                           ],
@@ -321,95 +384,63 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                       ),
                     ],
                   ),
+                  const SizedBox(height: 16),
+                  const Divider(color: AutoBattlePalette.ink, thickness: 1.5),
                   const SizedBox(height: 12),
-                  // Buy / Upgrade button
-                  Builder(builder: (context) {
-                    final level = ctrl.getWeaponLevel(selected.weaponType);
-                    final upgradeCost = ctrl.getWeaponUpgradeCost(selected);
-                    final canAffordUpgrade = ctrl.currency.value >= upgradeCost;
-
-                    return GestureDetector(
-                      onTap: selOwned
-                          ? (canAffordUpgrade
-                              ? () => ctrl.upgradeWeapon(selected)
-                              : null)
-                          : (selCanAfford
-                              ? () => ctrl.buyWeapon(selected)
-                              : null),
-                      child: Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
-                        decoration: BoxDecoration(
-                          color: selOwned
-                              ? (canAffordUpgrade
-                                  ? const Color(0xFF4CAF50)
-                                  : const Color(0xFF9CA3AF))
-                              : (selCanAfford
-                                  ? AutoBattlePalette.gold
-                                  : const Color(0xFF9CA3AF)),
-                          border: Border.all(
-                              color: AutoBattlePalette.ink, width: 2.5),
-                          boxShadow: const [
-                            BoxShadow(
-                                color: AutoBattlePalette.ink,
-                                offset: Offset(2, 2)),
-                          ],
-                        ),
-                        child: Center(
-                          child: Text(
-                            selOwned
-                                ? (canAffordUpgrade
-                                    ? '💎 $upgradeCost  LV.${level + 1} 강화하기'
-                                    : '💎 $upgradeCost  크리스탈 부족 (LV.$level)')
-                                : (selCanAfford
-                                    ? '💎 ${selected.price}  구매하기'
-                                    : '💎 ${selected.price}  크리스탈 부족'),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                            ),
+                  Text(
+                    selected.description,
+                    style: const TextStyle(
+                      color: AutoBattlePalette.inkSubtle,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const Text(
+                    '능력치 보너스',
+                    style: TextStyle(
+                      color: AutoBattlePalette.ink,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _StatBonusRow(label: 'HP 보너스', value: selected.hpBonus, unit: ''),
+                  _StatBonusRow(label: '공격력 보너스', value: selected.atkBonus, unit: ''),
+                  _StatBonusRow(label: '방어력 보너스', value: selected.defBonus, unit: ''),
+                  _StatBonusRow(label: '속도 보너스', value: selected.speedBonus, unit: ''),
+                  const SizedBox(height: 24),
+                  
+                  // Action Button
+                  GestureDetector(
+                    onTap: isUnlocked 
+                      ? (isSelected ? null : () => ctrl.selectCharacter(selected.id))
+                      : (canAfford ? () => ctrl.buyCharacter(selected) : null),
+                    child: Container(
+                      width: double.infinity,
+                      height: 54,
+                      decoration: BoxDecoration(
+                        color: isUnlocked 
+                          ? (isSelected ? const Color(0xFF4CAF50) : AutoBattlePalette.secondary)
+                          : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)),
+                        border: Border.all(color: AutoBattlePalette.ink, width: 3),
+                        boxShadow: isSelected ? null : const [
+                          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                        ],
+                      ),
+                      child: Center(
+                        child: Text(
+                          isUnlocked 
+                            ? (isSelected ? '현재 선택됨' : '선택하기')
+                            : '💎 ${selected.price} 구매하기',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
                       ),
-                    );
-                  }),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-
-            // ── Owned count ──
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
-              decoration: BoxDecoration(
-                color: AutoBattlePalette.surfaceLight,
-                border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.inventory_2,
-                      color: AutoBattlePalette.ink, size: 14),
-                  const SizedBox(width: 6),
-                  Text(
-                    '보유 $ownedCount / ${kAllShopWeapons.length}',
-                    style: const TextStyle(
-                      color: AutoBattlePalette.ink,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w800,
-                    ),
-                  ),
-                  const Spacer(),
-                  const Text(
-                    '기본 무기: 거너',
-                    style: TextStyle(
-                      color: AutoBattlePalette.text3,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
                     ),
                   ),
                 ],
@@ -419,6 +450,36 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
         ),
       );
     });
+  }
+}
+
+class _StatBonusRow extends StatelessWidget {
+  final String label;
+  final double value;
+  final String unit;
+  const _StatBonusRow({required this.label, required this.value, required this.unit});
+
+  @override
+  Widget build(BuildContext context) {
+    final isPositive = value > 0;
+    final isZero = value == 0;
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: AutoBattlePalette.text3, fontSize: 13, fontWeight: FontWeight.w700)),
+          Text(
+            isZero ? '-' : '${isPositive ? "+" : ""}$value$unit',
+            style: TextStyle(
+              color: isZero ? AutoBattlePalette.text3 : (isPositive ? const Color(0xFF4CAF50) : const Color(0xFFF44336)),
+              fontSize: 13,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -502,6 +563,7 @@ class _EquipmentShopTab extends StatelessWidget {
                     unlocked: unlocked,
                     equipped: isEquipped,
                     canAfford: canAfford,
+                    ctrl: ctrl,
                     onTap: () {
                       if (unlocked) {
                         ctrl.equipEquipment(equipment);
@@ -525,6 +587,7 @@ class _EquipmentRow extends StatelessWidget {
   final bool unlocked;
   final bool equipped;
   final bool canAfford;
+  final MetaProgressController ctrl;
   final VoidCallback onTap;
 
   const _EquipmentRow({
@@ -532,6 +595,7 @@ class _EquipmentRow extends StatelessWidget {
     required this.unlocked,
     required this.equipped,
     required this.canAfford,
+    required this.ctrl,
     required this.onTap,
   });
 
@@ -558,85 +622,91 @@ class _EquipmentRow extends StatelessWidget {
           ),
         ),
       ),
-      child: Row(
+      child: Column(
         children: [
-          Container(
-            width: 44,
-            height: 44,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              color: const Color(0xFFF8FAFC),
-              border: Border.all(color: AutoBattlePalette.ink, width: 2),
-            ),
-            child: Text(equipment.icon, style: const TextStyle(fontSize: 22)),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  equipment.title,
-                  style: const TextStyle(
-                    color: AutoBattlePalette.ink,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w900,
-                  ),
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  border: Border.all(color: AutoBattlePalette.ink, width: 2),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  equipment.description,
-                  style: const TextStyle(
-                    color: AutoBattlePalette.text3,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                  ),
+                child: Text(equipment.icon, style: const TextStyle(fontSize: 22)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      equipment.title,
+                      style: const TextStyle(
+                        color: AutoBattlePalette.ink,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      equipment.description,
+                      style: const TextStyle(
+                        color: AutoBattlePalette.text3,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (equipment.statSummary.isNotEmpty) ...[
+                      const SizedBox(height: 4),
+                      Text(
+                        equipment.statSummary,
+                        style: const TextStyle(
+                          color: AutoBattlePalette.secondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-                if (equipment.statSummary.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    equipment.statSummary,
+              ),
+              const SizedBox(width: 10),
+              GestureDetector(
+                onTap: equipped ? null : onTap,
+                child: Container(
+                  width: 70,
+                  height: 42,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: buttonColor,
+                    border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                    boxShadow: equipped
+                        ? null
+                        : const [
+                            BoxShadow(
+                              color: AutoBattlePalette.ink,
+                              offset: Offset(2, 2),
+                            ),
+                          ],
+                  ),
+                  child: Text(
+                    unlocked ? buttonText : '$buttonText\n💎 ${equipment.price}',
+                    textAlign: TextAlign.center,
                     style: const TextStyle(
-                      color: AutoBattlePalette.secondary,
+                      color: Colors.white,
                       fontSize: 11,
                       fontWeight: FontWeight.w900,
+                      height: 1.1,
                     ),
                   ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          GestureDetector(
-            onTap: equipped ? null : onTap,
-            child: Container(
-              width: 70,
-              height: 42,
-              alignment: Alignment.center,
-              decoration: BoxDecoration(
-                color: buttonColor,
-                border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-                boxShadow: equipped
-                    ? null
-                    : const [
-                        BoxShadow(
-                          color: AutoBattlePalette.ink,
-                          offset: Offset(2, 2),
-                        ),
-                      ],
-              ),
-              child: Text(
-                unlocked ? buttonText : '$buttonText\n💎 ${equipment.price}',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w900,
-                  height: 1.1,
                 ),
               ),
-            ),
+            ],
           ),
+          if (unlocked && equipment.weaponType != null)
+            _EquipmentUpgradeRow(equipment: equipment, ctrl: ctrl),
         ],
       ),
     );
@@ -941,86 +1011,63 @@ class _AchievementTab extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Weapon Icon Tile (small fixed-size)
+//  Equipment Upgrade Row (Inside Equipment Tab for Weapons)
 // ─────────────────────────────────────────────
-class _WeaponIconTile extends StatelessWidget {
-  final WeaponShopDef weapon;
-  final bool owned;
-  final bool isSelected;
-  final VoidCallback onTap;
+class _EquipmentUpgradeRow extends StatelessWidget {
+  final EquipmentShopDef equipment;
+  final MetaProgressController ctrl;
 
-  const _WeaponIconTile({
-    required this.weapon,
-    required this.owned,
-    required this.isSelected,
-    required this.onTap,
-  });
+  const _EquipmentUpgradeRow({required this.equipment, required this.ctrl});
 
   @override
   Widget build(BuildContext context) {
-    final Color bg;
-    final Color border;
-    if (isSelected) {
-      bg = owned ? const Color(0xFFC8E6C9) : const Color(0xFFFFF3E0);
-      border = owned ? const Color(0xFF4CAF50) : AutoBattlePalette.gold;
-    } else {
-      bg = owned ? const Color(0xFFE8F5E9) : Colors.white;
-      border = owned
-          ? const Color(0xFF4CAF50).withValues(alpha: 0.5)
-          : AutoBattlePalette.ink.withValues(alpha: 0.25);
-    }
+    if (equipment.weaponType == null) return const SizedBox.shrink();
 
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 56,
-        height: 56,
+    return Obx(() {
+      final level = ctrl.getWeaponLevel(equipment.weaponType!);
+      final cost = ctrl.getWeaponUpgradeCost(equipment.weaponType!);
+      final canAfford = ctrl.currency.value >= cost;
+
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        margin: const EdgeInsets.only(top: 4),
         decoration: BoxDecoration(
-          color: bg,
-          border: Border.all(
-            color: border,
-            width: isSelected ? 3 : 2,
-          ),
-          boxShadow: isSelected
-              ? [
-                  BoxShadow(
-                    color: border.withValues(alpha: 0.4),
-                    offset: const Offset(2, 2),
-                  ),
-                ]
-              : [],
+          color: AutoBattlePalette.background.withValues(alpha: 0.5),
+          borderRadius: BorderRadius.circular(4),
         ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Row(
           children: [
-            Text(weapon.icon, style: const TextStyle(fontSize: 22)),
-            const SizedBox(height: 1),
-            if (owned)
-              Obx(() {
-                final level = Get.find<MetaProgressController>()
-                    .getWeaponLevel(weapon.weaponType);
-                return Text(
-                  'LV.$level',
+            Text(
+              'LV.$level 공격력 강화',
+              style: const TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: 11,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const Spacer(),
+            GestureDetector(
+              onTap: canAfford ? () => ctrl.upgradeWeapon(equipment.weaponType!) : null,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: canAfford ? AutoBattlePalette.primary : Colors.grey,
+                  border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+                ),
+                child: Text(
+                  '강화 💎$cost',
                   style: const TextStyle(
-                    color: Color(0xFF4CAF50),
-                    fontSize: 9,
+                    color: Colors.white,
+                    fontSize: 10,
                     fontWeight: FontWeight.w900,
                   ),
-                );
-              })
-            else
-              Text(
-                '💎${weapon.price}',
-                style: const TextStyle(
-                  color: AutoBattlePalette.text3,
-                  fontSize: 8,
-                  fontWeight: FontWeight.w800,
                 ),
               ),
+            ),
           ],
         ),
-      ),
-    );
+      );
+    });
   }
 }
 

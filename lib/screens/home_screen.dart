@@ -81,11 +81,12 @@ class HomeScreen extends StatelessWidget {
 
                             // ── Character Preview with weapon switcher ──
                             Obx(() {
-                              final equipped = metaCtrl.equippedWeapon.value;
-                              final info = charDisplayInfoMap[equipped] ??
-                                  charDisplayInfoMap['gunner']!;
-                              final unlocked = metaCtrl.unlockedWeapons;
-                              final idx = unlocked.indexOf(equipped);
+                              final charDef = metaCtrl.currentCharacterDef;
+                              final shape = charDef.shape;
+                              final info = charDisplayInfoMap[shape] ??
+                                  charDisplayInfoMap['circle']!;
+                              final unlocked = metaCtrl.unlockedCharacters;
+                              final idx = unlocked.indexOf(metaCtrl.selectedCharacter.value);
 
                               return Column(
                                 children: [
@@ -120,11 +121,11 @@ class HomeScreen extends StatelessWidget {
                                                           1 +
                                                           unlocked.length) %
                                                       unlocked.length;
-                                                  metaCtrl.equipWeapon(
+                                                  metaCtrl.selectCharacter(
                                                       unlocked[newIdx]);
                                                 },
                                               ),
-                                            const SizedBox(width: 10),
+                                            const SizedBox(width: 15),
 
                                             // Character ball
                                             CharacterBallPreview(
@@ -132,7 +133,7 @@ class HomeScreen extends StatelessWidget {
                                               size: compact ? 80 : 100,
                                             ),
 
-                                            const SizedBox(width: 10),
+                                            const SizedBox(width: 15),
                                             // Right arrow
                                             if (unlocked.length > 1)
                                               _ArrowButton(
@@ -140,7 +141,7 @@ class HomeScreen extends StatelessWidget {
                                                 onTap: () {
                                                   final newIdx = (idx + 1) %
                                                       unlocked.length;
-                                                  metaCtrl.equipWeapon(
+                                                  metaCtrl.selectCharacter(
                                                       unlocked[newIdx]);
                                                 },
                                               ),
@@ -149,7 +150,7 @@ class HomeScreen extends StatelessWidget {
                                         const SizedBox(height: 10),
                                         // Name
                                         Text(
-                                          info.name,
+                                          charDef.title,
                                           style: const TextStyle(
                                             color: AutoBattlePalette.ink,
                                             fontSize: 22,
@@ -158,7 +159,8 @@ class HomeScreen extends StatelessWidget {
                                         ),
                                         const SizedBox(height: 4),
                                         Text(
-                                          info.desc,
+                                          charDef.description,
+                                          textAlign: TextAlign.center,
                                           style: const TextStyle(
                                             color: AutoBattlePalette.inkSubtle,
                                             fontSize: 12,
@@ -166,9 +168,9 @@ class HomeScreen extends StatelessWidget {
                                           ),
                                         ),
                                         const SizedBox(height: 8),
-                                        // Weapon count indicator
+                                        // Character indicator
                                         Text(
-                                          '시작 무기 ${idx + 1} / ${unlocked.length}',
+                                          '캐릭터 ${idx + 1} / ${unlocked.length}',
                                           style: const TextStyle(
                                             color: AutoBattlePalette.text3,
                                             fontSize: 11,
@@ -213,8 +215,10 @@ class HomeScreen extends StatelessWidget {
                                     flex: 3,
                                     child: GestureDetector(
                                       onTap: () {
+                                        final charDef = metaCtrl.currentCharacterDef;
                                         runCtrl.startNewRun(
-                                          metaCtrl.equippedWeapon.value,
+                                          metaCtrl.selectedCharacter.value,
+                                          charDef.shape,
                                           unlockedWeapons:
                                               metaCtrl.unlockedWeapons,
                                           equippedEquipment:

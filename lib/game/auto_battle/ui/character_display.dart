@@ -9,6 +9,7 @@ class CharDisplayInfo {
   final Color accentColor;
   final IconData icon;
   final String emoji;
+  final String shape; // 'circle', 'square', 'triangle'
 
   const CharDisplayInfo({
     required this.name,
@@ -17,6 +18,7 @@ class CharDisplayInfo {
     required this.accentColor,
     required this.icon,
     required this.emoji,
+    this.shape = 'circle',
   });
 }
 
@@ -108,6 +110,34 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
     accentColor: Color(0xFFC084FC),
     icon: Icons.shield,
     emoji: '🌀',
+    shape: 'circle',
+  ),
+  'circle': CharDisplayInfo(
+    name: '동그라미',
+    desc: '균형 잡힌 기본 형태',
+    bodyColor: Color(0xFFF87171), // Vibrant Red
+    accentColor: Color(0xFFFECACA),
+    icon: Icons.circle,
+    emoji: '🔴',
+    shape: 'circle',
+  ),
+  'square': CharDisplayInfo(
+    name: '네모',
+    desc: '단단하고 묵직한 형태',
+    bodyColor: Color(0xFF3B82F6), // Vibrant Blue
+    accentColor: Color(0xFFBFDBFE),
+    icon: Icons.square,
+    emoji: '🟦',
+    shape: 'square',
+  ),
+  'triangle': CharDisplayInfo(
+    name: '세모',
+    desc: '날카롭고 민첩한 형태',
+    bodyColor: Color(0xFFEAB308), // Vibrant Yellow
+    accentColor: Color(0xFFFEF08A),
+    icon: Icons.change_history,
+    emoji: '▲',
+    shape: 'triangle',
   ),
 };
 
@@ -170,11 +200,11 @@ class _CharBallPainter extends CustomPainter {
     final cx = size.width / 2;
     final cy = size.height / 2 + floatOffset;
     final r = size.width * 0.42;
-    final bodyPath = _trianglePath(Offset(cx, cy), r);
+    final bodyPath = _getPathForShape(info.shape, Offset(cx, cy), r);
 
     // Shadow (offset)
     canvas.drawPath(
-      _trianglePath(Offset(cx + 4, cy + 4), r),
+      _getPathForShape(info.shape, Offset(cx + 4, cy + 4), r),
       Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.2),
     );
 
@@ -272,11 +302,36 @@ class _CharBallPainter extends CustomPainter {
   bool shouldRepaint(covariant _CharBallPainter old) =>
       old.info.name != info.name || old.floatOffset != floatOffset;
 
+  Path _getPathForShape(String shape, Offset center, double radius) {
+    switch (shape) {
+      case 'square':
+        return _squarePath(center, radius);
+      case 'triangle':
+        return _trianglePath(center, radius);
+      case 'circle':
+      default:
+        return _circlePath(center, radius);
+    }
+  }
+
+  Path _circlePath(Offset center, double radius) {
+    return Path()..addOval(Rect.fromCircle(center: center, radius: radius));
+  }
+
+  Path _squarePath(Offset center, double radius) {
+    final r = radius * 0.95;
+    return Path()
+      ..addRRect(RRect.fromRectAndRadius(
+        Rect.fromCenter(center: center, width: r * 2, height: r * 2),
+        const Radius.circular(4),
+      ));
+  }
+
   Path _trianglePath(Offset center, double radius) {
     return Path()
       ..moveTo(center.dx, center.dy - radius * 1.16)
-      ..lineTo(center.dx + radius * 0.96, center.dy + radius * 0.76)
-      ..lineTo(center.dx - radius * 0.96, center.dy + radius * 0.76)
+      ..lineTo(center.dx + radius * 1.05, center.dy + radius * 0.7)
+      ..lineTo(center.dx - radius * 1.05, center.dy + radius * 0.7)
       ..close();
   }
 }

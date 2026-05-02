@@ -39,6 +39,7 @@ class UpgradeOptionData {
 class PlayerData {
   String id;
   String characterType;
+  String characterShape; // 'circle', 'square', 'triangle'
   bool isEnemy;
 
   double hp;
@@ -92,6 +93,7 @@ class PlayerData {
   PlayerData({
     required this.id,
     required this.characterType,
+    this.characterShape = 'circle',
     this.isEnemy = false,
     required this.hp,
     required this.maxHp,
@@ -141,6 +143,7 @@ class PlayerData {
   PlayerSnapshot toSnapshot() => PlayerSnapshot(
         id: id,
         characterType: characterType,
+        characterShape: characterShape,
         isEnemy: isEnemy,
         hp: hp,
         maxHp: maxHp,

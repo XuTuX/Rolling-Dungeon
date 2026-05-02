@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class PlayerSnapshot {
   final String id;
   final String characterType;
+  final String characterShape;
   final bool isEnemy;
   final double hp;
   final double maxHp;
@@ -48,6 +49,7 @@ class PlayerSnapshot {
   const PlayerSnapshot({
     required this.id,
     required this.characterType,
+    this.characterShape = 'circle',
     required this.isEnemy,
     required this.hp,
     required this.maxHp,
@@ -91,10 +93,60 @@ class PlayerSnapshot {
     this.activeEffects = const [],
   });
 
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'characterType': characterType,
+      'characterShape': characterShape,
+      'isEnemy': isEnemy,
+      'hp': hp,
+      'maxHp': maxHp,
+      'atk': atk,
+      'def': def,
+      'speed': speed,
+      'abilityPower': abilityPower,
+      'shield': shield,
+      'maxShield': maxShield,
+      'weaponLevel': weaponLevel,
+      'weaponCount': weaponCount,
+      'bulletReflectCount': bulletReflectCount,
+      'bulletsPerWeapon': bulletsPerWeapon,
+      'regen': regen,
+      'lifesteal': lifesteal,
+      'barrierHp': barrierHp,
+      'barrierMaxHp': barrierMaxHp,
+      'gold': gold,
+      'totalGold': totalGold,
+      'unspentUpgrades': unspentUpgrades,
+      'upgradeChoices': upgradeChoices.map((e) => e.toJson()).toList(),
+      'kills': kills,
+      'damageDealt': damageDealt,
+      'damageTaken': damageTaken,
+      'x': x,
+      'y': y,
+      'vx': vx,
+      'vy': vy,
+      'radius': radius,
+      'ownedWeapons': ownedWeapons,
+      'lastPoisonDropAt': lastPoisonDropAt,
+      'lastShotAt': lastShotAt,
+      'lastBladeAt': lastBladeAt,
+      'lastMineDropAt': lastMineDropAt,
+      'lastAttackAt': lastAttackAt,
+      'targetAngle': targetAngle,
+      'activeEffects': activeEffects.map((e) => e.toJson()).toList(),
+      'color': color,
+      'alive': alive,
+      'lives': lives,
+      'maxLives': maxLives,
+    };
+  }
+
   factory PlayerSnapshot.fromJson(Map<String, dynamic> json) {
     return PlayerSnapshot(
       id: json['id']?.toString() ?? '',
       characterType: json['characterType']?.toString() ?? 'poison',
+      characterShape: json['characterShape']?.toString() ?? 'circle',
       isEnemy: json['isEnemy'] == true,
       hp: _asDouble(json['hp']),
       maxHp: _asDouble(json['maxHp'], fallback: 100),
@@ -165,6 +217,13 @@ class ActiveEffectSnapshot {
       expiresAt: _asInt(json['expiresAt']),
     );
   }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'expiresAt': expiresAt,
+    };
+  }
 }
 
 class UpgradeOption {
@@ -190,6 +249,16 @@ class UpgradeOption {
       description: json['description'] as String,
       statPreview: json['statPreview'] as String,
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'rarity': rarity,
+      'title': title,
+      'description': description,
+      'statPreview': statPreview,
+    };
   }
 }
 

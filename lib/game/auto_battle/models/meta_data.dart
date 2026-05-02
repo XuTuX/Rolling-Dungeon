@@ -11,25 +11,31 @@ class MetaProgressData {
   /// Permanently unlocked skill IDs (future expansion).
   List<String> unlockedSkills;
 
+  /// Permanently unlocked character IDs.
+  List<String> unlockedCharacters;
+
+  /// The character selected for the run.
+  String selectedCharacter;
+
   /// Permanently unlocked equipment IDs.
   List<String> unlockedEquipment;
 
-  /// The weapon equipped for the current/next run.
+  /// Legacy field for backward compatibility or simple weapon-only checks.
   String equippedWeapon;
 
-  /// Equipment equipped by slot: hand / boots / armor.
+  /// Equipped item IDs mapped by slot.
   Map<String, String> equippedEquipment;
 
-  /// Achievement completion map: achievement_id → completed.
+  /// Achievements completed (id -> true).
   Map<String, bool> achievements;
 
-  /// Weapon upgrade levels: weapon_id → level.
+  /// Current level of each weapon type.
   Map<String, int> weaponLevels;
 
-  /// Permanent stat upgrade levels: stat_type → level.
+  /// Current level of each stat upgrade.
   Map<String, int> statLevels;
 
-  // ── Cumulative stats (for achievement tracking) ──
+  // Stats
   int totalEnemiesKilled;
   int totalBossesDefeated;
   double totalDamageDealt;
@@ -42,7 +48,9 @@ class MetaProgressData {
     List<String>? unlockedWeapons,
     List<String>? unlockedSkills,
     List<String>? unlockedEquipment,
+    List<String>? unlockedCharacters,
     this.equippedWeapon = 'gunner',
+    this.selectedCharacter = 'circle',
     Map<String, String>? equippedEquipment,
     Map<String, bool>? achievements,
     Map<String, int>? weaponLevels,
@@ -56,6 +64,7 @@ class MetaProgressData {
   })  : unlockedWeapons = unlockedWeapons ?? ['gunner'],
         unlockedSkills = unlockedSkills ?? [],
         unlockedEquipment = unlockedEquipment ?? [],
+        unlockedCharacters = unlockedCharacters ?? ['circle'],
         equippedEquipment = equippedEquipment ?? {},
         achievements = achievements ?? {},
         weaponLevels = weaponLevels ?? {},
@@ -67,7 +76,9 @@ class MetaProgressData {
         'unlockedWeapons': unlockedWeapons,
         'unlockedSkills': unlockedSkills,
         'unlockedEquipment': unlockedEquipment,
+        'unlockedCharacters': unlockedCharacters,
         'equippedWeapon': equippedWeapon,
+        'selectedCharacter': selectedCharacter,
         'equippedEquipment': equippedEquipment,
         'achievements': achievements,
         'weaponLevels': weaponLevels,
@@ -96,7 +107,12 @@ class MetaProgressData {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      unlockedCharacters: (json['unlockedCharacters'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          ['circle'],
       equippedWeapon: json['equippedWeapon'] as String? ?? 'gunner',
+      selectedCharacter: json['selectedCharacter'] as String? ?? 'circle',
       equippedEquipment: (json['equippedEquipment'] as Map?)?.map(
             (k, v) => MapEntry(k.toString(), v.toString()),
           ) ??
