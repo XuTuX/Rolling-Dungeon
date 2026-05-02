@@ -1,8 +1,15 @@
 import 'dart:math' as math;
 import 'package:get/get.dart';
+import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:circle_war/game/auto_battle/models/meta_data.dart';
 import 'package:circle_war/game/auto_battle/models/achievement_data.dart';
 import 'package:circle_war/services/persistence_service.dart';
+
+const double kMetaHpGainPerLevel = 14.0;
+const double kMetaAtkGainPerLevel = 1.0;
+const double kMetaSpeedGainPerLevel = 0.05;
+const double kMetaRegenGainPerLevel = 0.25;
+const double kMetaCritGainPerLevel = 0.015;
 
 class CharacterShopDef {
   final String id;
@@ -14,6 +21,7 @@ class CharacterShopDef {
   final double atkBonus;
   final double speedBonus;
   final double defBonus;
+  final double critBonus;
   final String shape; // 'circle', 'square', 'triangle'
   final String trait;
 
@@ -28,8 +36,11 @@ class CharacterShopDef {
     this.atkBonus = 0,
     this.speedBonus = 0,
     this.defBonus = 0,
+    this.critBonus = 0,
     this.trait = '',
   });
+
+  String get shopSummary => ShopStatPresenter.characterSummary(this);
 }
 
 const List<CharacterShopDef> kAllCharacters = [
@@ -67,6 +78,7 @@ const List<CharacterShopDef> kAllCharacters = [
     hpBonus: -20,
     atkBonus: 5.0,
     speedBonus: 0.35,
+    critBonus: 0.10,
     trait: '치명적인 돌진',
   ),
   CharacterShopDef(
@@ -80,6 +92,7 @@ const List<CharacterShopDef> kAllCharacters = [
     atkBonus: 2.0,
     defBonus: 1.0,
     speedBonus: 0.15,
+    critBonus: 0.05,
     trait: '고대의 지혜',
   ),
 ];
@@ -96,6 +109,7 @@ class EquipmentShopDef {
   final double atkBonus;
   final double defBonus;
   final double speedBonus;
+  final double critBonus;
   final int weaponCountBonus;
   final int bulletsPerWeaponBonus;
   final int bulletReflectBonus;
@@ -113,6 +127,7 @@ class EquipmentShopDef {
     this.atkBonus = 0,
     this.defBonus = 0,
     this.speedBonus = 0,
+    this.critBonus = 0,
     this.weaponCountBonus = 0,
     this.bulletsPerWeaponBonus = 0,
     this.bulletReflectBonus = 0,
@@ -120,16 +135,208 @@ class EquipmentShopDef {
   });
 
   String get statSummary {
-    final parts = <String>[];
-    if (hpBonus != 0) parts.add('HP ${hpBonus > 0 ? "+" : ""}${hpBonus.toStringAsFixed(0)}');
-    if (atkBonus != 0) parts.add('ATK ${atkBonus > 0 ? "+" : ""}${atkBonus.toStringAsFixed(1)}');
-    if (defBonus != 0) parts.add('DEF ${defBonus > 0 ? "+" : ""}${defBonus.toStringAsFixed(1)}');
-    if (speedBonus != 0) parts.add('SPD ${speedBonus > 0 ? "+" : ""}${speedBonus.toStringAsFixed(2)}');
-    if (weaponCountBonus != 0) parts.add('WPN +$weaponCountBonus');
-    if (bulletsPerWeaponBonus != 0) parts.add('SHOT +$bulletsPerWeaponBonus');
-    if (bulletReflectBonus != 0) parts.add('REF +$bulletReflectBonus');
-    if (barrierBonus != 0) parts.add('BAR +${barrierBonus.toStringAsFixed(0)}');
-    return parts.join(' / ');
+    return ShopStatPresenter.equipmentSummary(this);
+  }
+}
+
+class ShopStatPresenter {
+  const ShopStatPresenter._();
+
+  static String characterSummary(CharacterShopDef character) {
+    final power = _powerScore(
+      hpBonus: character.hpBonus,
+      atkBonus: character.atkBonus,
+      defBonus: character.defBonus,
+      speedBonus: character.speedBonus,
+      critBonus: character.critBonus,
+    );
+    final metrics = _topMetrics(
+      hpBonus: character.hpBonus,
+      atkBonus: character.atkBonus,
+      defBonus: character.defBonus,
+      speedBonus: character.speedBonus,
+      critBonus: character.critBonus,
+    );
+    return _summary(power, metrics);
+  }
+
+  static String equipmentSummary(EquipmentShopDef equipment) {
+    final power = _powerScore(
+      hpBonus: equipment.hpBonus,
+      atkBonus: equipment.atkBonus,
+      defBonus: equipment.defBonus,
+      speedBonus: equipment.speedBonus,
+      critBonus: equipment.critBonus,
+      weaponCountBonus: equipment.weaponCountBonus,
+      bulletsPerWeaponBonus: equipment.bulletsPerWeaponBonus,
+      bulletReflectBonus: equipment.bulletReflectBonus,
+      barrierBonus: equipment.barrierBonus,
+    );
+    final metrics = _topMetrics(
+      hpBonus: equipment.hpBonus,
+      atkBonus: equipment.atkBonus,
+      defBonus: equipment.defBonus,
+      speedBonus: equipment.speedBonus,
+      critBonus: equipment.critBonus,
+      weaponCountBonus: equipment.weaponCountBonus,
+      bulletsPerWeaponBonus: equipment.bulletsPerWeaponBonus,
+      bulletReflectBonus: equipment.bulletReflectBonus,
+      barrierBonus: equipment.barrierBonus,
+    );
+    return _summary(power, metrics);
+  }
+
+  static String statUpgradeSummary(StatShopDef stat) {
+    final power = switch (stat.statType) {
+      'hp' => _powerScore(hpBonus: kMetaHpGainPerLevel),
+      'atk' => _powerScore(atkBonus: kMetaAtkGainPerLevel),
+      'speed' => _powerScore(speedBonus: kMetaSpeedGainPerLevel),
+      'regen' => _powerScore(regenBonus: kMetaRegenGainPerLevel),
+      'crit' => _powerScore(critBonus: kMetaCritGainPerLevel),
+      _ => 100,
+    };
+    return '전투력 +${math.max(1, power - 100)}';
+  }
+
+  static String statUpgradeGain(StatShopDef stat) {
+    return switch (stat.statType) {
+      'hp' => '체력 +${kMetaHpGainPerLevel.round()}',
+      'atk' => '공격 +${kMetaAtkGainPerLevel.toStringAsFixed(0)}',
+      'speed' => '속도 +${(kMetaSpeedGainPerLevel * 100).round()}',
+      'regen' => '회복 +${kMetaRegenGainPerLevel.toStringAsFixed(2)}',
+      'crit' => '치명 +${(kMetaCritGainPerLevel * 100).toStringAsFixed(1)}%',
+      _ => '',
+    };
+  }
+
+  static String _summary(int power, List<String> metrics) {
+    final firstLine = '전투력 $power';
+    if (metrics.isEmpty) return '$firstLine\n기본형';
+    return '$firstLine\n${metrics.take(2).join(' · ')}';
+  }
+
+  static int _powerScore({
+    double hpBonus = 0,
+    double atkBonus = 0,
+    double defBonus = 0,
+    double speedBonus = 0,
+    double critBonus = 0,
+    double regenBonus = 0,
+    double barrierBonus = 0,
+    int weaponCountBonus = 0,
+    int bulletsPerWeaponBonus = 0,
+    int bulletReflectBonus = 0,
+  }) {
+    final score = 100 +
+        hpBonus / PLAYER_BASE_HP * 45 +
+        atkBonus / PLAYER_BASE_ATTACK * 50 +
+        defBonus / PLAYER_BASE_DEFENSE * 20 +
+        speedBonus / PLAYER_BASE_SPEED * 45 +
+        critBonus * 150 +
+        regenBonus * 8 +
+        barrierBonus / PLAYER_BASE_HP * 35 +
+        weaponCountBonus * 20 +
+        bulletsPerWeaponBonus * 18 +
+        bulletReflectBonus * 8;
+    return math.max(60, score.round());
+  }
+
+  static List<String> _topMetrics({
+    double hpBonus = 0,
+    double atkBonus = 0,
+    double defBonus = 0,
+    double speedBonus = 0,
+    double critBonus = 0,
+    double barrierBonus = 0,
+    int weaponCountBonus = 0,
+    int bulletsPerWeaponBonus = 0,
+    int bulletReflectBonus = 0,
+  }) {
+    final metrics = <({String text, double weight})>[];
+    if (hpBonus != 0) {
+      metrics.add((
+        text: _scoreLabel('체력', PLAYER_BASE_HP, hpBonus),
+        weight: hpBonus.abs() / PLAYER_BASE_HP
+      ));
+    }
+    if (atkBonus != 0) {
+      metrics.add((
+        text: _scoreLabel('공격', PLAYER_BASE_ATTACK, atkBonus),
+        weight: atkBonus.abs() / PLAYER_BASE_ATTACK
+      ));
+    }
+    if (defBonus != 0) {
+      metrics.add((
+        text: _scoreLabel('방어', PLAYER_BASE_DEFENSE, defBonus),
+        weight: defBonus.abs() / PLAYER_BASE_DEFENSE
+      ));
+    }
+    if (speedBonus != 0) {
+      metrics.add((
+        text: _scoreLabel('속도', PLAYER_BASE_SPEED, speedBonus),
+        weight: speedBonus.abs() / PLAYER_BASE_SPEED
+      ));
+    }
+    if (critBonus != 0) {
+      metrics.add(
+          (text: '치명 ${(critBonus * 100).round()}%', weight: critBonus * 2));
+    }
+    if (weaponCountBonus != 0 ||
+        bulletsPerWeaponBonus != 0 ||
+        bulletReflectBonus != 0) {
+      final attackUtility = weaponCountBonus * 12 +
+          bulletsPerWeaponBonus * 10 +
+          bulletReflectBonus * 5;
+      metrics.add((text: '공격 보조 +$attackUtility', weight: attackUtility / 100));
+    }
+    if (barrierBonus != 0) {
+      metrics.add((
+        text: '생존 +${(barrierBonus / PLAYER_BASE_HP * 100).round()}',
+        weight: barrierBonus / PLAYER_BASE_HP
+      ));
+    }
+    metrics.sort((a, b) => b.weight.compareTo(a.weight));
+    return metrics.map((metric) => metric.text).toList();
+  }
+
+  static String _scoreLabel(String label, double base, double bonus) {
+    final score = ((base + bonus) / base * 100).round();
+    return '$label $score';
+  }
+}
+
+class LoadoutStatProfile {
+  final double maxHp;
+  final double atk;
+  final double def;
+  final double speed;
+  final double regen;
+  final double critChance;
+  final double barrierHp;
+  final int weaponCount;
+  final int bulletsPerWeapon;
+  final int bulletReflects;
+
+  const LoadoutStatProfile({
+    required this.maxHp,
+    required this.atk,
+    required this.def,
+    required this.speed,
+    required this.regen,
+    required this.critChance,
+    required this.barrierHp,
+    required this.weaponCount,
+    required this.bulletsPerWeapon,
+    required this.bulletReflects,
+  });
+
+  int get hpScore => _score(maxHp, PLAYER_BASE_HP);
+  int get atkScore => _score(atk, PLAYER_BASE_ATTACK);
+  int get defScore => _score(def, PLAYER_BASE_DEFENSE);
+  int get speedScore => _score(speed, PLAYER_BASE_SPEED);
+
+  static int _score(double value, double base) {
+    return (value / base * 100).round();
   }
 }
 
@@ -170,6 +377,7 @@ const List<EquipmentShopDef> kAllEquipment = [
     icon: '⚔️',
     weaponType: 'blade',
     atkBonus: 2.0,
+    critBonus: 0.06,
   ),
   EquipmentShopDef(
     id: 'wpn_aura',
@@ -192,6 +400,7 @@ const List<EquipmentShopDef> kAllEquipment = [
     icon: '🧤',
     bulletsPerWeaponBonus: 1,
     speedBonus: 0.1,
+    critBonus: 0.04,
   ),
   EquipmentShopDef(
     id: 'scope_ring',
@@ -202,6 +411,7 @@ const List<EquipmentShopDef> kAllEquipment = [
     icon: '💍',
     atkBonus: 3.0,
     bulletReflectBonus: 1,
+    critBonus: 0.10,
   ),
   EquipmentShopDef(
     id: 'magic_pendant',
@@ -212,6 +422,7 @@ const List<EquipmentShopDef> kAllEquipment = [
     icon: '📿',
     atkBonus: 1.5,
     barrierBonus: 25,
+    critBonus: 0.04,
   ),
   EquipmentShopDef(
     id: 'power_bracelet',
@@ -222,6 +433,7 @@ const List<EquipmentShopDef> kAllEquipment = [
     icon: '⌚',
     atkBonus: 5.0,
     hpBonus: -15,
+    critBonus: 0.14,
   ),
 
   // ── Armor (4 items) ──
@@ -285,6 +497,7 @@ const List<EquipmentShopDef> kAllEquipment = [
     icon: '🥾',
     speedBonus: 0.3,
     atkBonus: 1.5,
+    critBonus: 0.03,
   ),
   EquipmentShopDef(
     id: 'heavy_boots',
@@ -361,6 +574,14 @@ const List<StatShopDef> kAllStatUpgrades = [
     basePrice: 100,
     icon: '🧪',
   ),
+  StatShopDef(
+    id: 'crit',
+    statType: 'crit',
+    title: '치명타',
+    description: '일정 확률로 피해량을 크게 증가시킵니다.',
+    basePrice: 90,
+    icon: '🎯',
+  ),
 ];
 
 /// Controller for persistent meta-progression (shop, achievements, currency).
@@ -384,7 +605,11 @@ class MetaProgressController extends GetxController {
   final totalRunCount = 0.obs;
 
   List<String> get unlockedWeapons => unlockedEquipment
-      .where((id) => equipmentDefById(id)?.slot == 'weapon')
+      .map(equipmentDefById)
+      .whereType<EquipmentShopDef>()
+      .where((equipment) => equipment.slot == 'weapon')
+      .map((equipment) => equipment.weaponType)
+      .whereType<String>()
       .toList();
 
   /// Whether data has been loaded from disk.
@@ -402,15 +627,19 @@ class MetaProgressController extends GetxController {
   /// Load persistent data from SharedPreferences.
   Future<void> loadFromDisk() async {
     final data = await PersistenceService.loadMeta();
-    
-    unlockedCharacters.value = _normalizedUnlockedCharacters(data.unlockedCharacters);
-    selectedCharacter.value = unlockedCharacters.contains(data.selectedCharacter)
-        ? data.selectedCharacter
-        : 'circle';
-        
-    unlockedEquipment.value = _normalizedUnlockedEquipment(data.unlockedEquipment);
-    equippedEquipment.value = _normalizedEquippedEquipment(data.equippedEquipment);
-    
+
+    unlockedCharacters.value =
+        _normalizedUnlockedCharacters(data.unlockedCharacters);
+    selectedCharacter.value =
+        unlockedCharacters.contains(data.selectedCharacter)
+            ? data.selectedCharacter
+            : 'circle';
+
+    unlockedEquipment.value =
+        _normalizedUnlockedEquipment(data.unlockedEquipment);
+    equippedEquipment.value =
+        _normalizedEquippedEquipment(data.equippedEquipment);
+
     achievements.value = Map<String, bool>.from(data.achievements);
     weaponLevels.value = Map<String, int>.from(data.weaponLevels);
     statLevels.value = Map<String, int>.from(data.statLevels);
@@ -434,7 +663,8 @@ class MetaProgressController extends GetxController {
       unlockedCharacters: List<String>.from(unlockedCharacters),
       selectedCharacter: selectedCharacter.value,
       unlockedEquipment: List<String>.from(unlockedEquipment),
-      equippedWeapon: equippedWeaponType, // For backward compatibility if needed
+      equippedWeapon:
+          equippedWeaponType, // For backward compatibility if needed
       equippedEquipment: Map<String, String>.from(equippedEquipment),
       achievements: Map<String, bool>.from(achievements),
       weaponLevels: Map<String, int>.from(weaponLevels),
@@ -474,7 +704,73 @@ class MetaProgressController extends GetxController {
   }
 
   CharacterShopDef get currentCharacterDef {
-    return kAllCharacters.firstWhere((c) => c.id == selectedCharacter.value, orElse: () => kAllCharacters.first);
+    return kAllCharacters.firstWhere((c) => c.id == selectedCharacter.value,
+        orElse: () => kAllCharacters.first);
+  }
+
+  LoadoutStatProfile get currentLoadoutStats {
+    final equipped = kEquipmentSlotLabels.keys
+        .map(equippedDefForSlot)
+        .whereType<EquipmentShopDef>();
+    return buildLoadoutStats(
+      character: currentCharacterDef,
+      equipment: equipped,
+      statLevels: statLevels,
+    );
+  }
+
+  static LoadoutStatProfile buildLoadoutStats({
+    required CharacterShopDef character,
+    required Iterable<EquipmentShopDef> equipment,
+    required Map<String, int> statLevels,
+  }) {
+    double maxHp = PLAYER_BASE_HP + character.hpBonus;
+    double atk = PLAYER_BASE_ATTACK + character.atkBonus;
+    double def = PLAYER_BASE_DEFENSE + character.defBonus;
+    double speed = PLAYER_BASE_SPEED + character.speedBonus;
+    double regen = 0;
+    double critChance = character.critBonus;
+    double barrierHp = 0;
+    int weaponCount = PLAYER_STARTING_WEAPON_COUNT;
+    int bulletsPerWeapon = PLAYER_STARTING_BULLETS_PER_WEAPON;
+    int bulletReflects = PLAYER_STARTING_BULLET_REFLECTS;
+
+    for (final item in equipment) {
+      maxHp += item.hpBonus;
+      atk += item.atkBonus;
+      def += item.defBonus;
+      speed += item.speedBonus;
+      critChance += item.critBonus;
+      barrierHp += item.barrierBonus;
+      weaponCount += item.weaponCountBonus;
+      bulletsPerWeapon += item.bulletsPerWeaponBonus;
+      bulletReflects += item.bulletReflectBonus;
+    }
+
+    maxHp += (statLevels['hp'] ?? 0) * kMetaHpGainPerLevel;
+    atk += (statLevels['atk'] ?? 0) * kMetaAtkGainPerLevel;
+    speed += (statLevels['speed'] ?? 0) * kMetaSpeedGainPerLevel;
+    regen += (statLevels['regen'] ?? 0) * kMetaRegenGainPerLevel;
+    critChance += (statLevels['crit'] ?? 0) * kMetaCritGainPerLevel;
+
+    return LoadoutStatProfile(
+      maxHp: math.max(1, maxHp),
+      atk: math.max(1, atk),
+      def: math.max(0, def),
+      speed: math.min(MAX_SPEED, math.max(1, speed)),
+      regen: math.max(0, regen),
+      critChance: math.min(0.6, math.max(0, critChance)),
+      barrierHp: math.max(0, barrierHp),
+      weaponCount: math.min(
+        PLAYER_MAX_WEAPON_COUNT,
+        math.max(PLAYER_STARTING_WEAPON_COUNT, weaponCount),
+      ),
+      bulletsPerWeapon: math.min(
+        PLAYER_MAX_BULLETS_PER_WEAPON,
+        math.max(PLAYER_STARTING_BULLETS_PER_WEAPON, bulletsPerWeapon),
+      ),
+      bulletReflects: math.max(PLAYER_STARTING_BULLET_REFLECTS, bulletReflects),
+    );
   }
 
   // ── Equipment Logic ──
@@ -530,7 +826,7 @@ class MetaProgressController extends GetxController {
     final normalized = <String, String>{};
     // Default weapon if not set
     normalized['weapon'] = 'wpn_gunner';
-    
+
     for (final entry in saved.entries) {
       final equipment = equipmentDefById(entry.value);
       if (equipment == null) continue;
@@ -547,7 +843,8 @@ class MetaProgressController extends GetxController {
   }
 
   int getWeaponUpgradeCost(String weaponType) {
-    final def = kAllEquipment.firstWhereOrNull((e) => e.weaponType == weaponType);
+    final def =
+        kAllEquipment.firstWhereOrNull((e) => e.weaponType == weaponType);
     if (def == null) return 100;
     final level = getWeaponLevel(weaponType);
     return def.price + (level * (def.price ~/ 2 + 10));
@@ -606,10 +903,18 @@ class MetaProgressController extends GetxController {
 
       bool completed = false;
       switch (ach.category) {
-        case 'kill': completed = totalEnemiesKilled.value >= ach.threshold; break;
-        case 'stage': completed = highestStage.value >= ach.threshold; break;
-        case 'boss': completed = totalBossesDefeated.value >= ach.threshold; break;
-        case 'damage': completed = totalDamageDealt.value >= ach.threshold; break;
+        case 'kill':
+          completed = totalEnemiesKilled.value >= ach.threshold;
+          break;
+        case 'stage':
+          completed = highestStage.value >= ach.threshold;
+          break;
+        case 'boss':
+          completed = totalBossesDefeated.value >= ach.threshold;
+          break;
+        case 'damage':
+          completed = totalDamageDealt.value >= ach.threshold;
+          break;
       }
 
       if (completed) {

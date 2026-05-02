@@ -19,6 +19,7 @@ class PlayerSnapshot {
   final int bulletsPerWeapon;
   final double regen;
   final double lifesteal;
+  final double critChance;
   final double barrierHp;
   final double barrierMaxHp;
   final double gold;
@@ -65,6 +66,7 @@ class PlayerSnapshot {
     this.bulletsPerWeapon = 1,
     this.regen = 0,
     this.lifesteal = 0,
+    this.critChance = 0,
     this.barrierHp = 0,
     this.barrierMaxHp = 0,
     required this.gold,
@@ -113,6 +115,7 @@ class PlayerSnapshot {
       'bulletsPerWeapon': bulletsPerWeapon,
       'regen': regen,
       'lifesteal': lifesteal,
+      'critChance': critChance,
       'barrierHp': barrierHp,
       'barrierMaxHp': barrierMaxHp,
       'gold': gold,
@@ -162,6 +165,7 @@ class PlayerSnapshot {
       bulletsPerWeapon: _asInt(json['bulletsPerWeapon'], fallback: 1),
       regen: _asDouble(json['regen']),
       lifesteal: _asDouble(json['lifesteal']),
+      critChance: _asDouble(json['critChance']),
       barrierHp: _asDouble(json['barrierHp']),
       barrierMaxHp: _asDouble(json['barrierMaxHp']),
       gold: _asDouble(json['gold']),

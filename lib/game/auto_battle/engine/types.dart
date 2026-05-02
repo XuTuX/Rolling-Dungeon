@@ -56,6 +56,7 @@ class PlayerData {
   int bulletsPerWeapon;
   double regen;
   double lifesteal;
+  double critChance;
   double barrierHp;
   double barrierMaxHp;
 
@@ -109,6 +110,7 @@ class PlayerData {
     this.bulletsPerWeapon = 1,
     this.regen = 0,
     this.lifesteal = 0,
+    this.critChance = 0,
     this.barrierHp = 0,
     this.barrierMaxHp = 0,
     required this.gold,
@@ -159,6 +161,7 @@ class PlayerData {
         bulletsPerWeapon: bulletsPerWeapon,
         regen: regen,
         lifesteal: lifesteal,
+        critChance: critChance,
         barrierHp: barrierHp,
         barrierMaxHp: barrierMaxHp,
         gold: gold,

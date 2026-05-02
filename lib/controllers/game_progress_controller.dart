@@ -73,12 +73,14 @@ class GameProgressController extends GetxController {
   var playerBulletsPerWeapon = PLAYER_STARTING_BULLETS_PER_WEAPON.obs;
   var playerRegen = 0.0.obs;
   var playerLifesteal = 0.0.obs;
+  var playerCritChance = 0.0.obs;
   var playerBarrierHp = 0.0.obs;
   var playerBarrierMaxHp = 0.0.obs;
 
   // ── Character Type ──
   // ── Character Type & Weapons ──
-  var characterType = 'none'.obs; // character ID: 'square', 'triangle', 'circle'
+  var characterType =
+      'none'.obs; // character ID: 'square', 'triangle', 'circle'
   var characterShape = 'circle'.obs; // 'circle', 'square', 'triangle'
   final runUnlockedWeapons = <String>['gunner'].obs;
   final activeEquipment = <String, EquipmentShopDef>{}.obs;
@@ -99,6 +101,7 @@ class GameProgressController extends GetxController {
     String selectedShape, {
     Iterable<String>? unlockedWeapons,
     Map<String, String>? equippedEquipment,
+    Map<String, int>? statLevels,
   }) {
     currentStage.value = 1;
     currentCycle.value = 1;
@@ -125,34 +128,34 @@ class GameProgressController extends GetxController {
     runUnlockedWeapons.value = _orderedRunWeapons(unlockedSet);
     activeEquipment.value = _resolvedEquipment(equippedEquipment ?? const {});
 
-    playerMaxHp.value = PLAYER_BASE_HP;
-    playerAtk.value = PLAYER_BASE_ATTACK;
-    playerDef.value = PLAYER_BASE_DEFENSE;
-    playerSpd.value = PLAYER_BASE_SPEED;
     playerRadius.value = PLAYER_BASE_RADIUS;
 
     playerAbilityPower.value = 1.0;
     playerShield.value = 0;
     playerMaxShield.value = 0;
-    playerWeaponLevel.value = 0;
-    playerWeaponCount.value = PLAYER_STARTING_WEAPON_COUNT;
-    playerBulletReflectCount.value = PLAYER_STARTING_BULLET_REFLECTS;
-    playerBulletsPerWeapon.value = PLAYER_STARTING_BULLETS_PER_WEAPON;
 
-    // Apply Character Bonuses
     final charDef = kAllCharacters.firstWhere(
       (c) => c.id == selectedCharacter,
       orElse: () => kAllCharacters.first,
     );
-    playerMaxHp.value += charDef.hpBonus;
-    playerAtk.value += charDef.atkBonus;
-    playerSpd.value += charDef.speedBonus;
-    playerDef.value += charDef.defBonus;
-    playerRegen.value = 0;
+    final loadoutStats = MetaProgressController.buildLoadoutStats(
+      character: charDef,
+      equipment: activeEquipment.values,
+      statLevels: statLevels ?? const {},
+    );
+    playerMaxHp.value = loadoutStats.maxHp;
+    playerAtk.value = loadoutStats.atk;
+    playerDef.value = loadoutStats.def;
+    playerSpd.value = loadoutStats.speed;
+    playerWeaponCount.value = loadoutStats.weaponCount;
+    playerBulletReflectCount.value = loadoutStats.bulletReflects;
+    playerBulletsPerWeapon.value = loadoutStats.bulletsPerWeapon;
+    playerRegen.value = loadoutStats.regen;
     playerLifesteal.value = 0;
-    playerBarrierHp.value = 0;
-    playerBarrierMaxHp.value = 0;
-    _applyEquipmentLoadoutBonuses();
+    playerCritChance.value = loadoutStats.critChance;
+    playerBarrierHp.value = loadoutStats.barrierHp;
+    playerBarrierMaxHp.value = loadoutStats.barrierHp;
+    _clampRunScalingStats();
     playerCurrentHp.value = playerMaxHp.value;
   }
 
@@ -457,27 +460,6 @@ class GameProgressController extends GetxController {
     return resolved;
   }
 
-  void _applyEquipmentLoadoutBonuses() {
-    for (final equipment in activeEquipment.values) {
-      playerMaxHp.value += equipment.hpBonus;
-      playerAtk.value += equipment.atkBonus;
-      playerDef.value += equipment.defBonus;
-      playerSpd.value =
-          math.min(MAX_SPEED, playerSpd.value + equipment.speedBonus);
-      playerWeaponCount.value = math.min(
-        PLAYER_MAX_WEAPON_COUNT,
-        playerWeaponCount.value + equipment.weaponCountBonus,
-      );
-      playerBulletsPerWeapon.value = math.min(
-        PLAYER_MAX_BULLETS_PER_WEAPON,
-        playerBulletsPerWeapon.value + equipment.bulletsPerWeaponBonus,
-      );
-      playerBulletReflectCount.value += equipment.bulletReflectBonus;
-      playerBarrierMaxHp.value += equipment.barrierBonus;
-      playerBarrierHp.value = playerBarrierMaxHp.value;
-    }
-  }
-
   void _clampRunScalingStats() {
     playerWeaponCount.value = math.min(
       PLAYER_MAX_WEAPON_COUNT,
@@ -530,7 +512,7 @@ class GameProgressController extends GetxController {
   List<String> _orderedRunWeapons(Set<String> unlockedSet) {
     final ordered = <String>['gunner'];
     final allWeaponDefs = kAllEquipment.where((e) => e.slot == 'weapon');
-    
+
     for (final def in allWeaponDefs) {
       final wType = def.weaponType;
       if (wType != null && unlockedSet.contains(wType)) {

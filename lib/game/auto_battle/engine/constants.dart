@@ -12,9 +12,9 @@ const int MAX_LIVES = 3;
 // const int VICTORY_STAGE = 10;
 
 // ── Cycle System ──
-const int STAGES_PER_CYCLE = 3;          // normal stages before boss
-const int BOSS_STAGE_IN_CYCLE = 4;       // boss is the 4th stage in each cycle
-const int TOTAL_STAGES_IN_CYCLE = 4;     // 3 normal + 1 boss
+const int STAGES_PER_CYCLE = 3; // normal stages before boss
+const int BOSS_STAGE_IN_CYCLE = 4; // boss is the 4th stage in each cycle
+const int TOTAL_STAGES_IN_CYCLE = 4; // 3 normal + 1 boss
 
 // ── Cycle Scaling ──
 const double CYCLE_ENEMY_HP_SCALE = 0.35;
@@ -38,6 +38,7 @@ const double ENEMY_BASE_SPEED = 4.0;
 const double PLAYER_BASE_HP = 220.0;
 const double PLAYER_BASE_ATTACK = 9.0;
 const double PLAYER_BASE_DEFENSE = 2.0;
+const double PLAYER_CRIT_DAMAGE_MULTIPLIER = 1.6;
 
 const double STAGE_ONE_ENEMY_HP = 90.0;
 const double STAGE_ONE_ENEMY_ATTACK = 7.0;

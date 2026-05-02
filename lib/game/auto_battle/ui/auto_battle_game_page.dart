@@ -55,6 +55,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       bulletsPerWeapon: controller.playerBulletsPerWeapon.value,
       regen: controller.playerRegen.value,
       lifesteal: controller.playerLifesteal.value,
+      critChance: controller.playerCritChance.value,
       barrierHp: controller.playerBarrierHp.value,
       barrierMaxHp: controller.playerBarrierMaxHp.value,
       gold: controller.gold.value.toDouble(),
@@ -74,9 +75,13 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         controller.characterType.value,
       }.toList(),
       weaponLevels: metaController.weaponLevels,
-      color: controller.characterType.value == 'circle' ? '#F87171' : 
-             controller.characterType.value == 'square' ? '#3B82F6' :
-             controller.characterType.value == 'triangle' ? '#EAB308' : '#4F8CFF',
+      color: controller.characterType.value == 'circle'
+          ? '#F87171'
+          : controller.characterType.value == 'square'
+              ? '#3B82F6'
+              : controller.characterType.value == 'triangle'
+                  ? '#EAB308'
+                  : '#4F8CFF',
       alive: true,
       lives: controller.lives.value,
       maxLives: 3,

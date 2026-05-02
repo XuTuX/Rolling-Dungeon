@@ -61,6 +61,7 @@ class GameEngine {
         PLAYER_MAX_BULLETS_PER_WEAPON,
         math.max(1, initialPlayer.bulletsPerWeapon),
       )
+      ..critChance = initialPlayer.critChance.clamp(0.0, 0.6).toDouble()
       ..barrierHp = initialPlayer.barrierMaxHp > 0
           ? math.max(initialPlayer.barrierHp, initialPlayer.barrierMaxHp)
           : initialPlayer.barrierHp;
@@ -1137,6 +1138,11 @@ class GameEngine {
   }) {
     if (!attacker.alive || !defender.alive || raw <= 0) return;
     var dmg = math.max(COLLISION_MIN_DAMAGE, raw);
+    if (!attacker.isEnemy &&
+        attacker.critChance > 0 &&
+        _rand.nextDouble() < attacker.critChance) {
+      dmg *= PLAYER_CRIT_DAMAGE_MULTIPLIER;
+    }
     if ((isCollision || attacker.isEnemy) && defender.barrierHp > 0) {
       final absorbed = isCollision ? dmg : math.min(defender.barrierHp, dmg);
       defender.barrierHp =
