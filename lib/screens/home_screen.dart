@@ -1,4 +1,3 @@
-import 'dart:math' as math;
 import 'package:circle_war/controllers/game_progress_controller.dart';
 import 'package:circle_war/controllers/meta_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
@@ -13,7 +12,6 @@ class HomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Ensure controllers are initialized
     if (!Get.isRegistered<MetaProgressController>()) {
       Get.put(MetaProgressController(), permanent: true);
     }
@@ -27,339 +25,221 @@ class HomeScreen extends StatelessWidget {
       backgroundColor: AutoBattlePalette.background,
       body: Stack(
         children: [
+          // Background texture/lines
           Positioned.fill(child: CustomPaint(painter: _SketchLinesPainter())),
+          
           SafeArea(
             child: LayoutBuilder(
               builder: (context, constraints) {
                 final w = constraints.maxWidth;
                 final h = constraints.maxHeight;
-                final compact = h < 400;
+                final compact = h < 450;
 
-                return SingleChildScrollView(
-                  physics: const ClampingScrollPhysics(),
-                  child: ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: h),
-                    child: Center(
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 20, vertical: 12),
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // ── Title ──
-                            Container(
-                              padding: EdgeInsets.symmetric(
-                                horizontal: (w * 0.05).clamp(18.0, 36.0),
-                                vertical: compact ? 6 : 10,
+                return Center(
+                  child: SingleChildScrollView(
+                    physics: const BouncingScrollPhysics(),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // ── Title: Taped Sign Style ──
+                          _TapedHeader(
+                            child: Text(
+                              'ROLLING DUNGEON',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: AutoBattlePalette.ink,
+                                fontSize: compact ? 32 : 44,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -1,
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                border: Border.all(
-                                    color: AutoBattlePalette.ink, width: 4),
-                                boxShadow: const [
-                                  BoxShadow(
-                                      color: AutoBattlePalette.ink,
-                                      offset: Offset(6, 6)),
+                            ),
+                          ),
+
+                          SizedBox(height: compact ? 20 : 32),
+
+                          // ── Main Content: Sketchbook Page ──
+                          Obx(() {
+                            final charDef = metaCtrl.currentCharacterDef;
+                            final shape = charDef.shape;
+                            final info = charDisplayInfoMap[shape] ?? charDisplayInfoMap['circle']!;
+                            final unlocked = metaCtrl.unlockedCharacters;
+                            final idx = unlocked.indexOf(metaCtrl.selectedCharacter.value);
+
+                            return _SketchbookPage(
+                              width: (w * 0.85).clamp(320.0, 500.0),
+                              child: Column(
+                                children: [
+                                  // Character Selection Header
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      if (unlocked.length > 1)
+                                        _ArrowButton(
+                                          icon: Icons.arrow_back_ios_new,
+                                          onTap: () {
+                                            final newIdx = (idx - 1 + unlocked.length) % unlocked.length;
+                                            metaCtrl.selectCharacter(unlocked[newIdx]);
+                                          },
+                                        )
+                                      else
+                                        const SizedBox(width: 44),
+                                      
+                                      Column(
+                                        children: [
+                                          CharacterBallPreview(
+                                            info: info,
+                                            size: compact ? 90 : 120,
+                                          ),
+                                          const SizedBox(height: 8),
+                                          Text(
+                                            charDef.title,
+                                            style: const TextStyle(
+                                              color: AutoBattlePalette.ink,
+                                              fontSize: 26,
+                                              fontWeight: FontWeight.w900,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+
+                                      if (unlocked.length > 1)
+                                        _ArrowButton(
+                                          icon: Icons.arrow_forward_ios,
+                                          onTap: () {
+                                            final newIdx = (idx + 1) % unlocked.length;
+                                            metaCtrl.selectCharacter(unlocked[newIdx]);
+                                          },
+                                        )
+                                      else
+                                        const SizedBox(width: 44),
+                                    ],
+                                  ),
+
+                                  Padding(
+                                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
+                                    child: Text(
+                                      charDef.description,
+                                      textAlign: TextAlign.center,
+                                      style: const TextStyle(
+                                        color: AutoBattlePalette.inkSubtle,
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        height: 1.4,
+                                      ),
+                                    ),
+                                  ),
+                                  
+                                  // Character indicator
+                                  Text(
+                                    'NO. ${idx + 1} / ${unlocked.length}',
+                                    style: TextStyle(
+                                      color: AutoBattlePalette.ink.withValues(alpha: 0.4),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w900,
+                                    ),
+                                  ),
+
+                                  const SizedBox(height: 20),
+                                  
+                                  // Equipment Grid
+                                  Wrap(
+                                    spacing: 12,
+                                    runSpacing: 12,
+                                    alignment: WrapAlignment.center,
+                                    children: kEquipmentSlotLabels.keys.map((slot) {
+                                      final equipment = metaCtrl.equippedDefForSlot(slot);
+                                      return _EquipmentSlot(
+                                        label: kEquipmentSlotLabels[slot]!,
+                                        icon: equipment?.icon ?? '?',
+                                        title: equipment?.title ?? 'Empty',
+                                        isEquipped: equipment != null,
+                                      );
+                                    }).toList(),
+                                  ),
                                 ],
                               ),
-                              child: FittedBox(
-                                fit: BoxFit.scaleDown,
-                                child: Text(
-                                  'ROLLING DUNGEON',
-                                  textAlign: TextAlign.center,
-                                  style: TextStyle(
-                                    color: AutoBattlePalette.ink,
-                                    fontSize: compact ? 28 : 38,
-                                    fontWeight: FontWeight.w900,
-                                    letterSpacing: 1,
+                            );
+                          }),
+
+                          SizedBox(height: compact ? 24 : 32),
+
+                          // ── Action Buttons ──
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 440),
+                            child: Row(
+                              children: [
+                                // START
+                                Expanded(
+                                  flex: 3,
+                                  child: _SketchButton(
+                                    color: AutoBattlePalette.primary,
+                                    onTap: () {
+                                      final charDef = metaCtrl.currentCharacterDef;
+                                      runCtrl.startNewRun(
+                                        metaCtrl.selectedCharacter.value,
+                                        charDef.shape,
+                                        unlockedWeapons: metaCtrl.unlockedWeapons,
+                                        equippedEquipment: metaCtrl.equippedEquipment,
+                                      );
+                                      Get.to(() => const AutoBattleGamePage());
+                                    },
+                                    child: Text(
+                                      'DUNGEON ENTER ➔',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
                                   ),
                                 ),
-                              ),
+                                const SizedBox(width: 16),
+                                // SHOP
+                                Expanded(
+                                  flex: 2,
+                                  child: _SketchButton(
+                                    color: AutoBattlePalette.gold,
+                                    onTap: () => Get.to(() => const MetaShopScreen()),
+                                    child: Text(
+                                      '💎 SHOP',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.w900,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+                          ),
 
-                            SizedBox(height: compact ? 14 : 22),
+                          SizedBox(height: compact ? 20 : 24),
 
-                            // ── Character Preview with weapon switcher ──
-                            Obx(() {
-                              final charDef = metaCtrl.currentCharacterDef;
-                              final shape = charDef.shape;
-                              final info = charDisplayInfoMap[shape] ??
-                                  charDisplayInfoMap['circle']!;
-                              final unlocked = metaCtrl.unlockedCharacters;
-                              final idx = unlocked.indexOf(metaCtrl.selectedCharacter.value);
+                          // ── Stats Ledger ──
+                          Obx(() => _StatsLedger(
+                            maxWidth: (w * 0.85).clamp(320.0, 500.0),
+                            stats: [
+                              _StatItem(Icons.emoji_events, 'BEST', 'STAGE ${metaCtrl.highestStage.value}', AutoBattlePalette.gold),
+                              _StatItem(Icons.diamond, 'CRYSTAL', '${metaCtrl.currency.value}', const Color(0xFF7C3AED)),
+                              _StatItem(Icons.inventory_2, 'WEAPONS', '${metaCtrl.unlockedWeapons.length}', AutoBattlePalette.secondary),
+                            ],
+                          )),
 
-                              return Column(
-                                children: [
-                                  // Character ball + info
-                                  Container(
-                                    width: (w * 0.75).clamp(280.0, 400.0),
-                                    padding: const EdgeInsets.all(16),
-                                    decoration: BoxDecoration(
-                                      color: Colors.white,
-                                      border: Border.all(
-                                          color: AutoBattlePalette.ink,
-                                          width: 3),
-                                      boxShadow: const [
-                                        BoxShadow(
-                                            color: AutoBattlePalette.ink,
-                                            offset: Offset(5, 5)),
-                                      ],
-                                    ),
-                                    child: Column(
-                                      children: [
-                                        // Character ball visual
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.center,
-                                          children: [
-                                            // Left arrow
-                                            if (unlocked.length > 1)
-                                              _ArrowButton(
-                                                icon: Icons.chevron_left,
-                                                onTap: () {
-                                                  final newIdx = (idx -
-                                                          1 +
-                                                          unlocked.length) %
-                                                      unlocked.length;
-                                                  metaCtrl.selectCharacter(
-                                                      unlocked[newIdx]);
-                                                },
-                                              ),
-                                            const SizedBox(width: 15),
-
-                                            // Character ball
-                                            CharacterBallPreview(
-                                              info: info,
-                                              size: compact ? 80 : 100,
-                                            ),
-
-                                            const SizedBox(width: 15),
-                                            // Right arrow
-                                            if (unlocked.length > 1)
-                                              _ArrowButton(
-                                                icon: Icons.chevron_right,
-                                                onTap: () {
-                                                  final newIdx = (idx + 1) %
-                                                      unlocked.length;
-                                                  metaCtrl.selectCharacter(
-                                                      unlocked[newIdx]);
-                                                },
-                                              ),
-                                          ],
-                                        ),
-                                        const SizedBox(height: 10),
-                                        // Name
-                                        Text(
-                                          charDef.title,
-                                          style: const TextStyle(
-                                            color: AutoBattlePalette.ink,
-                                            fontSize: 22,
-                                            fontWeight: FontWeight.w900,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          charDef.description,
-                                          textAlign: TextAlign.center,
-                                          style: const TextStyle(
-                                            color: AutoBattlePalette.inkSubtle,
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.w700,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 8),
-                                        // Character indicator
-                                        Text(
-                                          '캐릭터 ${idx + 1} / ${unlocked.length}',
-                                          style: const TextStyle(
-                                            color: AutoBattlePalette.text3,
-                                            fontSize: 11,
-                                            fontWeight: FontWeight.w800,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 10),
-                                        Wrap(
-                                          alignment: WrapAlignment.center,
-                                          spacing: 6,
-                                          runSpacing: 6,
-                                          children: kEquipmentSlotLabels.keys
-                                              .map((slot) {
-                                            final equipment = metaCtrl
-                                                .equippedDefForSlot(slot);
-                                            return _LoadoutSlotChip(
-                                              label:
-                                                  kEquipmentSlotLabels[slot]!,
-                                              icon: equipment?.icon ?? '＋',
-                                              title:
-                                                  equipment?.title ?? '비어 있음',
-                                              equipped: equipment != null,
-                                            );
-                                          }).toList(),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              );
-                            }),
-
-                            SizedBox(height: compact ? 14 : 20),
-
-                            // ── Buttons Row ──
-                            SizedBox(
-                              width: (w * 0.75).clamp(280.0, 400.0),
-                              child: Row(
-                                children: [
-                                  // START button
-                                  Expanded(
-                                    flex: 3,
-                                    child: GestureDetector(
-                                      onTap: () {
-                                        final charDef = metaCtrl.currentCharacterDef;
-                                        runCtrl.startNewRun(
-                                          metaCtrl.selectedCharacter.value,
-                                          charDef.shape,
-                                          unlockedWeapons:
-                                              metaCtrl.unlockedWeapons,
-                                          equippedEquipment:
-                                              metaCtrl.equippedEquipment,
-                                        );
-                                        Get.to(
-                                            () => const AutoBattleGamePage());
-                                      },
-                                      child: Container(
-                                        height: compact ? 52 : 60,
-                                        decoration: BoxDecoration(
-                                          color: AutoBattlePalette.primary,
-                                          border: Border.all(
-                                              color: AutoBattlePalette.ink,
-                                              width: 4),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                                color: AutoBattlePalette.ink,
-                                                offset: Offset(5, 5)),
-                                          ],
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            'START ➔',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 22,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 2,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // SHOP button
-                                  Expanded(
-                                    flex: 2,
-                                    child: GestureDetector(
-                                      onTap: () =>
-                                          Get.to(() => const MetaShopScreen()),
-                                      child: Container(
-                                        height: compact ? 52 : 60,
-                                        decoration: BoxDecoration(
-                                          color: AutoBattlePalette.gold,
-                                          border: Border.all(
-                                              color: AutoBattlePalette.ink,
-                                              width: 4),
-                                          boxShadow: const [
-                                            BoxShadow(
-                                                color: AutoBattlePalette.ink,
-                                                offset: Offset(5, 5)),
-                                          ],
-                                        ),
-                                        child: const Center(
-                                          child: Text(
-                                            '💎 SHOP',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 18,
-                                              fontWeight: FontWeight.w900,
-                                              letterSpacing: 1,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
+                          const SizedBox(height: 24),
+                          
+                          Text(
+                            'V.5.0 // ROLLING DUNGEON PROJECT',
+                            style: TextStyle(
+                              color: AutoBattlePalette.ink.withValues(alpha: 0.3),
+                              fontSize: 10,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 4,
                             ),
-
-                            SizedBox(height: compact ? 10 : 16),
-
-                            // ── Stats bar ──
-                            Obx(() => Container(
-                                  width: (w * 0.75).clamp(280.0, 400.0),
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 14, vertical: 8),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    border: Border.all(
-                                        color: AutoBattlePalette.ink,
-                                        width: 2.5),
-                                    boxShadow: const [
-                                      BoxShadow(
-                                          color: AutoBattlePalette.ink,
-                                          offset: Offset(3, 3)),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    mainAxisAlignment:
-                                        MainAxisAlignment.spaceEvenly,
-                                    children: [
-                                      _MiniStat(
-                                        icon: Icons.emoji_events,
-                                        label: '최고 기록',
-                                        value:
-                                            'STAGE ${metaCtrl.highestStage.value}',
-                                        color: AutoBattlePalette.gold,
-                                      ),
-                                      Container(
-                                          width: 2,
-                                          height: 28,
-                                          color: AutoBattlePalette.ink
-                                              .withValues(alpha: 0.15)),
-                                      _MiniStat(
-                                        icon: Icons.diamond,
-                                        label: '크리스탈',
-                                        value: '${metaCtrl.currency.value}',
-                                        color: const Color(0xFF7C3AED),
-                                      ),
-                                      Container(
-                                          width: 2,
-                                          height: 28,
-                                          color: AutoBattlePalette.ink
-                                              .withValues(alpha: 0.15)),
-                                      _MiniStat(
-                                        icon: Icons.inventory_2,
-                                        label: '무기',
-                                        value:
-                                            '${metaCtrl.unlockedWeapons.length}',
-                                        color: AutoBattlePalette.secondary,
-                                      ),
-                                    ],
-                                  ),
-                                )),
-
-                            const SizedBox(height: 12),
-                            const Text(
-                              'VERSION 5.0 // 굴러굴러 던전',
-                              style: TextStyle(
-                                color: AutoBattlePalette.text3,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w800,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ],
-                        ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -374,12 +254,193 @@ class HomeScreen extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Arrow button for weapon switching
+//  Styled Components
 // ─────────────────────────────────────────────
+
+class _TapedHeader extends StatelessWidget {
+  final Widget child;
+  const _TapedHeader({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AutoBattlePalette.ink, width: 4),
+            boxShadow: const [
+              BoxShadow(color: AutoBattlePalette.ink, offset: Offset(8, 8)),
+            ],
+          ),
+          child: child,
+        ),
+        // "Tape" effects
+        Positioned(
+          top: -10,
+          left: 20,
+          child: Transform.rotate(
+            angle: -0.1,
+            child: const _MaskingTape(width: 50, height: 20),
+          ),
+        ),
+        Positioned(
+          bottom: -10,
+          right: 20,
+          child: Transform.rotate(
+            angle: -0.1,
+            child: const _MaskingTape(width: 60, height: 22),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _SketchbookPage extends StatelessWidget {
+  final double width;
+  final Widget child;
+  const _SketchbookPage({required this.width, required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: 3),
+        boxShadow: const [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(6, 6)),
+        ],
+      ),
+      child: child,
+    );
+  }
+}
+
+class _MaskingTape extends StatelessWidget {
+  final double width;
+  final double height;
+  const _MaskingTape({required this.width, required this.height});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: width,
+      height: height,
+      decoration: BoxDecoration(
+        color: const Color(0xFFFDE68A).withValues(alpha: 0.8),
+        border: Border.all(color: AutoBattlePalette.ink.withValues(alpha: 0.1), width: 1),
+      ),
+    );
+  }
+}
+
+class _EquipmentSlot extends StatelessWidget {
+  final String label;
+  final String icon;
+  final String title;
+  final bool isEquipped;
+
+  const _EquipmentSlot({
+    required this.label,
+    required this.icon,
+    required this.title,
+    required this.isEquipped,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 130,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: isEquipped ? const Color(0xFFF0F9FF) : Colors.transparent,
+        border: Border.all(
+          color: isEquipped ? AutoBattlePalette.secondary : AutoBattlePalette.ink.withValues(alpha: 0.2),
+          width: 2.5,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(icon, style: const TextStyle(fontSize: 18)),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: AutoBattlePalette.ink.withValues(alpha: 0.5),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: isEquipped ? AutoBattlePalette.ink : AutoBattlePalette.ink.withValues(alpha: 0.3),
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SketchButton extends StatefulWidget {
+  final Color color;
+  final Widget child;
+  final VoidCallback onTap;
+
+  const _SketchButton({required this.color, required this.child, required this.onTap});
+
+  @override
+  State<_SketchButton> createState() => _SketchButtonState();
+}
+
+class _SketchButtonState extends State<_SketchButton> {
+  bool _pressed = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTapDown: (_) => setState(() => _pressed = true),
+      onTapUp: (_) => setState(() => _pressed = false),
+      onTapCancel: () => setState(() => _pressed = false),
+      onTap: widget.onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 50),
+        height: 64,
+        transform: _pressed ? Matrix4.translationValues(3, 3, 0) : Matrix4.identity(),
+        decoration: BoxDecoration(
+          color: widget.color,
+          border: Border.all(color: AutoBattlePalette.ink, width: 4),
+          boxShadow: _pressed 
+            ? null 
+            : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(6, 6))],
+        ),
+        child: Center(child: widget.child),
+      ),
+    );
+  }
+}
+
 class _ArrowButton extends StatelessWidget {
   final IconData icon;
   final VoidCallback onTap;
-
   const _ArrowButton({required this.icon, required this.onTap});
 
   @override
@@ -387,10 +448,11 @@ class _ArrowButton extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
+        width: 44,
+        height: 44,
         decoration: BoxDecoration(
           color: Colors.white,
+          shape: BoxShape.circle,
           border: Border.all(color: AutoBattlePalette.ink, width: 3),
           boxShadow: const [
             BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
@@ -402,135 +464,78 @@ class _ArrowButton extends StatelessWidget {
   }
 }
 
-class _LoadoutSlotChip extends StatelessWidget {
-  final String label;
-  final String icon;
-  final String title;
-  final bool equipped;
-
-  const _LoadoutSlotChip({
-    required this.label,
-    required this.icon,
-    required this.title,
-    required this.equipped,
-  });
+class _StatsLedger extends StatelessWidget {
+  final double maxWidth;
+  final List<_StatItem> stats;
+  const _StatsLedger({required this.maxWidth, required this.stats});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 112,
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+      width: maxWidth,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
       decoration: BoxDecoration(
-        color: equipped ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
-        border: Border.all(
-          color:
-              equipped ? AutoBattlePalette.secondary : const Color(0xFFCBD5E1),
-          width: 2,
-        ),
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+        boxShadow: const [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
+        ],
       ),
       child: Row(
-        children: [
-          Text(icon, style: const TextStyle(fontSize: 15)),
-          const SizedBox(width: 5),
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: stats.map((s) {
+          final isLast = stats.last == s;
+          return Expanded(
+            child: Row(
               children: [
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AutoBattlePalette.text3,
-                    fontSize: 8,
-                    fontWeight: FontWeight.w900,
+                Expanded(
+                  child: Column(
+                    children: [
+                      Icon(s.icon, color: s.color, size: 18),
+                      const SizedBox(height: 4),
+                      Text(s.label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w900, color: AutoBattlePalette.text3)),
+                      Text(s.value, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: AutoBattlePalette.ink)),
+                    ],
                   ),
                 ),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AutoBattlePalette.ink,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
+                if (!isLast) Container(width: 2, height: 30, color: AutoBattlePalette.ink.withValues(alpha: 0.1)),
               ],
             ),
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────
-//  Mini stat display
-// ─────────────────────────────────────────────
-class _MiniStat extends StatelessWidget {
+class _StatItem {
   final IconData icon;
   final String label;
   final String value;
   final Color color;
-
-  const _MiniStat({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Icon(icon, color: color, size: 16),
-        const SizedBox(height: 2),
-        Text(
-          label,
-          style: const TextStyle(
-            color: AutoBattlePalette.text3,
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        Text(
-          value,
-          style: const TextStyle(
-            color: AutoBattlePalette.ink,
-            fontSize: 13,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-      ],
-    );
-  }
+  _StatItem(this.icon, this.label, this.value, this.color);
 }
 
-// ─────────────────────────────────────────────
-//  Sketch Background
-// ─────────────────────────────────────────────
 class _SketchLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
       ..color = AutoBattlePalette.ink.withValues(alpha: 0.05)
-      ..strokeWidth = 2;
+      ..strokeWidth = 1.5;
 
-    final random = math.Random(42);
-    for (var i = 0; i < 20; i++) {
-      final y = random.nextDouble() * size.height;
-      canvas.drawLine(
-        Offset(0, y),
-        Offset(size.width, y + (random.nextDouble() - 0.5) * 40),
-        paint,
-      );
+    // Horizontal notebook lines
+    for (var y = 60.0; y < size.height; y += 30) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
+    
+    // Vertical "margin" line
+    final marginPaint = Paint()
+      ..color = AutoBattlePalette.primary.withValues(alpha: 0.1)
+      ..strokeWidth = 2;
+    canvas.drawLine(const Offset(40, 0), Offset(40, size.height), marginPaint);
   }
 
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
