@@ -256,57 +256,6 @@ class _CurrencyBox extends StatelessWidget {
   }
 }
 
-class _ContentHeader extends StatelessWidget {
-  final String title;
-  final Color color;
-  final IconData icon;
-  final bool isCompact;
-
-  const _ContentHeader({
-    required this.title,
-    required this.color,
-    required this.icon,
-    required this.isCompact,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(20, isCompact ? 12 : 24, 20, isCompact ? 8 : 12),
-      child: Row(
-        children: [
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: isCompact ? 10 : 16, vertical: isCompact ? 6 : 10),
-            decoration: BoxDecoration(
-              color: color,
-              border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
-              boxShadow: [
-                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4)),
-              ],
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(icon, color: Colors.white, size: isCompact ? 16 : 20),
-                SizedBox(width: isCompact ? 8 : 12),
-                Text(
-                  title,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: isCompact ? 16 : 20,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-}
 
 // ─────────────────────────────────────────────
 //  Character Shop Tab
@@ -1382,24 +1331,3 @@ class _AchCategoryInfo {
 // ─────────────────────────────────────────────
 //  Shop Background Painter
 // ─────────────────────────────────────────────
-class _ShopBgPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = AutoBattlePalette.ink.withValues(alpha: 0.04)
-      ..strokeWidth = 1.5;
-    for (var y = 28.0; y < size.height; y += 28) {
-      canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
-    }
-    canvas.drawLine(
-      const Offset(38, 0),
-      Offset(38, size.height),
-      Paint()
-        ..color = const Color(0xFFFF9999).withValues(alpha: 0.12)
-        ..strokeWidth = 2,
-    );
-  }
-
-  @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
-}
