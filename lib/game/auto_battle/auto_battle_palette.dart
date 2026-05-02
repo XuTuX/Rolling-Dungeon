@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 class AutoBattlePalette {
   // Paper & Ink Theme
   static const Color background = Color(0xFFFAF7F0); // Off-white/Paper
+  static const Color paper = background;
   static const Color surface = Color(0xFFFFFFFF);
   static const Color surfaceLight = Color(0xFFF0EBE3);
   

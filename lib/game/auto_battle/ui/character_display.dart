@@ -139,6 +139,15 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
     emoji: '▲',
     shape: 'triangle',
   ),
+  'pentagon': CharDisplayInfo(
+    name: '오각형',
+    desc: '신비로운 마력을 지닌 형태',
+    bodyColor: Color(0xFF10B981), // Vibrant Green
+    accentColor: Color(0xFFD1FAE5),
+    icon: Icons.pentagon,
+    emoji: '⬔',
+    shape: 'pentagon',
+  ),
 };
 
 class CharacterBallPreview extends StatefulWidget {
@@ -308,6 +317,8 @@ class _CharBallPainter extends CustomPainter {
         return _squarePath(center, radius);
       case 'triangle':
         return _trianglePath(center, radius);
+      case 'pentagon':
+        return _pentagonPath(center, radius);
       case 'circle':
       default:
         return _circlePath(center, radius);
@@ -333,5 +344,22 @@ class _CharBallPainter extends CustomPainter {
       ..lineTo(center.dx + radius * 1.05, center.dy + radius * 0.7)
       ..lineTo(center.dx - radius * 1.05, center.dy + radius * 0.7)
       ..close();
+  }
+
+  Path _pentagonPath(Offset center, double radius) {
+    final path = Path();
+    final double r = radius * 1.15;
+    for (int i = 0; i < 5; i++) {
+      final double angle = (i * 72 - 90) * math.pi / 180;
+      final double x = center.dx + r * math.cos(angle);
+      final double y = center.dy + r * math.sin(angle);
+      if (i == 0) {
+        path.moveTo(x, y);
+      } else {
+        path.lineTo(x, y);
+      }
+    }
+    path.close();
+    return path;
   }
 }

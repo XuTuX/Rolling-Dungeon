@@ -29,86 +29,96 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
     final ctrl = Get.find<MetaProgressController>();
 
     return Scaffold(
-      backgroundColor: AutoBattlePalette.background,
+      backgroundColor: AutoBattlePalette.paper,
       body: Stack(
         children: [
-          Positioned.fill(child: CustomPaint(painter: _ShopBgPainter())),
+          Positioned.fill(
+            child: Opacity(
+              opacity: 0.05,
+              child: CustomPaint(painter: _ShopBgPainter()),
+            ),
+          ),
+          
           SafeArea(
-            child: Row(
-              children: [
-                // ── Sidebar Navigation ──
-                Container(
-                  width: 110,
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: AutoBattlePalette.ink, width: 4),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      const SizedBox(height: 16),
-                      // Back Button
-                      _SidebarIconButton(
-                        onTap: () => Get.back(),
-                        icon: Icons.arrow_back,
-                        color: AutoBattlePalette.ink,
-                      ),
-                      const SizedBox(height: 32),
-                      // Tab Icons
-                      Expanded(
-                        child: ListView.separated(
-                          itemCount: _tabs.length,
-                          separatorBuilder: (_, __) => const SizedBox(height: 12),
-                          padding: const EdgeInsets.symmetric(horizontal: 12),
-                          itemBuilder: (context, index) {
-                            final tab = _tabs[index];
-                            final isSelected = _currentTab == index;
-                            return _SidebarTabButton(
-                              isSelected: isSelected,
-                              icon: tab.icon,
-                              label: tab.title,
-                              accentColor: tab.color,
-                              onTap: () => setState(() => _currentTab = index),
-                            );
-                          },
-                        ),
-                      ),
-                      // Currency display at bottom of sidebar
-                      Obx(() => _CurrencyBox(amount: ctrl.currency.value)),
-                      const SizedBox(height: 16),
-                    ],
-                  ),
-                ),
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final h = constraints.maxHeight;
+                final isCompact = h < 500;
 
-                // ── Main Content Area ──
-                Expanded(
-                  child: Column(
-                    children: [
-                      // Header
-                      _ContentHeader(title: _tabs[_currentTab].title, color: _tabs[_currentTab].color),
-                      // Tab View with smooth transition
-                      Expanded(
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 300),
-                          transitionBuilder: (Widget child, Animation<double> animation) {
-                            return FadeTransition(
-                              opacity: animation,
-                              child: SlideTransition(
-                                position: Tween<Offset>(
-                                  begin: const Offset(0.05, 0),
-                                  end: Offset.zero,
-                                ).animate(animation),
-                                child: child,
-                              ),
-                            );
-                          },
-                          child: _buildCurrentTab(ctrl),
+                return Row(
+                  children: [
+                    // ── Sidebar Navigation ──
+                    Container(
+                      width: isCompact ? 100 : 120,
+                      padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 16),
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          right: BorderSide(color: AutoBattlePalette.ink, width: 4),
                         ),
                       ),
-                    ],
-                  ),
-                ),
-              ],
+                      child: Column(
+                        children: [
+                          _SidebarIconButton(
+                            onTap: () => Get.back(),
+                            icon: Icons.arrow_back,
+                            color: AutoBattlePalette.ink,
+                            size: isCompact ? 44 : 54,
+                          ),
+                          SizedBox(height: isCompact ? 12 : 24),
+                          
+                          Expanded(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: List.generate(_tabs.length, (index) {
+                                final tab = _tabs[index];
+                                final isSelected = _currentTab == index;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
+                                  child: _SidebarTabButton(
+                                    isSelected: isSelected,
+                                    icon: tab.icon,
+                                    label: tab.title,
+                                    accentColor: tab.color,
+                                    onTap: () => setState(() => _currentTab = index),
+                                    isCompact: isCompact,
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                          
+                          Obx(() => _CurrencyBox(amount: ctrl.currency.value, isCompact: isCompact)),
+                          const SizedBox(height: 8),
+                        ],
+                      ),
+                    ),
+
+                    // ── Main Content Area ──
+                    Expanded(
+                      child: Column(
+                        children: [
+                          _ContentHeader(
+                            title: _tabs[_currentTab].title, 
+                            color: _tabs[_currentTab].color,
+                            icon: _tabs[_currentTab].icon,
+                            isCompact: isCompact,
+                          ),
+                          
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                              child: AnimatedSwitcher(
+                                duration: const Duration(milliseconds: 200),
+                                child: _buildCurrentTab(ctrl, isCompact),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                );
+              },
             ),
           ),
         ],
@@ -116,12 +126,12 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
     );
   }
 
-  Widget _buildCurrentTab(MetaProgressController ctrl) {
+  Widget _buildCurrentTab(MetaProgressController ctrl, bool isCompact) {
     switch (_currentTab) {
-      case 0: return _CharacterShopTab(key: const ValueKey(0), ctrl: ctrl);
-      case 1: return _EquipmentShopTab(key: const ValueKey(1), ctrl: ctrl);
-      case 2: return _StatUpgradeTab(key: const ValueKey(2), ctrl: ctrl);
-      case 3: return _AchievementTab(key: const ValueKey(3), ctrl: ctrl);
+      case 0: return _CharacterShopTab(key: const ValueKey(0), ctrl: ctrl, isCompact: isCompact);
+      case 1: return _EquipmentShopTab(key: const ValueKey(1), ctrl: ctrl, isCompact: isCompact);
+      case 2: return _StatUpgradeTab(key: const ValueKey(2), ctrl: ctrl, isCompact: isCompact);
+      case 3: return _AchievementTab(key: const ValueKey(3), ctrl: ctrl, isCompact: isCompact);
       default: return const SizedBox.shrink();
     }
   }
@@ -138,16 +148,22 @@ class _SidebarIconButton extends StatelessWidget {
   final VoidCallback onTap;
   final IconData icon;
   final Color color;
+  final double size;
 
-  const _SidebarIconButton({required this.onTap, required this.icon, required this.color});
+  const _SidebarIconButton({
+    required this.onTap, 
+    required this.icon, 
+    required this.color,
+    this.size = 54,
+  });
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 54,
-        height: 54,
+        width: size,
+        height: size,
         decoration: BoxDecoration(
           color: Colors.white,
           border: Border.all(color: AutoBattlePalette.ink, width: 3),
@@ -155,7 +171,7 @@ class _SidebarIconButton extends StatelessWidget {
             BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
           ],
         ),
-        child: Icon(icon, color: color, size: 28),
+        child: Icon(icon, color: color, size: size * 0.5),
       ),
     );
   }
@@ -168,12 +184,15 @@ class _SidebarTabButton extends StatelessWidget {
   final Color accentColor;
   final VoidCallback onTap;
 
+  final bool isCompact;
+
   const _SidebarTabButton({
     required this.isSelected,
     required this.icon,
     required this.label,
     required this.accentColor,
     required this.onTap,
+    required this.isCompact,
   });
 
   @override
@@ -182,27 +201,27 @@ class _SidebarTabButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 14),
+        padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 14),
         decoration: BoxDecoration(
           color: isSelected ? accentColor : Colors.white,
-          border: Border.all(color: AutoBattlePalette.ink, width: 3),
+          border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
           boxShadow: isSelected
               ? null
-              : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))],
+              : [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4))],
         ),
         child: Column(
           children: [
             Icon(
               icon,
               color: isSelected ? Colors.white : AutoBattlePalette.ink,
-              size: 32,
+              size: isCompact ? 24 : 32,
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : AutoBattlePalette.ink,
-                fontSize: 13,
+                fontSize: isCompact ? 10 : 13,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -215,30 +234,32 @@ class _SidebarTabButton extends StatelessWidget {
 
 class _CurrencyBox extends StatelessWidget {
   final int amount;
-  const _CurrencyBox({required this.amount});
+  final bool isCompact;
+  const _CurrencyBox({required this.amount, required this.isCompact});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 86,
-      padding: const EdgeInsets.symmetric(vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 16, vertical: isCompact ? 4 : 8),
       decoration: BoxDecoration(
-        color: AutoBattlePalette.gold,
-        border: Border.all(color: AutoBattlePalette.ink, width: 3),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
+        boxShadow: [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4)),
         ],
       ),
-      child: Column(
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          const Text('💎', style: TextStyle(fontSize: 18)),
-          const SizedBox(height: 2),
+          Text('💎', style: TextStyle(fontSize: isCompact ? 14 : 20)),
+          SizedBox(width: isCompact ? 4 : 10),
           Text(
-            '$amount',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14,
+            amount.toString(),
+            style: TextStyle(
+              color: AutoBattlePalette.ink,
+              fontSize: isCompact ? 14 : 18,
               fontWeight: FontWeight.w900,
+              letterSpacing: 0.5,
             ),
           ),
         ],
@@ -250,43 +271,43 @@ class _CurrencyBox extends StatelessWidget {
 class _ContentHeader extends StatelessWidget {
   final String title;
   final Color color;
-  const _ContentHeader({required this.title, required this.color});
+  final IconData icon;
+  final bool isCompact;
+
+  const _ContentHeader({
+    required this.title,
+    required this.color,
+    required this.icon,
+    required this.isCompact,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 16),
+      padding: EdgeInsets.fromLTRB(20, isCompact ? 12 : 24, 20, isCompact ? 8 : 12),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: EdgeInsets.symmetric(horizontal: isCompact ? 10 : 16, vertical: isCompact ? 6 : 10),
             decoration: BoxDecoration(
-              color: Colors.white,
-              border: Border.all(color: AutoBattlePalette.ink, width: 4),
-              boxShadow: const [
-                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(5, 5)),
+              color: color,
+              border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
+              boxShadow: [
+                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4)),
               ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 12,
-                  height: 12,
-                  decoration: BoxDecoration(
-                    color: color,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                  ),
-                ),
-                const SizedBox(width: 12),
+                Icon(icon, color: Colors.white, size: isCompact ? 16 : 20),
+                SizedBox(width: isCompact ? 8 : 12),
                 Text(
                   title,
-                  style: const TextStyle(
-                    color: AutoBattlePalette.ink,
-                    fontSize: 24,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: isCompact ? 16 : 20,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 2.0,
+                    letterSpacing: 1.2,
                   ),
                 ),
               ],
@@ -304,7 +325,8 @@ class _ContentHeader extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _CharacterShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
-  const _CharacterShopTab({super.key, required this.ctrl});
+  final bool isCompact;
+  const _CharacterShopTab({super.key, required this.ctrl, required this.isCompact});
 
   @override
   State<_CharacterShopTab> createState() => _CharacterShopTabState();
@@ -323,235 +345,199 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
       final canAfford = ctrl.currency.value >= selected.price;
 
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // ── Character Selection List (Left) ──
+          // ── Left: Character Selection ──
           Expanded(
             flex: 2,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(16, 0, 8, 24),
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AutoBattlePalette.ink, width: 3),
-                  boxShadow: const [
-                    BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      '캐릭터 목록',
-                      style: TextStyle(
-                        color: AutoBattlePalette.ink,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w900,
-                      ),
+            child: Column(
+              children: [
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      border: Border.all(color: AutoBattlePalette.ink, width: 3),
+                      boxShadow: const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))],
                     ),
-                    const SizedBox(height: 16),
-                    GridView.builder(
-                      shrinkWrap: true,
-                      physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 3,
-                        mainAxisSpacing: 10,
-                        crossAxisSpacing: 10,
-                        childAspectRatio: 1,
-                      ),
-                      itemCount: kAllCharacters.length,
-                      itemBuilder: (context, i) {
-                        final char = kAllCharacters[i];
-                        final unlocked = ctrl.unlockedCharacters.contains(char.id);
-                        final active = ctrl.selectedCharacter.value == char.id;
-                        final viewing = i == _selectedIndex;
-
-                        return GestureDetector(
-                          onTap: () => setState(() => _selectedIndex = i),
-                          child: Container(
-                            decoration: BoxDecoration(
-                              color: viewing ? const Color(0xFFF1F5F9) : Colors.white,
-                              border: Border.all(
-                                color: viewing ? AutoBattlePalette.primary : AutoBattlePalette.ink,
-                                width: viewing ? 4 : 2.5,
-                              ),
-                              boxShadow: viewing ? null : const [
-                                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
-                              ],
-                            ),
-                            child: Stack(
-                              children: [
-                                Center(
-                                  child: CharacterBallPreview(
-                                    info: charDisplayInfoMap[char.shape] ??
-                                        charDisplayInfoMap['circle']!,
-                                    size: 44,
-                                  ),
-                                ),
-                                if (active)
-                                  Positioned(
-                                    top: 4,
-                                    right: 4,
-                                    child: Container(
-                                      padding: const EdgeInsets.all(2),
-                                      decoration: const BoxDecoration(
-                                        color: Color(0xFF4CAF50),
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.check, color: Colors.white, size: 10),
-                                    ),
-                                  ),
-                                if (!unlocked)
-                                  Container(
-                                    color: Colors.black.withValues(alpha: 0.1),
-                                    child: const Center(
-                                      child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 18),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // ── Character Detail (Right) ──
-          Expanded(
-            flex: 3,
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(8, 0, 16, 24),
-              child: Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AutoBattlePalette.ink, width: 3),
-                  boxShadow: const [
-                    BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
-                  ],
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          width: 80,
-                          height: 80,
-                          decoration: BoxDecoration(
-                            color: AutoBattlePalette.surfaceLight,
-                            border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-                          ),
-                          child: Center(
-                            child: CharacterBallPreview(
-                              info: charDisplayInfoMap[selected.shape] ??
-                                  charDisplayInfoMap['circle']!,
-                              size: 100,
-                            ),
+                        Text(
+                          '캐릭터 목록',
+                          style: TextStyle(
+                            color: AutoBattlePalette.ink,
+                            fontSize: widget.isCompact ? 14 : 16,
+                            fontWeight: FontWeight.w900,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(height: 12),
                         Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                selected.title,
-                                style: const TextStyle(
-                                  color: AutoBattlePalette.ink,
-                                  fontSize: 24,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: AutoBattlePalette.secondary.withValues(alpha: 0.1),
-                                  border: Border.all(color: AutoBattlePalette.secondary, width: 1.5),
-                                ),
-                                child: Text(
-                                  selected.trait,
-                                  style: const TextStyle(
-                                    color: AutoBattlePalette.secondary,
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w900,
+                          child: GridView.builder(
+                            physics: const NeverScrollableScrollPhysics(),
+                            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                              crossAxisCount: 2,
+                              crossAxisSpacing: 10,
+                              mainAxisSpacing: 10,
+                              childAspectRatio: 1,
+                            ),
+                            itemCount: kAllCharacters.length,
+                            itemBuilder: (context, i) {
+                              final char = kAllCharacters[i];
+                              final unlocked = ctrl.unlockedCharacters.contains(char.id);
+                              final active = ctrl.selectedCharacter.value == char.id;
+                              final viewing = i == _selectedIndex;
+
+                              return GestureDetector(
+                                onTap: () => setState(() => _selectedIndex = i),
+                                child: Container(
+                                  decoration: BoxDecoration(
+                                    color: viewing ? const Color(0xFFF1F5F9) : Colors.white,
+                                    border: Border.all(
+                                      color: viewing ? AutoBattlePalette.primary : AutoBattlePalette.ink,
+                                      width: viewing ? 4 : 2.5,
+                                    ),
+                                    boxShadow: viewing ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
+                                  ),
+                                  child: Stack(
+                                    children: [
+                                      Center(
+                                        child: CharacterBallPreview(
+                                          info: charDisplayInfoMap[char.shape] ?? charDisplayInfoMap['circle']!,
+                                          size: widget.isCompact ? 36 : 44,
+                                        ),
+                                      ),
+                                      if (active)
+                                        Positioned(
+                                          top: 4, right: 4,
+                                          child: Container(
+                                            padding: const EdgeInsets.all(2),
+                                            decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle),
+                                            child: const Icon(Icons.check, color: Colors.white, size: 10),
+                                          ),
+                                        ),
+                                      if (!unlocked)
+                                        Container(
+                                          color: Colors.black.withValues(alpha: 0.1),
+                                          child: const Center(child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 18)),
+                                        ),
+                                    ],
                                   ),
                                 ),
-                              ),
-                            ],
+                              );
+                            },
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 20),
-                    const Divider(color: AutoBattlePalette.ink, thickness: 2),
-                    const SizedBox(height: 16),
-                    Text(
-                      selected.description,
-                      style: const TextStyle(
-                        color: AutoBattlePalette.inkSubtle,
-                        fontSize: 14,
-                        fontWeight: FontWeight.w600,
-                        height: 1.4,
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    const Text(
-                      '기본 능력치 보너스',
-                      style: TextStyle(
-                        color: AutoBattlePalette.ink,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AutoBattlePalette.background.withValues(alpha: 0.5),
-                        border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                      ),
-                      child: Column(
-                        children: [
-                          _StatBonusRow(label: 'HP 보너스', value: selected.hpBonus, icon: Icons.favorite, color: Colors.red),
-                          _StatBonusRow(label: '공격력 보너스', value: selected.atkBonus, icon: Icons.bolt, color: Colors.orange),
-                          _StatBonusRow(label: '방어력 보너스', value: selected.defBonus, icon: Icons.shield, color: Colors.blue),
-                          _StatBonusRow(label: '속도 보너스', value: selected.speedBonus, icon: Icons.speed, color: Colors.green),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    
-                    // Action Button
-                    _SketchButton(
-                      onTap: isUnlocked 
-                        ? (isSelected ? null : () => ctrl.selectCharacter(selected.id))
-                        : (canAfford ? () => ctrl.buyCharacter(selected) : null),
-                      width: double.infinity,
-                      height: 56,
-                      color: isUnlocked 
-                        ? (isSelected ? const Color(0xFF4CAF50) : AutoBattlePalette.secondary)
-                        : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)),
-                      child: Text(
-                        isUnlocked 
-                          ? (isSelected ? '현재 선택됨' : '선택하기')
-                          : '💎 ${selected.price} 구매하기',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 16),
+          // ── Right: Character Detail ──
+          Expanded(
+            flex: 3,
+            child: Container(
+              padding: EdgeInsets.all(widget.isCompact ? 12 : 20),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: AutoBattlePalette.ink, width: 3),
+                boxShadow: const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))],
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: widget.isCompact ? 60 : 80,
+                        height: widget.isCompact ? 60 : 80,
+                        decoration: BoxDecoration(
+                          color: AutoBattlePalette.surfaceLight,
+                          border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                        ),
+                        child: Center(
+                          child: CharacterBallPreview(
+                            info: charDisplayInfoMap[selected.shape] ?? charDisplayInfoMap['circle']!,
+                            size: widget.isCompact ? 70 : 100,
+                          ),
                         ),
                       ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              selected.title,
+                              style: TextStyle(
+                                color: AutoBattlePalette.ink,
+                                fontSize: widget.isCompact ? 20 : 24,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: AutoBattlePalette.secondary.withValues(alpha: 0.1),
+                                border: Border.all(color: AutoBattlePalette.secondary, width: 1.5),
+                              ),
+                              child: Text(
+                                selected.trait,
+                                style: const TextStyle(color: AutoBattlePalette.secondary, fontSize: 10, fontWeight: FontWeight.w900),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  const Divider(color: AutoBattlePalette.ink, thickness: 2),
+                  const SizedBox(height: 8),
+                  Text(
+                    selected.description,
+                    maxLines: widget.isCompact ? 2 : 3,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(color: AutoBattlePalette.inkSubtle, fontSize: widget.isCompact ? 12 : 13, fontWeight: FontWeight.w600, height: 1.3),
+                  ),
+                  const Spacer(),
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: AutoBattlePalette.background.withValues(alpha: 0.5),
+                      border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
                     ),
-                  ],
-                ),
+                    child: Column(
+                      children: [
+                        _StatBonusRow(label: 'HP', value: selected.hpBonus, icon: Icons.favorite, color: Colors.red, isCompact: widget.isCompact),
+                        _StatBonusRow(label: 'ATK', value: selected.atkBonus, icon: Icons.bolt, color: Colors.orange, isCompact: widget.isCompact),
+                        _StatBonusRow(label: 'DEF', value: selected.defBonus, icon: Icons.shield, color: Colors.blue, isCompact: widget.isCompact),
+                        _StatBonusRow(label: 'SPD', value: selected.speedBonus, icon: Icons.speed, color: Colors.green, isCompact: widget.isCompact),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  _SketchButton(
+                    onTap: isUnlocked 
+                      ? (isSelected ? null : () => ctrl.selectCharacter(selected.id))
+                      : (canAfford ? () => ctrl.buyCharacter(selected) : null),
+                    width: double.infinity,
+                    height: widget.isCompact ? 44 : 52,
+                    color: isUnlocked 
+                      ? (isSelected ? const Color(0xFF4CAF50) : AutoBattlePalette.secondary)
+                      : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)),
+                    child: Text(
+                      isUnlocked 
+                        ? (isSelected ? 'EQUIPPED' : 'SELECT')
+                        : '💎 ${selected.price} BUY',
+                      style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1),
+                    ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -566,25 +552,33 @@ class _StatBonusRow extends StatelessWidget {
   final double value;
   final IconData icon;
   final Color color;
-  const _StatBonusRow({required this.label, required this.value, required this.icon, required this.color});
+  final bool isCompact;
+
+  const _StatBonusRow({
+    required this.label, 
+    required this.value, 
+    required this.icon, 
+    required this.color,
+    required this.isCompact,
+  });
 
   @override
   Widget build(BuildContext context) {
     final isPositive = value > 0;
     final isZero = value == 0;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: EdgeInsets.symmetric(vertical: isCompact ? 3 : 6),
       child: Row(
         children: [
-          Icon(icon, color: color.withValues(alpha: 0.8), size: 16),
-          const SizedBox(width: 8),
-          Text(label, style: const TextStyle(color: AutoBattlePalette.text3, fontSize: 13, fontWeight: FontWeight.w700)),
+          Icon(icon, color: color.withValues(alpha: 0.8), size: isCompact ? 14 : 16),
+          SizedBox(width: isCompact ? 6 : 8),
+          Text(label, style: TextStyle(color: AutoBattlePalette.text3, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w700)),
           const Spacer(),
           Text(
             isZero ? '-' : '${isPositive ? "+" : ""}$value',
             style: TextStyle(
               color: isZero ? AutoBattlePalette.text3 : (isPositive ? const Color(0xFF4CAF50) : const Color(0xFFF44336)),
-              fontSize: 14,
+              fontSize: isCompact ? 12 : 14,
               fontWeight: FontWeight.w900,
             ),
           ),
@@ -596,7 +590,8 @@ class _StatBonusRow extends StatelessWidget {
 
 class _EquipmentShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
-  const _EquipmentShopTab({super.key, required this.ctrl});
+  final bool isCompact;
+  const _EquipmentShopTab({super.key, required this.ctrl, required this.isCompact});
 
   @override
   State<_EquipmentShopTab> createState() => _EquipmentShopTabState();
@@ -616,17 +611,15 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
       final items = grouped[_selectedSlot] ?? const <EquipmentShopDef>[];
       
       return Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // ── Slot Selection Sidebar (Sub-navigation) ──
+          // ── Sub-nav ──
           Container(
-            width: 120,
-            padding: const EdgeInsets.symmetric(horizontal: 8),
+            width: widget.isCompact ? 90 : 110,
             decoration: const BoxDecoration(
               border: Border(right: BorderSide(color: AutoBattlePalette.ink, width: 2)),
             ),
-            child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: kEquipmentSlotLabels.entries.map((slotEntry) {
                 final isSelected = _selectedSlot == slotEntry.key;
                 final equipped = widget.ctrl.equippedDefForSlot(slotEntry.key);
@@ -635,31 +628,28 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
                   onTap: () => setState(() => _selectedSlot = slotEntry.key),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    margin: const EdgeInsets.only(bottom: 12),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 10),
+                    margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
+                    padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
                     decoration: BoxDecoration(
                       color: isSelected ? AutoBattlePalette.secondary : Colors.white,
-                      border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-                      boxShadow: isSelected ? null : const [
-                        BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
-                      ],
+                      border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                      boxShadow: isSelected ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
                     ),
                     child: Column(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Text(
-                          slotEntry.value,
+                          slotEntry.value.split('/')[0],
+                          textAlign: TextAlign.center,
                           style: TextStyle(
                             color: isSelected ? Colors.white : AutoBattlePalette.ink,
-                            fontSize: 13,
+                            fontSize: widget.isCompact ? 10 : 12,
                             fontWeight: FontWeight.w900,
                           ),
                         ),
                         if (equipped != null) ...[
-                          const SizedBox(height: 6),
-                          Text(
-                            equipped.icon,
-                            style: const TextStyle(fontSize: 16),
-                          ),
+                          const SizedBox(height: 2),
+                          Text(equipped.icon, style: TextStyle(fontSize: widget.isCompact ? 14 : 16)),
                         ],
                       ],
                     ),
@@ -668,44 +658,58 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
               }).toList(),
             ),
           ),
-
-          // ── Item Grid ──
+          const SizedBox(width: 12),
+          // ── Item Grid (Fixed 2x2) ──
           Expanded(
-            child: GridView.builder(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                mainAxisExtent: 180, // Fixed height for rows
-              ),
-              itemCount: items.length,
-              itemBuilder: (context, i) {
-                final equipment = items[i];
-                final unlocked = widget.ctrl.unlockedEquipment.contains(equipment.id);
-                final isEquipped = widget.ctrl.equippedEquipment[equipment.slot] == equipment.id;
-                final canAfford = widget.ctrl.currency.value >= equipment.price;
-
-                return _EquipmentCard(
-                  equipment: equipment,
-                  unlocked: unlocked,
-                  equipped: isEquipped,
-                  canAfford: canAfford,
-                  ctrl: widget.ctrl,
-                  onTap: () {
-                    if (unlocked) {
-                      widget.ctrl.equipEquipment(equipment);
-                    } else {
-                      widget.ctrl.buyEquipment(equipment);
-                    }
-                  },
-                );
-              },
+            child: Column(
+              children: [
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (items.isNotEmpty) Expanded(child: _buildItemCard(items[0])),
+                      const SizedBox(width: 12),
+                      if (items.length > 1) Expanded(child: _buildItemCard(items[1])),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Expanded(
+                  child: Row(
+                    children: [
+                      if (items.length > 2) Expanded(child: _buildItemCard(items[2])),
+                      const SizedBox(width: 12),
+                      if (items.length > 3) Expanded(child: _buildItemCard(items[3])),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       );
     });
+  }
+
+  Widget _buildItemCard(EquipmentShopDef equipment) {
+    final unlocked = widget.ctrl.unlockedEquipment.contains(equipment.id);
+    final isEquipped = widget.ctrl.equippedEquipment[equipment.slot] == equipment.id;
+    final canAfford = widget.ctrl.currency.value >= equipment.price;
+
+    return _EquipmentCard(
+      equipment: equipment,
+      unlocked: unlocked,
+      equipped: isEquipped,
+      canAfford: canAfford,
+      ctrl: widget.ctrl,
+      isCompact: widget.isCompact,
+      onTap: () {
+        if (unlocked) {
+          widget.ctrl.equipEquipment(equipment);
+        } else {
+          widget.ctrl.buyEquipment(equipment);
+        }
+      },
+    );
   }
 }
 
@@ -715,6 +719,7 @@ class _EquipmentCard extends StatelessWidget {
   final bool equipped;
   final bool canAfford;
   final MetaProgressController ctrl;
+  final bool isCompact;
   final VoidCallback onTap;
 
   const _EquipmentCard({
@@ -723,6 +728,7 @@ class _EquipmentCard extends StatelessWidget {
     required this.equipped,
     required this.canAfford,
     required this.ctrl,
+    required this.isCompact,
     required this.onTap,
   });
 
@@ -733,14 +739,17 @@ class _EquipmentCard extends StatelessWidget {
         : (unlocked
             ? AutoBattlePalette.secondary
             : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)));
-    final buttonText = equipped ? '장착중' : (unlocked ? '장착' : '구매');
+    
+    final accentColor = equipment.slot == 'weapon' 
+        ? AutoBattlePalette.primary 
+        : (equipment.slot == 'hand' ? AutoBattlePalette.secondary : AutoBattlePalette.gold);
 
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+        border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
+        boxShadow: [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4)),
         ],
       ),
       child: Column(
@@ -749,65 +758,125 @@ class _EquipmentCard extends StatelessWidget {
           Expanded(
             child: Container(
               width: double.infinity,
-              color: AutoBattlePalette.surfaceLight,
+              decoration: const BoxDecoration(
+                color: AutoBattlePalette.surfaceLight,
+                border: Border(
+                  bottom: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                ),
+              ),
               child: Stack(
                 children: [
-                  Center(child: Text(equipment.icon, style: const TextStyle(fontSize: 40))),
+                  Center(
+                    child: Hero(
+                      tag: 'eq_${equipment.id}',
+                      child: Text(
+                        equipment.icon, 
+                        style: TextStyle(fontSize: isCompact ? 32 : 44)
+                      ),
+                    ),
+                  ),
                   if (equipped)
                     Positioned(
                       top: 6,
-                      right: 6,
+                      left: 6,
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        color: const Color(0xFF4CAF50),
-                        child: const Text('EQUIPPED', style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF4CAF50),
+                          border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+                        ),
+                        child: const Text(
+                          'EQUIPPED', 
+                          style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)
+                        ),
                       ),
                     ),
                 ],
               ),
             ),
           ),
-          const Divider(height: 1, color: AutoBattlePalette.ink, thickness: 2),
-          // Info
+          
+          // Info Area
           Padding(
-            padding: const EdgeInsets.all(8.0),
+            padding: EdgeInsets.all(isCompact ? 6.0 : 10.0),
             child: Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Text(
                   equipment.title,
-                  style: const TextStyle(color: AutoBattlePalette.ink, fontSize: 13, fontWeight: FontWeight.w900),
+                  style: TextStyle(
+                    color: AutoBattlePalette.ink, 
+                    fontSize: isCompact ? 12 : 14, 
+                    fontWeight: FontWeight.w900
+                  ),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 2),
-                Text(
-                  equipment.statSummary,
-                  style: const TextStyle(color: AutoBattlePalette.secondary, fontSize: 10, fontWeight: FontWeight.w900),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    equipment.statSummary,
+                    style: TextStyle(
+                      color: accentColor, 
+                      fontSize: 10, 
+                      fontWeight: FontWeight.w900
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 8),
                 GestureDetector(
                   onTap: equipped ? null : onTap,
                   child: Container(
-                    height: 34,
+                    height: isCompact ? 32 : 38,
                     width: double.infinity,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: buttonColor,
-                      border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                      border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 1.5 : 2.5),
+                      boxShadow: [
+                        if (!equipped)
+                          BoxShadow(
+                            color: AutoBattlePalette.ink.withValues(alpha: 0.3),
+                            offset: Offset(isCompact ? 1 : 2, isCompact ? 1 : 2)
+                          ),
+                      ],
                     ),
-                    child: Text(
-                      unlocked ? buttonText : '💎 ${equipment.price} $buttonText',
-                      style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (!unlocked) ...[
+                          Text('💎 ', style: TextStyle(fontSize: isCompact ? 10 : 12)),
+                          Text(
+                            '${equipment.price} 구매',
+                            style: TextStyle(color: Colors.white, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900),
+                          ),
+                        ] else ...[
+                          Text(
+                            equipped ? '장착중' : '장착하기',
+                            style: TextStyle(color: Colors.white, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
                 ),
               ],
             ),
           ),
+          
+          // Upgrade Row for Weapons
           if (unlocked && equipment.weaponType != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-              child: _EquipmentUpgradeRow(equipment: equipment, ctrl: ctrl),
+              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
+              child: _EquipmentUpgradeRow(
+                equipment: equipment, 
+                ctrl: ctrl, 
+                isCompact: isCompact
+              ),
             ),
         ],
       ),
@@ -823,17 +892,18 @@ class _EquipmentCard extends StatelessWidget {
 // ─────────────────────────────────────────────
 class _StatUpgradeTab extends StatelessWidget {
   final MetaProgressController ctrl;
-  const _StatUpgradeTab({super.key, required this.ctrl});
+  final bool isCompact;
+  const _StatUpgradeTab({super.key, required this.ctrl, required this.isCompact});
 
   @override
   Widget build(BuildContext context) {
     return GridView.builder(
-      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+      padding: EdgeInsets.fromLTRB(16, 0, 16, isCompact ? 12 : 24),
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
-        mainAxisExtent: 100,
+        mainAxisExtent: isCompact ? 70 : 100,
       ),
       itemCount: kAllStatUpgrades.length,
       itemBuilder: (context, index) {
@@ -844,25 +914,25 @@ class _StatUpgradeTab extends StatelessWidget {
           final canAfford = ctrl.currency.value >= cost;
 
           return Container(
-            padding: const EdgeInsets.all(12),
+            padding: EdgeInsets.all(isCompact ? 8 : 12),
             decoration: BoxDecoration(
               color: Colors.white,
-              border: Border.all(color: AutoBattlePalette.ink, width: 3),
-              boxShadow: const [
-                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+              border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
+              boxShadow: [
+                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 3, isCompact ? 2 : 3)),
               ],
             ),
             child: Row(
               children: [
                 Container(
-                  width: 44,
-                  height: 44,
+                  width: isCompact ? 32 : 44,
+                  height: isCompact ? 32 : 44,
                   alignment: Alignment.center,
                   decoration: BoxDecoration(
                     color: AutoBattlePalette.background,
-                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                    border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 1.5 : 2),
                   ),
-                  child: Text(def.icon, style: const TextStyle(fontSize: 20)),
+                  child: Text(def.icon, style: TextStyle(fontSize: isCompact ? 16 : 20)),
                 ),
                 const SizedBox(width: 12),
                 Expanded(
@@ -872,31 +942,33 @@ class _StatUpgradeTab extends StatelessWidget {
                     children: [
                       Text(
                         '${def.title} (Lv.$level)',
-                        style: const TextStyle(color: AutoBattlePalette.ink, fontSize: 14, fontWeight: FontWeight.w900),
+                        style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 12 : 14, fontWeight: FontWeight.w900),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
-                      const SizedBox(height: 2),
-                      Text(
-                        def.description,
-                        style: const TextStyle(color: AutoBattlePalette.text3, fontSize: 10, fontWeight: FontWeight.w700),
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      if (!isCompact) ...[
+                        const SizedBox(height: 2),
+                        Text(
+                          def.description,
+                          style: const TextStyle(color: AutoBattlePalette.text3, fontSize: 10, fontWeight: FontWeight.w700),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
                     ],
                   ),
                 ),
                 const SizedBox(width: 8),
                 _SketchButton(
                   onTap: () => ctrl.upgradeStat(def),
-                  width: 64,
-                  height: 40,
+                  width: isCompact ? 54 : 64,
+                  height: isCompact ? 32 : 40,
                   color: canAfford ? AutoBattlePalette.gold : const Color(0xFFE5E7EB),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text('강화', style: TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w900)),
-                      Text('💎$cost', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700)),
+                      Text('강화', style: TextStyle(color: Colors.white, fontSize: isCompact ? 10 : 11, fontWeight: FontWeight.w900)),
+                      Text('💎$cost', style: TextStyle(color: Colors.white, fontSize: isCompact ? 8 : 9, fontWeight: FontWeight.w700)),
                     ],
                   ),
                 ),
@@ -911,7 +983,8 @@ class _StatUpgradeTab extends StatelessWidget {
 
 class _AchievementTab extends StatelessWidget {
   final MetaProgressController ctrl;
-  const _AchievementTab({super.key, required this.ctrl});
+  final bool isCompact;
+  const _AchievementTab({super.key, required this.ctrl, required this.isCompact});
 
   static const _categoryInfo = <String, _AchCategoryInfo>{
     'kill': _AchCategoryInfo(title: '처치', icon: Icons.my_location, color: AutoBattlePalette.primary),
@@ -935,21 +1008,21 @@ class _AchievementTab extends StatelessWidget {
       return Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
+            padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 16),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              padding: EdgeInsets.symmetric(horizontal: isCompact ? 10 : 14, vertical: isCompact ? 4 : 8),
               decoration: BoxDecoration(
                 color: AutoBattlePalette.surfaceLight,
-                border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                boxShadow: const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
+                border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 1.5 : 2),
+                boxShadow: [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 1 : 2, isCompact ? 1 : 2))],
               ),
               child: Row(
                 children: [
-                  const Icon(Icons.emoji_events, color: AutoBattlePalette.gold, size: 18),
-                  const SizedBox(width: 8),
-                  Text('진행도: $completedCount / ${kAllAchievements.length}', style: const TextStyle(color: AutoBattlePalette.ink, fontSize: 13, fontWeight: FontWeight.w900)),
+                  Icon(Icons.emoji_events, color: AutoBattlePalette.gold, size: isCompact ? 14 : 18),
+                  SizedBox(width: isCompact ? 4 : 8),
+                  Text('진행도: $completedCount / ${kAllAchievements.length}', style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900)),
                   const Spacer(),
-                  Text('💎 보상 획득: $earnedReward / $totalReward', style: const TextStyle(color: AutoBattlePalette.inkSubtle, fontSize: 12, fontWeight: FontWeight.w800)),
+                  Text('💎 보상 획득: $earnedReward / $totalReward', style: TextStyle(color: AutoBattlePalette.inkSubtle, fontSize: isCompact ? 10 : 12, fontWeight: FontWeight.w800)),
                 ],
               ),
             ),
@@ -975,11 +1048,11 @@ class _AchievementTab extends StatelessWidget {
                     GridView.builder(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        crossAxisSpacing: 10,
-                        mainAxisSpacing: 10,
-                        mainAxisExtent: 64,
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: isCompact ? 2 : 2, // Keep 2 for both
+                        crossAxisSpacing: isCompact ? 6 : 10,
+                        mainAxisSpacing: isCompact ? 6 : 10,
+                        mainAxisExtent: isCompact ? 48 : 64,
                       ),
                       itemCount: achievements.length,
                       itemBuilder: (context, i) {
@@ -989,6 +1062,7 @@ class _AchievementTab extends StatelessWidget {
                           achievement: ach,
                           completed: done,
                           accentColor: info?.color ?? AutoBattlePalette.ink,
+                          isCompact: isCompact,
                         );
                       },
                     ),
@@ -1010,8 +1084,13 @@ class _AchievementTab extends StatelessWidget {
 class _EquipmentUpgradeRow extends StatelessWidget {
   final EquipmentShopDef equipment;
   final MetaProgressController ctrl;
+  final bool isCompact;
 
-  const _EquipmentUpgradeRow({required this.equipment, required this.ctrl});
+  const _EquipmentUpgradeRow({
+    required this.equipment, 
+    required this.ctrl,
+    required this.isCompact,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -1023,7 +1102,10 @@ class _EquipmentUpgradeRow extends StatelessWidget {
       final canAfford = ctrl.currency.value >= cost;
 
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+        padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 8 : 12, 
+          vertical: isCompact ? 4 : 8
+        ),
         margin: const EdgeInsets.only(top: 4),
         decoration: BoxDecoration(
           color: AutoBattlePalette.background.withValues(alpha: 0.5),
@@ -1032,10 +1114,10 @@ class _EquipmentUpgradeRow extends StatelessWidget {
         child: Row(
           children: [
             Text(
-              'LV.$level 공격력 강화',
-              style: const TextStyle(
+              'LV.$level 강화',
+              style: TextStyle(
                 color: AutoBattlePalette.ink,
-                fontSize: 11,
+                fontSize: isCompact ? 9 : 11,
                 fontWeight: FontWeight.w800,
               ),
             ),
@@ -1043,16 +1125,19 @@ class _EquipmentUpgradeRow extends StatelessWidget {
             GestureDetector(
               onTap: canAfford ? () => ctrl.upgradeWeapon(equipment.weaponType!) : null,
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: EdgeInsets.symmetric(
+                  horizontal: isCompact ? 6 : 8, 
+                  vertical: isCompact ? 2 : 4
+                ),
                 decoration: BoxDecoration(
                   color: canAfford ? AutoBattlePalette.primary : Colors.grey,
                   border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
                 ),
                 child: Text(
-                  '강화 💎$cost',
-                  style: const TextStyle(
+                  '💎$cost',
+                  style: TextStyle(
                     color: Colors.white,
-                    fontSize: 10,
+                    fontSize: isCompact ? 9 : 10,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
@@ -1072,17 +1157,19 @@ class _AchievementRow extends StatelessWidget {
   final AchievementDef achievement;
   final bool completed;
   final Color accentColor;
+  final bool isCompact;
 
   const _AchievementRow({
     required this.achievement,
     required this.completed,
     required this.accentColor,
+    required this.isCompact,
   });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 12, vertical: isCompact ? 6 : 10),
       decoration: BoxDecoration(
         color: completed
             ? accentColor.withValues(alpha: 0.06)
@@ -1090,7 +1177,7 @@ class _AchievementRow extends StatelessWidget {
         border: Border(
           bottom: BorderSide(
             color: AutoBattlePalette.ink.withValues(alpha: 0.08),
-            width: 1,
+            width: isCompact ? 0.5 : 1,
           ),
         ),
       ),
@@ -1098,8 +1185,8 @@ class _AchievementRow extends StatelessWidget {
         children: [
           // Status icon
           Container(
-            width: 24,
-            height: 24,
+            width: isCompact ? 18 : 24,
+            height: isCompact ? 18 : 24,
             decoration: BoxDecoration(
               color: completed
                   ? accentColor
@@ -1109,11 +1196,11 @@ class _AchievementRow extends StatelessWidget {
                 color: completed
                     ? accentColor
                     : AutoBattlePalette.ink.withValues(alpha: 0.2),
-                width: 2,
+                width: isCompact ? 1.5 : 2,
               ),
             ),
             child: completed
-                ? const Icon(Icons.check, color: Colors.white, size: 14)
+                ? Icon(Icons.check, color: Colors.white, size: isCompact ? 10 : 14)
                 : null,
           ),
           const SizedBox(width: 10),
@@ -1129,27 +1216,29 @@ class _AchievementRow extends StatelessWidget {
                     color: completed
                         ? AutoBattlePalette.inkSubtle
                         : AutoBattlePalette.ink,
-                    fontSize: 13,
+                    fontSize: isCompact ? 11 : 13,
                     fontWeight: FontWeight.w900,
                     decoration: completed ? TextDecoration.lineThrough : null,
                   ),
                 ),
-                const SizedBox(height: 1),
-                Text(
-                  achievement.description,
-                  style: const TextStyle(
-                    color: AutoBattlePalette.text3,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+                if (!isCompact) ...[
+                  const SizedBox(height: 1),
+                  Text(
+                    achievement.description,
+                    style: const TextStyle(
+                      color: AutoBattlePalette.text3,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
-                ),
+                ],
               ],
             ),
           ),
 
           // Reward badge
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8, vertical: isCompact ? 2 : 4),
             decoration: BoxDecoration(
               color: completed
                   ? accentColor.withValues(alpha: 0.15)
@@ -1158,14 +1247,14 @@ class _AchievementRow extends StatelessWidget {
                 color: completed
                     ? accentColor
                     : AutoBattlePalette.ink.withValues(alpha: 0.15),
-                width: 1.5,
+                width: isCompact ? 1 : 1.5,
               ),
             ),
             child: Text(
               '💎 ${achievement.currencyReward}',
               style: TextStyle(
                 color: completed ? accentColor : AutoBattlePalette.text3,
-                fontSize: 11,
+                fontSize: isCompact ? 9 : 11,
                 fontWeight: FontWeight.w900,
               ),
             ),
