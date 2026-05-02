@@ -169,6 +169,8 @@ class GameProgressController extends GetxController {
   //  Stage progression (infinite)
   // ───────────────────────────────────────────
   void nextStage() {
+    _clampRunScalingStats();
+
     currentStage.value += 1;
     totalStageNumber.value += 1;
 
@@ -197,7 +199,6 @@ class GameProgressController extends GetxController {
   List<UpgradeCard> generateUpgradeChoices() {
     final allTypes = [
       'attack_up',
-      'weapon_count',
       'bullet_burst',
       'bullet_reflect',
       'body_big',
@@ -205,6 +206,9 @@ class GameProgressController extends GetxController {
       'defense_up',
       'barrier',
     ];
+    if (playerWeaponCount.value < PLAYER_MAX_WEAPON_COUNT) {
+      allTypes.add('weapon_count');
+    }
     allTypes.shuffle(_rand);
     final selected = allTypes.sublist(0, 3);
 
@@ -225,7 +229,8 @@ class GameProgressController extends GetxController {
             type: 'weapon_count',
             rarity: 'common',
             title: '무기 수 증가',
-            description: '공 주변 무기를 1개 늘립니다.\n각 무기가 독립적으로 발사합니다.',
+            description:
+                '공 주변 무기를 1개 늘립니다.\n최대 $PLAYER_MAX_WEAPON_COUNT개까지 중첩됩니다.',
             statPreview: 'WPN +1',
             multiplier: 1,
           );
@@ -305,7 +310,10 @@ class GameProgressController extends GetxController {
         playerAtk.value += UPGRADE_ATTACK_GAIN;
         break;
       case 'weapon_count':
-        playerWeaponCount.value += UPGRADE_WEAPON_COUNT_GAIN;
+        playerWeaponCount.value = math.min(
+          PLAYER_MAX_WEAPON_COUNT,
+          playerWeaponCount.value + UPGRADE_WEAPON_COUNT_GAIN,
+        );
         playerWeaponLevel.value = playerWeaponCount.value - 1;
         break;
       case 'bullet_burst':
@@ -343,7 +351,26 @@ class GameProgressController extends GetxController {
         playerBarrierHp.value = playerBarrierMaxHp.value;
         break;
     }
+    _clampRunScalingStats();
     appliedUpgrades.add(card.type);
+  }
+
+  void _clampRunScalingStats() {
+    playerWeaponCount.value = math.min(
+      PLAYER_MAX_WEAPON_COUNT,
+      math.max(
+        PLAYER_STARTING_WEAPON_COUNT,
+        playerWeaponCount.value,
+      ),
+    );
+    playerWeaponLevel.value = math.max(0, playerWeaponCount.value - 1);
+    playerBulletsPerWeapon.value = math.min(
+      PLAYER_MAX_BULLETS_PER_WEAPON,
+      math.max(
+        PLAYER_STARTING_BULLETS_PER_WEAPON,
+        playerBulletsPerWeapon.value,
+      ),
+    );
   }
 
   // ───────────────────────────────────────────

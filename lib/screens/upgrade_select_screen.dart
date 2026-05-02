@@ -1,5 +1,6 @@
 import 'package:circle_war/controllers/game_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
+import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:circle_war/game/auto_battle/ui/auto_battle_game_page.dart';
 import 'package:circle_war/screens/home_screen.dart';
 import 'package:flutter/material.dart';
@@ -343,8 +344,9 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                   color: AutoBattlePalette.gold),
               _StatChip(
                   icon: Icons.inventory_2,
-                  label: 'WPNs',
-                  value: '${_ctrl.ownedWeapons.length + 1}',
+                  label: 'WPN',
+                  value:
+                      '${_ctrl.playerWeaponCount.value}/$PLAYER_MAX_WEAPON_COUNT',
                   color: const Color(0xFFAA44FF)),
               _StatChip(
                   icon: Icons.change_circle,

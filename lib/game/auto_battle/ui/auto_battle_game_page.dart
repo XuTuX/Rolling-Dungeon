@@ -448,7 +448,8 @@ class _SketchTopBar extends StatelessWidget {
                         top: BorderSide(color: AutoBattlePalette.ink, width: 2),
                         bottom:
                             BorderSide(color: AutoBattlePalette.ink, width: 2),
-                        right: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                        right:
+                            BorderSide(color: AutoBattlePalette.ink, width: 2),
                       ),
                     ),
                     child: Row(
@@ -532,14 +533,16 @@ class _SketchSidebar extends StatelessWidget {
         players.where((p) => !p.isEnemy || p.maxHp >= 500).toList();
     final sorted = List<PlayerSnapshot>.from(filtered)
       ..sort((a, b) => b.hp.compareTo(a.hp));
-    
-    final myPlayer = players.cast<PlayerSnapshot?>().firstWhere((p) => p?.id == myId, orElse: () => null);
+
+    final myPlayer = players
+        .cast<PlayerSnapshot?>()
+        .firstWhere((p) => p?.id == myId, orElse: () => null);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         SizedBox(height: topPadding + (compact ? 12 : 20)),
-        
+
         // ── MY CHARACTER Section ──
         if (myPlayer != null) ...[
           Padding(
@@ -568,7 +571,8 @@ class _SketchSidebar extends StatelessWidget {
               child: Row(
                 children: [
                   CharacterBallPreview(
-                    info: charDisplayInfoMap[myPlayer.characterType] ?? charDisplayInfoMap['gunner']!,
+                    info: charDisplayInfoMap[myPlayer.characterType] ??
+                        charDisplayInfoMap['gunner']!,
                     size: compact ? 48 : 64,
                   ),
                   const SizedBox(width: 12),
@@ -590,16 +594,20 @@ class _SketchSidebar extends StatelessWidget {
                           child: Row(
                             children: [
                               myPlayer.characterType,
-                              ...myPlayer.ownedWeapons.where((w) => w != myPlayer.characterType),
-                            ].map((w) => Padding(
-                              padding: const EdgeInsets.only(right: 6),
-                              child: _WeaponStatusIcon(
-                                weapon: w,
-                                player: myPlayer,
-                                now: DateTime.now().millisecondsSinceEpoch,
-                                compact: compact,
-                              ),
-                            )).toList(),
+                              ...myPlayer.ownedWeapons
+                                  .where((w) => w != myPlayer.characterType),
+                            ]
+                                .map((w) => Padding(
+                                      padding: const EdgeInsets.only(right: 6),
+                                      child: _WeaponStatusIcon(
+                                        weapon: w,
+                                        player: myPlayer,
+                                        now: DateTime.now()
+                                            .millisecondsSinceEpoch,
+                                        compact: compact,
+                                      ),
+                                    ))
+                                .toList(),
                           ),
                         ),
                       ],
@@ -631,16 +639,12 @@ class _SketchSidebar extends StatelessWidget {
             separatorBuilder: (_, __) => SizedBox(height: compact ? 10 : 16),
             itemBuilder: (context, i) {
               final p = sorted[i];
-              final isMe = p.id == myId;
-              final now = DateTime.now().millisecondsSinceEpoch;
 
               return Container(
                 padding: EdgeInsets.all(compact ? 9 : 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  border: Border.all(
-                      color: AutoBattlePalette.ink,
-                      width: 3),
+                  border: Border.all(color: AutoBattlePalette.ink, width: 3),
                   boxShadow: const [
                     BoxShadow(
                       color: AutoBattlePalette.ink,
@@ -677,10 +681,12 @@ class _SketchSidebar extends StatelessWidget {
                       height: compact ? 12 : 14,
                       decoration: BoxDecoration(
                         color: Colors.white,
-                        border:
-                            Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                        border: Border.all(
+                            color: AutoBattlePalette.ink, width: 2.5),
                         boxShadow: const [
-                          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
+                          BoxShadow(
+                              color: AutoBattlePalette.ink,
+                              offset: Offset(2, 2)),
                         ],
                       ),
                       child: FractionallySizedBox(
@@ -690,7 +696,8 @@ class _SketchSidebar extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: p.flutterColor,
                             border: const Border(
-                              right: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                              right: BorderSide(
+                                  color: AutoBattlePalette.ink, width: 2),
                             ),
                           ),
                         ),
@@ -773,10 +780,12 @@ class _WeaponStatusIcon extends StatelessWidget {
                   // Icon Background (Color)
                   Positioned.fill(
                     child: Container(
-                      color: ready ? color.withValues(alpha: 0.1) : Colors.grey[200],
+                      color: ready
+                          ? color.withValues(alpha: 0.1)
+                          : Colors.grey[200],
                     ),
                   ),
-                  
+
                   // Cooldown Fill (Sketchy Overlay)
                   if (!ready)
                     Positioned.fill(
@@ -806,13 +815,17 @@ class _WeaponStatusIcon extends StatelessWidget {
                     right: 0,
                     bottom: 0,
                     child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 3, vertical: 1),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 3, vertical: 1),
                       decoration: const BoxDecoration(
                         color: AutoBattlePalette.ink,
-                        borderRadius: BorderRadius.only(topLeft: Radius.circular(4)),
+                        borderRadius:
+                            BorderRadius.only(topLeft: Radius.circular(4)),
                       ),
                       child: Text(
-                        ready ? info['label'] as String : remaining.ceil().toString(),
+                        ready
+                            ? info['label'] as String
+                            : remaining.ceil().toString(),
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: compact ? 8 : 9,

@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:math' as math;
 import '../models/game_snapshot.dart';
-import '../models/player_snapshot.dart';
 import 'constants.dart';
 import 'physics.dart';
 import 'types.dart';
@@ -50,8 +49,18 @@ class GameEngine {
       ..characterType = initialPlayer.characterType == 'none'
           ? 'gunner'
           : initialPlayer.characterType
-      ..weaponCount = math.max(1, initialPlayer.weaponCount)
-      ..bulletsPerWeapon = math.max(1, initialPlayer.bulletsPerWeapon)
+      ..weaponCount = math.min(
+        PLAYER_MAX_WEAPON_COUNT,
+        math.max(1, initialPlayer.weaponCount),
+      )
+      ..weaponLevel = math.min(
+        PLAYER_MAX_WEAPON_COUNT - 1,
+        math.max(0, initialPlayer.weaponLevel),
+      )
+      ..bulletsPerWeapon = math.min(
+        PLAYER_MAX_BULLETS_PER_WEAPON,
+        math.max(1, initialPlayer.bulletsPerWeapon),
+      )
       ..barrierHp = initialPlayer.barrierMaxHp > 0
           ? math.max(initialPlayer.barrierHp, initialPlayer.barrierMaxHp)
           : initialPlayer.barrierHp;
@@ -221,7 +230,8 @@ class GameEngine {
         player.lastAbilityAt = now;
         player.vel = targetVel;
       }
-      player.speed = ENEMY_BASE_SPEED * (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
+      player.speed =
+          ENEMY_BASE_SPEED * (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
     } else if (player.enemyAbility == 'shoot') {
       if (dist < 130) {
         // Retreat
@@ -231,7 +241,9 @@ class GameEngine {
         ));
       } else if (dist < 190) {
         // Circle
-        final angle = math.atan2(player.pos.y - target.pos.y, player.pos.x - target.pos.x) + 0.04;
+        final angle = math.atan2(
+                player.pos.y - target.pos.y, player.pos.x - target.pos.x) +
+            0.04;
         player.pos.x = target.pos.x + math.cos(angle) * dist;
         player.pos.y = target.pos.y + math.sin(angle) * dist;
         targetVel = Vec2(x: 0, y: 0);
@@ -329,7 +341,8 @@ class GameEngine {
       enemiesToSpawn.add({'type': _bossTypeForCycle(currentCycle), 'count': 1});
       // Later cycles add minions alongside the boss
       if (currentCycle >= 2) {
-        enemiesToSpawn.add({'type': 'basic', 'count': math.min(currentCycle - 1, 3)});
+        enemiesToSpawn
+            .add({'type': 'basic', 'count': math.min(currentCycle - 1, 3)});
       }
     } else {
       // Normal stage — use stageInCycle to vary composition
@@ -337,17 +350,25 @@ class GameEngine {
       switch (stageInCycle) {
         case 1:
           enemiesToSpawn.add({'type': 'basic', 'count': baseCount});
-          if (currentCycle >= 2) enemiesToSpawn.add({'type': 'fast', 'count': 1});
+          if (currentCycle >= 2) {
+            enemiesToSpawn.add({'type': 'fast', 'count': 1});
+          }
           break;
         case 2:
-          enemiesToSpawn.add({'type': 'dasher', 'count': math.max(1, baseCount - 1)});
+          enemiesToSpawn
+              .add({'type': 'dasher', 'count': math.max(1, baseCount - 1)});
           enemiesToSpawn.add({'type': 'shooter', 'count': 1});
-          if (currentCycle >= 3) enemiesToSpawn.add({'type': 'tank', 'count': 1});
+          if (currentCycle >= 3) {
+            enemiesToSpawn.add({'type': 'tank', 'count': 1});
+          }
           break;
         case 3:
           enemiesToSpawn.add({'type': 'shield', 'count': 1});
-          enemiesToSpawn.add({'type': 'splitter', 'count': math.max(1, baseCount - 1)});
-          if (currentCycle >= 2) enemiesToSpawn.add({'type': 'bruiser', 'count': 1});
+          enemiesToSpawn
+              .add({'type': 'splitter', 'count': math.max(1, baseCount - 1)});
+          if (currentCycle >= 2) {
+            enemiesToSpawn.add({'type': 'bruiser', 'count': 1});
+          }
           break;
         default:
           enemiesToSpawn.add({'type': 'basic', 'count': baseCount});
@@ -364,12 +385,18 @@ class GameEngine {
   /// Determine boss type based on cycle. Cycles beyond 5 reuse patterns.
   String _bossTypeForCycle(int cycle) {
     switch ((cycle - 1) % 5) {
-      case 0: return 'boss_basic';      // Basic large boss
-      case 1: return 'boss_summoner';   // Summons minions
-      case 2: return 'boss_dasher';     // Dash attack
-      case 3: return 'boss_shield';     // Shield phase
-      case 4: return 'boss_combined';   // Combined patterns
-      default: return 'boss_basic';
+      case 0:
+        return 'boss_basic'; // Basic large boss
+      case 1:
+        return 'boss_summoner'; // Summons minions
+      case 2:
+        return 'boss_dasher'; // Dash attack
+      case 3:
+        return 'boss_shield'; // Shield phase
+      case 4:
+        return 'boss_combined'; // Combined patterns
+      default:
+        return 'boss_basic';
     }
   }
 
@@ -383,9 +410,11 @@ class GameEngine {
     final hpMult = (1 + stageStep * ENEMY_STAGE_HP_GROWTH) * cycleHpMult;
     final speedMult = (1 + stageStep * ENEMY_STAGE_SPEED_GROWTH) * cycleSpdMult;
     double hp = (totalStageNumber == 1) ? STAGE_ONE_ENEMY_HP : 110 * hpMult;
-    double speed =
-        (totalStageNumber == 1) ? STAGE_ONE_ENEMY_SPEED : ENEMY_BASE_SPEED * speedMult;
-    double radius = (totalStageNumber == 1) ? STAGE_ONE_ENEMY_RADIUS : ENEMY_BASE_RADIUS;
+    double speed = (totalStageNumber == 1)
+        ? STAGE_ONE_ENEMY_SPEED
+        : ENEMY_BASE_SPEED * speedMult;
+    double radius =
+        (totalStageNumber == 1) ? STAGE_ONE_ENEMY_RADIUS : ENEMY_BASE_RADIUS;
     String color = '#FF5E5E';
     double atk = (totalStageNumber == 1)
         ? STAGE_ONE_ENEMY_ATTACK
@@ -751,7 +780,8 @@ class GameEngine {
       if (distance(target.pos, player.pos) <= player.radius + AURA_RADIUS) {
         // Ticking damage
         final wLevel = owner.weaponLevels['aura'] ?? 0;
-        _dealDamage(owner, target, AURA_DAMAGE_TICK * (1.0 + wLevel * 0.15) * (TICK_MS / 1000));
+        _dealDamage(owner, target,
+            AURA_DAMAGE_TICK * (1.0 + wLevel * 0.15) * (TICK_MS / 1000));
       }
     }
   }
@@ -846,9 +876,10 @@ class GameEngine {
     final baseAngle = player.targetAngle;
     final rangeMult = isHeavy ? 1.5 : 1.0;
     final visualRange = player.radius * 1.6 * rangeMult;
-    
+
     final wLevel = player.weaponLevels[isHeavy ? 'heavy_blade' : 'blade'] ?? 0;
-    final dmgMult = (isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0) * (1.0 + wLevel * 0.15);
+    final dmgMult =
+        (isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0) * (1.0 + wLevel * 0.15);
     final cooldown =
         isHeavy ? HEAVY_BLADE_COOLDOWN_MS : BLADE_CONTACT_DAMAGE_MS;
 
@@ -980,14 +1011,16 @@ class GameEngine {
           _dealDamage(
             owner,
             target,
-            (MINE_DAMAGE + owner.atk * MINE_ATTACK_DAMAGE_RATIO) * (1.0 + wLevel * 0.15),
+            (MINE_DAMAGE + owner.atk * MINE_ATTACK_DAMAGE_RATIO) *
+                (1.0 + wLevel * 0.15),
           );
           hazards.removeAt(i);
           break;
         }
         final poisonLevel = owner.weaponLevels['poison'] ?? 0;
         final poisonDamage =
-            (1.7 + owner.abilityPower * 0.45 + owner.weaponLevel * 0.18) * (1.0 + poisonLevel * 0.15) *
+            (1.7 + owner.abilityPower * 0.45 + owner.weaponLevel * 0.18) *
+                (1.0 + poisonLevel * 0.15) *
                 (dt / 1000);
         _dealDamage(owner, target, poisonDamage);
       }
@@ -1074,11 +1107,11 @@ class GameEngine {
 
     // ── Record Damage Event for UI ──
     _damageEvents.add(DamageEvent(
-      targetId: defender.id,
-      pos: Vec2(x: defender.pos.x, y: defender.pos.y),
-      amount: actual + shieldAbsorb,
+      victimId: defender.id,
+      x: defender.pos.x,
+      y: defender.pos.y,
+      damage: actual + shieldAbsorb,
       isPlayer: !defender.isEnemy,
-      timestamp: DateTime.now().millisecondsSinceEpoch,
     ));
 
     if (attacker.lifesteal > 0 && actual > 0) {

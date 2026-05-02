@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/components/hp_bar_component.dart';
+import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:circle_war/game/auto_battle/models/player_snapshot.dart';
 import 'package:circle_war/game/auto_battle/ui/weapon_designs.dart';
 import 'package:flame/components.dart';
@@ -48,7 +49,7 @@ class PlayerBallComponent extends PositionComponent {
         _facingAngle = _directionFromVelocity(snapshot),
         _targetAngle = snapshot.targetAngle,
         _lastAttackAt = snapshot.lastAttackAt,
-        weaponCount = snapshot.weaponCount,
+        weaponCount = math.min(PLAYER_MAX_WEAPON_COUNT, snapshot.weaponCount),
         super(
           position: initialPosition,
           size: Vector2.all(ballRadius * 2),
@@ -82,7 +83,7 @@ class PlayerBallComponent extends PositionComponent {
     maxHp = snapshot.maxHp;
     unspentUpgrades = snapshot.unspentUpgrades;
     characterType = snapshot.characterType;
-    weaponCount = snapshot.weaponCount;
+    weaponCount = math.min(PLAYER_MAX_WEAPON_COUNT, snapshot.weaponCount);
     final velocityLength =
         math.sqrt(snapshot.vx * snapshot.vx + snapshot.vy * snapshot.vy);
 

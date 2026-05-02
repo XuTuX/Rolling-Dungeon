@@ -116,9 +116,10 @@ class HomeScreen extends StatelessWidget {
                                               _ArrowButton(
                                                 icon: Icons.chevron_left,
                                                 onTap: () {
-                                                  final newIdx =
-                                                      (idx - 1 + unlocked.length) %
-                                                          unlocked.length;
+                                                  final newIdx = (idx -
+                                                          1 +
+                                                          unlocked.length) %
+                                                      unlocked.length;
                                                   metaCtrl.equipWeapon(
                                                       unlocked[newIdx]);
                                                 },
@@ -137,8 +138,8 @@ class HomeScreen extends StatelessWidget {
                                               _ArrowButton(
                                                 icon: Icons.chevron_right,
                                                 onTap: () {
-                                                  final newIdx =
-                                                      (idx + 1) % unlocked.length;
+                                                  final newIdx = (idx + 1) %
+                                                      unlocked.length;
                                                   metaCtrl.equipWeapon(
                                                       unlocked[newIdx]);
                                                 },
@@ -195,8 +196,8 @@ class HomeScreen extends StatelessWidget {
                                       onTap: () {
                                         runCtrl.startNewRun(
                                             metaCtrl.equippedWeapon.value);
-                                        Get.to(() =>
-                                            const AutoBattleGamePage());
+                                        Get.to(
+                                            () => const AutoBattleGamePage());
                                       },
                                       child: Container(
                                         height: compact ? 52 : 60,
@@ -230,8 +231,8 @@ class HomeScreen extends StatelessWidget {
                                   Expanded(
                                     flex: 2,
                                     child: GestureDetector(
-                                      onTap: () => Get.to(
-                                          () => const MetaShopScreen()),
+                                      onTap: () =>
+                                          Get.to(() => const MetaShopScreen()),
                                       child: Container(
                                         height: compact ? 52 : 60,
                                         decoration: BoxDecoration(
@@ -415,27 +416,6 @@ class _MiniStat extends StatelessWidget {
       ],
     );
   }
-}
-
-// ─────────────────────────────────────────────
-//  Character display info
-// ─────────────────────────────────────────────
-class _CharDisplayInfo {
-  final String name;
-  final String desc;
-  final Color bodyColor;
-  final Color accentColor;
-  final IconData icon;
-  final String emoji;
-
-  const _CharDisplayInfo({
-    required this.name,
-    required this.desc,
-    required this.bodyColor,
-    required this.accentColor,
-    required this.icon,
-    required this.emoji,
-  });
 }
 
 // ─────────────────────────────────────────────

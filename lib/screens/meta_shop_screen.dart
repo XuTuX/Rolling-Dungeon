@@ -118,8 +118,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                           Border.all(color: AutoBattlePalette.ink, width: 3),
                       boxShadow: const [
                         BoxShadow(
-                            color: AutoBattlePalette.ink,
-                            offset: Offset(3, 3)),
+                            color: AutoBattlePalette.ink, offset: Offset(3, 3)),
                       ],
                     ),
                     child: TabBar(
@@ -237,8 +236,7 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                 color: Colors.white,
                 border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
                 boxShadow: const [
-                  BoxShadow(
-                      color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
                 ],
               ),
               child: Wrap(
@@ -246,8 +244,7 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                 runSpacing: 6,
                 children: List.generate(kAllShopWeapons.length, (i) {
                   final w = kAllShopWeapons[i];
-                  final owned =
-                      ctrl.unlockedWeapons.contains(w.weaponType);
+                  final owned = ctrl.unlockedWeapons.contains(w.weaponType);
                   final isSelected = i == _selectedIndex;
                   return _WeaponIconTile(
                     weapon: w,
@@ -265,9 +262,7 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
               width: double.infinity,
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: selOwned
-                    ? const Color(0xFFE8F5E9)
-                    : Colors.white,
+                color: selOwned ? const Color(0xFFE8F5E9) : Colors.white,
                 border: Border.all(
                   color: selOwned
                       ? const Color(0xFF4CAF50)
@@ -275,8 +270,7 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                   width: 2.5,
                 ),
                 boxShadow: const [
-                  BoxShadow(
-                      color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
                 ],
               ),
               child: Column(
@@ -284,8 +278,7 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                 children: [
                   Row(
                     children: [
-                      Text(selected.icon,
-                          style: const TextStyle(fontSize: 28)),
+                      Text(selected.icon, style: const TextStyle(fontSize: 28)),
                       const SizedBox(width: 10),
                       Expanded(
                         child: Column(
@@ -316,55 +309,57 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
                   ),
                   const SizedBox(height: 12),
                   // Buy / Upgrade button
-                  Builder(
-                    builder: (context) {
-                      final level = ctrl.getWeaponLevel(selected.weaponType);
-                      final upgradeCost = ctrl.getWeaponUpgradeCost(selected);
-                      final canAffordUpgrade = ctrl.currency.value >= upgradeCost;
+                  Builder(builder: (context) {
+                    final level = ctrl.getWeaponLevel(selected.weaponType);
+                    final upgradeCost = ctrl.getWeaponUpgradeCost(selected);
+                    final canAffordUpgrade = ctrl.currency.value >= upgradeCost;
 
-                      return GestureDetector(
-                        onTap: selOwned
-                            ? (canAffordUpgrade ? () => ctrl.upgradeWeapon(selected) : null)
-                            : (selCanAfford ? () => ctrl.buyWeapon(selected) : null),
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 10),
-                          decoration: BoxDecoration(
-                            color: selOwned
+                    return GestureDetector(
+                      onTap: selOwned
+                          ? (canAffordUpgrade
+                              ? () => ctrl.upgradeWeapon(selected)
+                              : null)
+                          : (selCanAfford
+                              ? () => ctrl.buyWeapon(selected)
+                              : null),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: selOwned
+                              ? (canAffordUpgrade
+                                  ? const Color(0xFF4CAF50)
+                                  : const Color(0xFF9CA3AF))
+                              : (selCanAfford
+                                  ? AutoBattlePalette.gold
+                                  : const Color(0xFF9CA3AF)),
+                          border: Border.all(
+                              color: AutoBattlePalette.ink, width: 2.5),
+                          boxShadow: const [
+                            BoxShadow(
+                                color: AutoBattlePalette.ink,
+                                offset: Offset(2, 2)),
+                          ],
+                        ),
+                        child: Center(
+                          child: Text(
+                            selOwned
                                 ? (canAffordUpgrade
-                                    ? const Color(0xFF4CAF50)
-                                    : const Color(0xFF9CA3AF))
+                                    ? '💎 $upgradeCost  LV.${level + 1} 강화하기'
+                                    : '💎 $upgradeCost  크리스탈 부족 (LV.$level)')
                                 : (selCanAfford
-                                    ? AutoBattlePalette.gold
-                                    : const Color(0xFF9CA3AF)),
-                            border: Border.all(
-                                color: AutoBattlePalette.ink, width: 2.5),
-                            boxShadow: const [
-                              BoxShadow(
-                                  color: AutoBattlePalette.ink,
-                                  offset: Offset(2, 2)),
-                            ],
-                          ),
-                          child: Center(
-                            child: Text(
-                              selOwned
-                                  ? (canAffordUpgrade
-                                      ? '💎 $upgradeCost  LV.${level + 1} 강화하기'
-                                      : '💎 $upgradeCost  크리스탈 부족 (LV.$level)')
-                                  : (selCanAfford
-                                      ? '💎 ${selected.price}  구매하기'
-                                      : '💎 ${selected.price}  크리스탈 부족'),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontSize: 14,
-                                fontWeight: FontWeight.w900,
-                              ),
+                                    ? '💎 ${selected.price}  구매하기'
+                                    : '💎 ${selected.price}  크리스탈 부족'),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
                             ),
                           ),
                         ),
-                      );
-                    }
-                  ),
+                      ),
+                    );
+                  }),
                 ],
               ),
             ),
@@ -373,14 +368,12 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
             // ── Owned count ──
             Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
               decoration: BoxDecoration(
                 color: AutoBattlePalette.surfaceLight,
                 border: Border.all(color: AutoBattlePalette.ink, width: 2),
                 boxShadow: const [
-                  BoxShadow(
-                      color: AutoBattlePalette.ink, offset: Offset(2, 2)),
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
                 ],
               ),
               child: Row(
@@ -434,11 +427,11 @@ class _StatUpgradeTab extends StatelessWidget {
         final def = kAllStatUpgrades[index];
         return Obx(() {
           final level = ctrl.getStatLevel(def.statType);
-          final cost = ctrl.getUpgradeCost(def.statType);
+          final cost = ctrl.getStatUpgradeCost(def);
           final canAfford = ctrl.currency.value >= cost;
 
           return Container(
-            margin: const EdgeInsets.bottom(16),
+            margin: const EdgeInsets.only(bottom: 16),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white,
@@ -477,7 +470,7 @@ class _StatUpgradeTab extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         def.description,
-                        style: TextStyle(
+                        style: const TextStyle(
                           color: AutoBattlePalette.text3,
                           fontSize: 12,
                         ),
@@ -489,11 +482,12 @@ class _StatUpgradeTab extends StatelessWidget {
                 // Upgrade Button
                 _SketchButton(
                   onTap: () {
-                    ctrl.upgradeStat(def.statType);
+                    ctrl.upgradeStat(def);
                   },
                   width: 80,
                   height: 44,
-                  color: canAfford ? AutoBattlePalette.gold : Colors.grey[300],
+                  color:
+                      canAfford ? AutoBattlePalette.gold : Colors.grey.shade300,
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -557,8 +551,8 @@ class _AchievementTab extends StatelessWidget {
     return Obx(() {
       final completedCount =
           kAllAchievements.where((a) => ctrl.achievements[a.id] == true).length;
-      final totalReward = kAllAchievements.fold<int>(
-          0, (sum, a) => sum + a.currencyReward);
+      final totalReward =
+          kAllAchievements.fold<int>(0, (sum, a) => sum + a.currencyReward);
       final earnedReward = kAllAchievements
           .where((a) => ctrl.achievements[a.id] == true)
           .fold<int>(0, (sum, a) => sum + a.currencyReward);
@@ -576,15 +570,12 @@ class _AchievementTab extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: Container(
               width: double.infinity,
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: AutoBattlePalette.surfaceLight,
-                border:
-                    Border.all(color: AutoBattlePalette.ink, width: 2),
+                border: Border.all(color: AutoBattlePalette.ink, width: 2),
                 boxShadow: const [
-                  BoxShadow(
-                      color: AutoBattlePalette.ink, offset: Offset(2, 2)),
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
                 ],
               ),
               child: Row(
@@ -631,12 +622,11 @@ class _AchievementTab extends StatelessWidget {
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
-                      border: Border.all(
-                          color: AutoBattlePalette.ink, width: 2.5),
+                      border:
+                          Border.all(color: AutoBattlePalette.ink, width: 2.5),
                       boxShadow: const [
                         BoxShadow(
-                            color: AutoBattlePalette.ink,
-                            offset: Offset(3, 3)),
+                            color: AutoBattlePalette.ink, offset: Offset(3, 3)),
                       ],
                     ),
                     child: Column(
@@ -650,7 +640,7 @@ class _AchievementTab extends StatelessWidget {
                           decoration: BoxDecoration(
                             color: (info?.color ?? AutoBattlePalette.ink)
                                 .withValues(alpha: 0.1),
-                            border: Border(
+                            border: const Border(
                               bottom: BorderSide(
                                   color: AutoBattlePalette.ink, width: 2),
                             ),
@@ -658,15 +648,13 @@ class _AchievementTab extends StatelessWidget {
                           child: Row(
                             children: [
                               Icon(info?.icon ?? Icons.star,
-                                  color:
-                                      info?.color ?? AutoBattlePalette.ink,
+                                  color: info?.color ?? AutoBattlePalette.ink,
                                   size: 18),
                               const SizedBox(width: 8),
                               Text(
                                 info?.title ?? entry.key,
                                 style: TextStyle(
-                                  color:
-                                      info?.color ?? AutoBattlePalette.ink,
+                                  color: info?.color ?? AutoBattlePalette.ink,
                                   fontSize: 14,
                                   fontWeight: FontWeight.w900,
                                 ),
@@ -676,19 +664,17 @@ class _AchievementTab extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(
                                     horizontal: 8, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: (info?.color ??
-                                          AutoBattlePalette.ink)
+                                  color: (info?.color ?? AutoBattlePalette.ink)
                                       .withValues(alpha: 0.15),
                                   border: Border.all(
-                                      color: info?.color ??
-                                          AutoBattlePalette.ink,
+                                      color:
+                                          info?.color ?? AutoBattlePalette.ink,
                                       width: 1.5),
                                 ),
                                 child: Text(
                                   '$categoryCompleted / ${achievements.length}',
                                   style: TextStyle(
-                                    color: info?.color ??
-                                        AutoBattlePalette.ink,
+                                    color: info?.color ?? AutoBattlePalette.ink,
                                     fontSize: 11,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -699,13 +685,11 @@ class _AchievementTab extends StatelessWidget {
                         ),
                         // Achievement items
                         ...achievements.map((ach) {
-                          final done =
-                              ctrl.achievements[ach.id] == true;
+                          final done = ctrl.achievements[ach.id] == true;
                           return _AchievementRow(
                             achievement: ach,
                             completed: done,
-                            accentColor:
-                                info?.color ?? AutoBattlePalette.ink,
+                            accentColor: info?.color ?? AutoBattlePalette.ink,
                           );
                         }),
                       ],
@@ -778,7 +762,8 @@ class _WeaponIconTile extends StatelessWidget {
             const SizedBox(height: 1),
             if (owned)
               Obx(() {
-                final level = Get.find<MetaProgressController>().getWeaponLevel(weapon.weaponType);
+                final level = Get.find<MetaProgressController>()
+                    .getWeaponLevel(weapon.weaponType);
                 return Text(
                   'LV.$level',
                   style: const TextStyle(
@@ -870,8 +855,7 @@ class _AchievementRow extends StatelessWidget {
                         : AutoBattlePalette.ink,
                     fontSize: 13,
                     fontWeight: FontWeight.w900,
-                    decoration:
-                        completed ? TextDecoration.lineThrough : null,
+                    decoration: completed ? TextDecoration.lineThrough : null,
                   ),
                 ),
                 const SizedBox(height: 1),
@@ -889,8 +873,7 @@ class _AchievementRow extends StatelessWidget {
 
           // Reward badge
           Container(
-            padding:
-                const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: completed
                   ? accentColor.withValues(alpha: 0.15)
@@ -925,12 +908,14 @@ class _SketchButton extends StatelessWidget {
   final double width;
   final double height;
   final Widget child;
+  final Color color;
 
   const _SketchButton({
     required this.onTap,
     required this.width,
     required this.height,
     required this.child,
+    this.color = Colors.white,
   });
 
   @override
@@ -941,11 +926,10 @@ class _SketchButton extends StatelessWidget {
         width: width,
         height: height,
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: color,
           border: Border.all(color: AutoBattlePalette.ink, width: 3),
           boxShadow: const [
-            BoxShadow(
-                color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
           ],
         ),
         child: Center(child: child),

@@ -31,12 +31,16 @@ class AutoBattleGame extends FlameGame {
   void applySnapshot(GameSnapshot snapshot) {
     // Process Damage Events from Engine
     for (final e in snapshot.damageEvents) {
+      final victim = snapshot.players
+          .cast<PlayerSnapshot?>()
+          .firstWhere((p) => p?.id == e.victimId, orElse: () => null);
+      final isPlayer = victim?.isEnemy == false;
       _damageNumbers.add(_DamageNumber(
-        pos: Offset(e.pos.x, e.pos.y - 15),
-        value: e.amount.toInt(),
-        color: e.isPlayer ? const Color(0xFFFF5252) : const Color(0xFFFFD54F),
+        pos: Offset(e.x, e.y - 15),
+        value: e.damage.toInt(),
+        color: isPlayer ? const Color(0xFFFF5252) : const Color(0xFFFFD54F),
       ));
-      if (e.isPlayer) _shakeIntensity = 6.0;
+      if (isPlayer) _shakeIntensity = 6.0;
     }
 
     _snapshot = snapshot;
@@ -369,22 +373,39 @@ class AutoBattleGame extends FlameGame {
           ..strokeWidth = 2.5
           ..strokeCap = StrokeCap.round;
         for (final dx in [-eyeSpacing, eyeSpacing]) {
-          canvas.drawLine(Offset(cx + dx - eyeR, eyeY - eyeR), Offset(cx + dx + eyeR, eyeY + eyeR), inkPaint);
-          canvas.drawLine(Offset(cx + dx + eyeR, eyeY - eyeR), Offset(cx + dx - eyeR, eyeY + eyeR), inkPaint);
+          canvas.drawLine(Offset(cx + dx - eyeR, eyeY - eyeR),
+              Offset(cx + dx + eyeR, eyeY + eyeR), inkPaint);
+          canvas.drawLine(Offset(cx + dx + eyeR, eyeY - eyeR),
+              Offset(cx + dx - eyeR, eyeY + eyeR), inkPaint);
         }
         // O Mouth
         canvas.drawCircle(Offset(cx, cy + r * 0.25), r * 0.15, inkPaint);
       } else {
         // Normal Face
         for (final dx in [-eyeSpacing, eyeSpacing]) {
-          canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = Colors.white);
-          canvas.drawCircle(Offset(cx + dx + 1.5, eyeY + 1), eyeR * 0.55, Paint()..color = AutoBattlePalette.ink);
-          canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2);
+          canvas.drawCircle(
+              Offset(cx + dx, eyeY), eyeR, Paint()..color = Colors.white);
+          canvas.drawCircle(Offset(cx + dx + 1.5, eyeY + 1), eyeR * 0.55,
+              Paint()..color = AutoBattlePalette.ink);
+          canvas.drawCircle(
+              Offset(cx + dx, eyeY),
+              eyeR,
+              Paint()
+                ..color = AutoBattlePalette.ink
+                ..style = PaintingStyle.stroke
+                ..strokeWidth = 2);
         }
         final mouthPath = Path();
         mouthPath.moveTo(cx - r * 0.15, cy + r * 0.22);
-        mouthPath.quadraticBezierTo(cx, cy + r * 0.38, cx + r * 0.15, cy + r * 0.22);
-        canvas.drawPath(mouthPath, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
+        mouthPath.quadraticBezierTo(
+            cx, cy + r * 0.38, cx + r * 0.15, cy + r * 0.22);
+        canvas.drawPath(
+            mouthPath,
+            Paint()
+              ..color = AutoBattlePalette.ink
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 2.5
+              ..strokeCap = StrokeCap.round);
       }
 
       if (p.shield > 0) {
@@ -531,24 +552,29 @@ class AutoBattleGame extends FlameGame {
           _renderPoisonNozzle(canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
         case 'footsteps':
-          _renderFootstepsDecoration(canvas, pos, r, wAngle, ink, player.flutterColor);
+          _renderFootstepsDecoration(
+              canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
         case 'minigun':
         case 'burst':
-          _renderGunDecoration(canvas, pos, r, wAngle, ink, player.flutterColor, isMinigun: true);
+          _renderGunDecoration(canvas, pos, r, wAngle, ink, player.flutterColor,
+              isMinigun: true);
           break;
         case 'long_gun':
         case 'ricochet':
         case 'gunner':
-          _renderGunDecoration(canvas, pos, r, wAngle, ink, player.flutterColor);
+          _renderGunDecoration(
+              canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
       }
     }
   }
 
-  void _drawHand(Canvas canvas, double r, Offset center, Color bodyColor, Paint ink) {
+  void _drawHand(
+      Canvas canvas, double r, Offset center, Color bodyColor, Paint ink) {
     final handR = r * 0.3;
-    canvas.drawCircle(center + const Offset(3, 3), handR, Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.5));
+    canvas.drawCircle(center + const Offset(3, 3), handR,
+        Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.5));
     canvas.drawCircle(center, handR, Paint()..color = bodyColor);
     canvas.drawCircle(center, handR, ink);
   }
@@ -573,8 +599,8 @@ class AutoBattleGame extends FlameGame {
     canvas.restore();
   }
 
-  void _renderMiner(
-      Canvas canvas, Offset pos, double r, double angle, Paint ink, Color bodyColor) {
+  void _renderMiner(Canvas canvas, Offset pos, double r, double angle,
+      Paint ink, Color bodyColor) {
     final minePos =
         pos + Offset(math.cos(angle) * (r + 10), math.sin(angle) * (r + 10));
     canvas.drawCircle(
@@ -582,8 +608,8 @@ class AutoBattleGame extends FlameGame {
     canvas.drawCircle(minePos, 8 * _arenaScale, ink);
   }
 
-  void _renderPoisonNozzle(
-      Canvas canvas, Offset pos, double r, double angle, Paint ink, Color bodyColor) {
+  void _renderPoisonNozzle(Canvas canvas, Offset pos, double r, double angle,
+      Paint ink, Color bodyColor) {
     final rear = angle + math.pi;
     final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
     canvas.drawLine(
@@ -597,8 +623,8 @@ class AutoBattleGame extends FlameGame {
     canvas.drawCircle(nozzle, 4 * _arenaScale, ink);
   }
 
-  void _renderFootstepsDecoration(
-      Canvas canvas, Offset pos, double r, double angle, Paint ink, Color bodyColor) {
+  void _renderFootstepsDecoration(Canvas canvas, Offset pos, double r,
+      double angle, Paint ink, Color bodyColor) {
     final rear = angle + math.pi;
     final nozzle = pos + Offset(math.cos(rear) * r, math.sin(rear) * r);
     canvas.drawCircle(

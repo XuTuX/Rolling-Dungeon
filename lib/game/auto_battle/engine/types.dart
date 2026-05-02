@@ -1,3 +1,9 @@
+import 'dart:math' as math;
+
+import '../models/damage_event_snapshot.dart';
+import '../models/game_snapshot.dart';
+import '../models/player_snapshot.dart';
+
 class Vec2 {
   double x;
   double y;
@@ -149,21 +155,44 @@ class PlayerData {
         bulletReflectCount: bulletReflectCount,
         bulletsPerWeapon: bulletsPerWeapon,
         regen: regen,
-        kills: kills,
-        score: gold.toInt(), // mapping gold to score for UI
-        gold: gold,
-        totalGold: totalGold,
-        radius: radius,
-        pos: pos,
-        vel: vel,
-        alive: alive,
+        lifesteal: lifesteal,
         barrierHp: barrierHp,
         barrierMaxHp: barrierMaxHp,
-        activeEffects: activeEffects
-            .map((e) => ActiveEffect(
+        gold: gold,
+        totalGold: totalGold,
+        unspentUpgrades: pendingUpgradeCount,
+        upgradeChoices: upgradeChoices
+            .map((e) => UpgradeOption(
                   type: e.type,
-                  value: e.value,
-                  endsAt: e.endsAt,
+                  rarity: e.rarity,
+                  title: e.title,
+                  description: e.description,
+                  statPreview: e.statPreview,
+                ))
+            .toList(),
+        kills: kills,
+        damageDealt: damageDealt,
+        damageTaken: damageTaken,
+        x: pos.x,
+        y: pos.y,
+        vx: vel.x,
+        vy: vel.y,
+        radius: radius,
+        color: color,
+        alive: alive,
+        lives: lives,
+        maxLives: maxLives,
+        ownedWeapons: ownedWeapons,
+        lastPoisonDropAt: lastPoisonDropAt,
+        lastShotAt: lastShotAt,
+        lastBladeAt: lastBladeAt,
+        lastMineDropAt: lastMineDropAt,
+        lastAttackAt: lastAttackAt,
+        targetAngle: targetAngle,
+        activeEffects: activeEffects
+            .map((e) => ActiveEffectSnapshot(
+                  type: e.type,
+                  expiresAt: e.expiresAt,
                 ))
             .toList(),
       );
@@ -195,9 +224,11 @@ class FoodData {
 
   FoodSnapshot toSnapshot() => FoodSnapshot(
         id: id,
-        type: kind,
-        pos: pos,
-        value: gold,
+        x: pos.x,
+        y: pos.y,
+        radius: radius,
+        gold: gold,
+        kind: kind,
       );
 }
 
@@ -225,13 +256,13 @@ class ProjectileData {
   ProjectileSnapshot toSnapshot() => ProjectileSnapshot(
         id: id,
         ownerId: ownerId,
-        type: 'bullet', // default type
-        pos: pos,
-        vel: vel,
+        x: pos.x,
+        y: pos.y,
+        vx: vel.x,
+        vy: vel.y,
         radius: radius,
-        damage: damageMult,
-        canReflect: reflectsRemaining > 0,
-        reflectCount: reflectsRemaining,
+        color: color,
+        reflectsRemaining: reflectsRemaining,
       );
 }
 
@@ -256,11 +287,12 @@ class HazardData {
 
   HazardSnapshot toSnapshot() => HazardSnapshot(
         id: id,
+        ownerId: ownerId,
         type: type,
-        pos: pos,
+        x: pos.x,
+        y: pos.y,
         radius: radius,
-        damagePerSec: 10, // default
-        endsAt: expiresAt,
+        expiresAt: expiresAt,
       );
 }
 
@@ -289,13 +321,17 @@ class AttackEffectData {
     this.scale = 1.0,
   });
 
-  AttackEffectSnapshot toSnapshot() => AttackEffectSnapshot(
+  AttackSnapshot toSnapshot() => AttackSnapshot(
         id: id,
+        ownerId: ownerId,
         type: type,
-        pos: pos,
+        x: pos.x,
+        y: pos.y,
         radius: radius,
-        color: '#FFFFFF', // default
-        endsAt: createdAt + durationMs,
+        angle: angle,
+        createdAt: createdAt,
+        durationMs: durationMs,
+        scale: scale,
       );
 }
 
@@ -317,12 +353,11 @@ class DamageEvent {
   });
 
   DamageEventSnapshot toSnapshot() => DamageEventSnapshot(
-        id: 'dmg_${DateTime.now().microsecondsSinceEpoch}',
-        targetId: victimId,
-        pos: Vec2(x: x, y: y),
-        amount: damage,
-        isPlayer: isPlayer,
-        timestamp: DateTime.now().millisecondsSinceEpoch,
+        victimId: victimId,
+        damage: damage,
+        x: x,
+        y: y,
+        isCritical: isCritical,
       );
 }
 
@@ -341,7 +376,8 @@ class ObstacleData {
 
   ObstacleSnapshot toSnapshot() => ObstacleSnapshot(
         id: id,
-        pos: pos,
+        x: pos.x,
+        y: pos.y,
         radius: radius,
         rotation: rotation,
       );
