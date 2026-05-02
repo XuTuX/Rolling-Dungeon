@@ -202,6 +202,51 @@ class PlayerBallComponent extends PositionComponent {
       Paint()..color = Colors.white.withValues(alpha: alive ? 0.20 : 0.08),
     );
 
+    // ── Eyes and Mouth (Sketchy Style) ──
+    if (alive) {
+      final eyeSize = ballRadius * 0.16;
+      final eyeOffset = ballRadius * 0.35;
+      final isHurt = _hitFlash > 0.5;
+      final eyeY = -ballRadius * 0.12;
+
+      final inkPaint = Paint()
+        ..color = Colors.black
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4 * (ballRadius / 18).clamp(0.8, 1.2)
+        ..strokeCap = StrokeCap.round;
+
+      if (isHurt) {
+        // X Eyes
+        for (final xOff in [eyeOffset, -eyeOffset]) {
+          canvas.drawLine(
+            Offset(xOff - eyeSize * 0.8, eyeY - eyeSize * 0.8),
+            Offset(xOff + eyeSize * 0.8, eyeY + eyeSize * 0.8),
+            inkPaint,
+          );
+          canvas.drawLine(
+            Offset(xOff + eyeSize * 0.8, eyeY - eyeSize * 0.8),
+            Offset(xOff - eyeSize * 0.8, eyeY + eyeSize * 0.8),
+            inkPaint,
+          );
+        }
+        // O Mouth
+        canvas.drawCircle(Offset(0, ballRadius * 0.25), ballRadius * 0.15, inkPaint);
+      } else {
+        // Normal Eyes
+        canvas.drawCircle(Offset(eyeOffset, eyeY), eyeSize, Paint()..color = Colors.black);
+        canvas.drawCircle(Offset(eyeOffset + eyeSize * 0.3, eyeY - eyeSize * 0.3), eyeSize * 0.3, Paint()..color = Colors.white);
+        
+        canvas.drawCircle(Offset(-eyeOffset, eyeY), eyeSize, Paint()..color = Colors.black);
+        canvas.drawCircle(Offset(-eyeOffset + eyeSize * 0.3, eyeY - eyeSize * 0.3), eyeSize * 0.3, Paint()..color = Colors.white);
+
+        // Smile
+        final mouthPath = Path()
+          ..moveTo(-ballRadius * 0.22, ballRadius * 0.22)
+          ..quadraticBezierTo(0, ballRadius * 0.42, ballRadius * 0.22, ballRadius * 0.22);
+        canvas.drawPath(mouthPath, inkPaint);
+      }
+    }
+
     canvas.drawCircle(
       Offset.zero,
       ballRadius,

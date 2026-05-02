@@ -20,7 +20,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 2, vsync: this);
+    _tabCtrl = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -155,6 +155,17 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
+                              Icon(Icons.upgrade, size: 18),
+                              SizedBox(width: 6),
+                              Text('강화'),
+                            ],
+                          ),
+                        ),
+                        Tab(
+                          height: 44,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
                               Icon(Icons.emoji_events, size: 18),
                               SizedBox(width: 6),
                               Text('업적'),
@@ -173,6 +184,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                     controller: _tabCtrl,
                     children: [
                       _WeaponShopTab(ctrl: ctrl),
+                      _StatUpgradeTab(ctrl: ctrl),
                       _AchievementTab(ctrl: ctrl),
                     ],
                   ),
@@ -406,6 +418,113 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
 // ─────────────────────────────────────────────
 //  Achievement Tab
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+//  Stat Upgrade Tab
+// ─────────────────────────────────────────────
+class _StatUpgradeTab extends StatelessWidget {
+  final MetaProgressController ctrl;
+  const _StatUpgradeTab({required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: kAllStatUpgrades.length,
+      itemBuilder: (context, index) {
+        final def = kAllStatUpgrades[index];
+        return Obx(() {
+          final level = ctrl.getStatLevel(def.statType);
+          final cost = ctrl.getUpgradeCost(def.statType);
+          final canAfford = ctrl.currency.value >= cost;
+
+          return Container(
+            margin: const EdgeInsets.bottom(16),
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AutoBattlePalette.ink, width: 3),
+              boxShadow: const [
+                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
+              ],
+            ),
+            child: Row(
+              children: [
+                // Icon
+                Container(
+                  width: 50,
+                  height: 50,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
+                    color: AutoBattlePalette.background,
+                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                  ),
+                  child: Text(def.icon, style: const TextStyle(fontSize: 24)),
+                ),
+                const SizedBox(width: 16),
+                // Info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '${def.title} (Lv.$level)',
+                        style: const TextStyle(
+                          color: AutoBattlePalette.ink,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        def.description,
+                        style: TextStyle(
+                          color: AutoBattlePalette.text3,
+                          fontSize: 12,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 12),
+                // Upgrade Button
+                _SketchButton(
+                  onTap: () {
+                    ctrl.upgradeStat(def.statType);
+                  },
+                  width: 80,
+                  height: 44,
+                  color: canAfford ? AutoBattlePalette.gold : Colors.grey[300],
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text(
+                        '강화',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        '💎 $cost',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          );
+        });
+      },
+    );
+  }
+}
+
 class _AchievementTab extends StatelessWidget {
   final MetaProgressController ctrl;
   const _AchievementTab({required this.ctrl});

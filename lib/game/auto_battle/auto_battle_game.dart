@@ -29,21 +29,14 @@ class AutoBattleGame extends FlameGame {
   }
 
   void applySnapshot(GameSnapshot snapshot) {
-    // Detect Damage for Popups
-    for (final p in snapshot.players) {
-      final prev = _prevHp[p.id];
-      if (prev != null && p.hp < prev) {
-        final diff = (prev - p.hp).toInt();
-        if (diff > 0) {
-          _damageNumbers.add(_DamageNumber(
-            pos: Offset(p.x, p.y - 20),
-            value: diff,
-            color: p.flutterColor,
-          ));
-          _shakeIntensity = 5.0;
-        }
-      }
-      _prevHp[p.id] = p.hp;
+    // Process Damage Events from Engine
+    for (final e in snapshot.damageEvents) {
+      _damageNumbers.add(_DamageNumber(
+        pos: Offset(e.pos.x, e.pos.y - 15),
+        value: e.amount.toInt(),
+        color: e.isPlayer ? const Color(0xFFFF5252) : const Color(0xFFFFD54F),
+      ));
+      if (e.isPlayer) _shakeIntensity = 6.0;
     }
 
     _snapshot = snapshot;
@@ -305,6 +298,33 @@ class AutoBattleGame extends FlameGame {
             ..strokeWidth = 2);
     }
 
+    for (final obs in _snapshot!.obstacles) {
+      final pos = _toScreen(obs.x, obs.y);
+      final r = obs.radius * _arenaScale;
+      canvas.save();
+      canvas.translate(pos.dx, pos.dy);
+      canvas.rotate(obs.rotation);
+
+      final path = Path();
+      path.moveTo(-r, -r * 0.8);
+      path.lineTo(-r * 0.7, -r);
+      path.lineTo(r * 0.8, -r * 0.9);
+      path.lineTo(r, -r * 0.2);
+      path.lineTo(r * 0.9, r * 0.8);
+      path.lineTo(r * 0.2, r);
+      path.lineTo(-r * 0.9, r * 0.7);
+      path.close();
+
+      canvas.drawPath(path, Paint()..color = const Color(0xFFD7CCC8));
+      canvas.drawPath(
+          path,
+          Paint()
+            ..color = AutoBattlePalette.ink
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 2.5);
+      canvas.restore();
+    }
+
     for (final p in _snapshot!.players) {
       if (!p.alive) continue;
       final pos = _toScreen(p.x, p.y);
@@ -324,7 +344,7 @@ class AutoBattleGame extends FlameGame {
             ..style = PaintingStyle.stroke
             ..strokeWidth = 3);
 
-      // Face (Sketch Style)
+      // Face (Reactive Sketch Style)
       final cx = pos.dx;
       final cy = pos.dy;
       canvas.drawCircle(
@@ -332,18 +352,40 @@ class AutoBattleGame extends FlameGame {
         r * 0.35,
         Paint()..color = Colors.white.withValues(alpha: 0.3),
       );
+
+      final prevHp = _prevHp[p.id] ?? p.hp;
+      final isHurt = p.hp < prevHp;
+      _prevHp[p.id] = p.hp;
+
       final eyeY = cy - r * 0.12;
       final eyeSpacing = r * 0.28;
       final eyeR = r * 0.14;
-      for (final dx in [-eyeSpacing, eyeSpacing]) {
-        canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = Colors.white);
-        canvas.drawCircle(Offset(cx + dx + 1.5, eyeY + 1), eyeR * 0.55, Paint()..color = AutoBattlePalette.ink);
-        canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2);
+
+      if (isHurt) {
+        // X Eyes
+        final inkPaint = Paint()
+          ..color = AutoBattlePalette.ink
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.5
+          ..strokeCap = StrokeCap.round;
+        for (final dx in [-eyeSpacing, eyeSpacing]) {
+          canvas.drawLine(Offset(cx + dx - eyeR, eyeY - eyeR), Offset(cx + dx + eyeR, eyeY + eyeR), inkPaint);
+          canvas.drawLine(Offset(cx + dx + eyeR, eyeY - eyeR), Offset(cx + dx - eyeR, eyeY + eyeR), inkPaint);
+        }
+        // O Mouth
+        canvas.drawCircle(Offset(cx, cy + r * 0.25), r * 0.15, inkPaint);
+      } else {
+        // Normal Face
+        for (final dx in [-eyeSpacing, eyeSpacing]) {
+          canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = Colors.white);
+          canvas.drawCircle(Offset(cx + dx + 1.5, eyeY + 1), eyeR * 0.55, Paint()..color = AutoBattlePalette.ink);
+          canvas.drawCircle(Offset(cx + dx, eyeY), eyeR, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2);
+        }
+        final mouthPath = Path();
+        mouthPath.moveTo(cx - r * 0.15, cy + r * 0.22);
+        mouthPath.quadraticBezierTo(cx, cy + r * 0.38, cx + r * 0.15, cy + r * 0.22);
+        canvas.drawPath(mouthPath, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
       }
-      final mouthPath = Path();
-      mouthPath.moveTo(cx - r * 0.15, cy + r * 0.22);
-      mouthPath.quadraticBezierTo(cx, cy + r * 0.38, cx + r * 0.15, cy + r * 0.22);
-      canvas.drawPath(mouthPath, Paint()..color = AutoBattlePalette.ink..style = PaintingStyle.stroke..strokeWidth = 2.5..strokeCap = StrokeCap.round);
 
       if (p.shield > 0) {
         final shieldRatio =
@@ -631,7 +673,7 @@ class AutoBattleGame extends FlameGame {
         text: TextSpan(
           text: '${d.value}',
           style: TextStyle(
-            color: Colors.white,
+            color: d.color,
             fontSize: 28 * _arenaScale * (1 + (1 - d.life) * 0.5),
             fontWeight: FontWeight.w900,
             shadows: const [

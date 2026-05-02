@@ -1,3 +1,4 @@
+import 'package:circle_war/game/auto_battle/models/damage_event_snapshot.dart';
 import 'package:circle_war/game/auto_battle/models/player_snapshot.dart';
 
 class GameSnapshot {
@@ -14,6 +15,8 @@ class GameSnapshot {
   final List<ProjectileSnapshot> projectiles;
   final List<HazardSnapshot> hazards;
   final List<AttackSnapshot> attacks;
+  final List<DamageEventSnapshot> damageEvents;
+  final List<ObstacleSnapshot> obstacles;
 
   // ── Cycle System ──
   final int currentCycle;
@@ -35,6 +38,8 @@ class GameSnapshot {
     required this.projectiles,
     required this.hazards,
     required this.attacks,
+    this.damageEvents = const [],
+    this.obstacles = const [],
     this.currentCycle = 1,
     this.stageInCycle = 1,
     this.totalStageNumber = 1,
@@ -63,6 +68,38 @@ class GameSnapshot {
       projectiles: _parseList(json['projectiles'], ProjectileSnapshot.fromJson),
       hazards: _parseList(json['hazards'], HazardSnapshot.fromJson),
       attacks: _parseList(json['attacks'], AttackSnapshot.fromJson),
+      damageEvents: _parseList(json['damageEvents'], DamageEventSnapshot.fromJson),
+      obstacles: _parseList(json['obstacles'], ObstacleSnapshot.fromJson),
+      currentCycle: _asInt(json['currentCycle'], fallback: 1),
+      stageInCycle: _asInt(json['stageInCycle'], fallback: 1),
+      totalStageNumber: _asInt(json['totalStageNumber'], fallback: 1),
+      isBossStage: json['isBossStage'] == true,
+    );
+  }
+}
+
+class ObstacleSnapshot {
+  final String id;
+  final double x;
+  final double y;
+  final double radius;
+  final double rotation;
+
+  const ObstacleSnapshot({
+    required this.id,
+    required this.x,
+    required this.y,
+    required this.radius,
+    required this.rotation,
+  });
+
+  factory ObstacleSnapshot.fromJson(Map<String, dynamic> json) {
+    return ObstacleSnapshot(
+      id: json['id']?.toString() ?? '',
+      x: _asDouble(json['x']),
+      y: _asDouble(json['y']),
+      radius: _asDouble(json['radius'], fallback: 20),
+      rotation: _asDouble(json['rotation']),
     );
   }
 }

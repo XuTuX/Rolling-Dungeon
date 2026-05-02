@@ -15,6 +15,8 @@ class GameEngine {
   final List<HazardData> hazards = [];
   final List<AttackEffectData> attacks = [];
   final List<PlayerData> pendingSpawns = [];
+  final List<DamageEvent> _damageEvents = [];
+  final List<ObstacleData> obstacles = [];
 
   Timer? timer;
   int lastTickAt = DateTime.now().millisecondsSinceEpoch;
@@ -55,6 +57,32 @@ class GameEngine {
           : initialPlayer.barrierHp;
     players.add(initialPlayer);
     _spawnEnemiesForStage(currentStage);
+    _spawnObstacles();
+  }
+
+  void _spawnObstacles() {
+    obstacles.clear();
+    if (isBossStage) return;
+
+    final count = math.min(3, 1 + currentCycle ~/ 2);
+    for (int i = 0; i < count; i++) {
+      for (int attempt = 0; attempt < 10; attempt++) {
+        final pos = Vec2(
+          x: 100 + _rand.nextDouble() * (ARENA_WIDTH - 200),
+          y: 100 + _rand.nextDouble() * (ARENA_HEIGHT - 200),
+        );
+        final tooClose = players.any((p) => distance(p.pos, pos) < 100);
+        if (!tooClose) {
+          obstacles.add(ObstacleData(
+            id: _nextId('obs'),
+            pos: pos,
+            radius: 15 + _rand.nextDouble() * 15,
+            rotation: _rand.nextDouble() * math.pi * 2,
+          ));
+          break;
+        }
+      }
+    }
   }
 
   void start() {
@@ -74,12 +102,13 @@ class GameEngine {
     timer = null;
   }
 
-  void revivePlayer() {
+  void revivePlayer(int newLives) {
     final p1 = _getPlayer('p1');
     if (p1 == null) return;
 
     p1.alive = true;
     p1.hp = p1.maxHp;
+    p1.lives = newLives;
     // Reset position to safe area
     p1.pos = Vec2(x: ARENA_WIDTH * 0.15, y: ARENA_HEIGHT * 0.5);
     p1.vel = normalize(Vec2(x: 1, y: 0));
@@ -150,29 +179,76 @@ class GameEngine {
       }
       updatePosition(player, dt);
       handleWallCollision(player);
+      _handleObstacleCollision(player);
+    }
+  }
+
+  void _handleObstacleCollision(PlayerData player) {
+    for (final obs in obstacles) {
+      final dist = distance(player.pos, obs.pos);
+      final min = player.radius + obs.radius;
+      if (dist < min) {
+        final overlap = min - dist;
+        final nx = (player.pos.x - obs.pos.x) / dist;
+        final ny = (player.pos.y - obs.pos.y) / dist;
+        player.pos.x += nx * overlap;
+        player.pos.y += ny * overlap;
+
+        final dot = player.vel.x * nx + player.vel.y * ny;
+        if (dot < 0) {
+          player.vel.x -= 2 * dot * nx;
+          player.vel.y -= 2 * dot * ny;
+          player.vel = normalize(player.vel);
+        }
+      }
     }
   }
 
   void _updateEnemyMovement(PlayerData player, int now) {
     if (!player.isEnemy) return;
-    if (player.enemyAbility != 'dash') return;
+    final target = _getPlayer('p1');
+    if (target == null || !target.alive) return;
 
-    final inDashWindow = now - player.lastAbilityAt < DASH_ENEMY_DURATION_MS;
-    if (now - player.lastAbilityAt >= DASH_ENEMY_INTERVAL_MS) {
-      final target = _getPlayer('p1');
-      player.lastAbilityAt = now;
-      if (target != null && target.alive) {
-        player.vel = normalize(Vec2(
-          x: target.pos.x - player.pos.x,
-          y: target.pos.y - player.pos.y,
+    final dist = distance(player.pos, target.pos);
+    var targetVel = normalize(Vec2(
+      x: target.pos.x - player.pos.x,
+      y: target.pos.y - player.pos.y,
+    ));
+
+    if (player.enemyAbility == 'dash') {
+      final inDashWindow = now - player.lastAbilityAt < DASH_ENEMY_DURATION_MS;
+      if (now - player.lastAbilityAt >= DASH_ENEMY_INTERVAL_MS) {
+        player.lastAbilityAt = now;
+        player.vel = targetVel;
+      }
+      player.speed = ENEMY_BASE_SPEED * (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
+    } else if (player.enemyAbility == 'shoot') {
+      if (dist < 130) {
+        // Retreat
+        targetVel = normalize(Vec2(
+          x: player.pos.x - target.pos.x,
+          y: player.pos.y - target.pos.y,
         ));
+      } else if (dist < 190) {
+        // Circle
+        final angle = math.atan2(player.pos.y - target.pos.y, player.pos.x - target.pos.x) + 0.04;
+        player.pos.x = target.pos.x + math.cos(angle) * dist;
+        player.pos.y = target.pos.y + math.sin(angle) * dist;
+        targetVel = Vec2(x: 0, y: 0);
       }
     }
+
+    if (targetVel.x != 0 || targetVel.y != 0) {
+      player.vel.x = player.vel.x * 0.85 + targetVel.x * 0.15;
+      player.vel.y = player.vel.y * 0.85 + targetVel.y * 0.15;
+      player.vel = normalize(player.vel);
+    }
+
     final stageSpeedMult =
         1 + math.max(0, currentStage - 1) * ENEMY_STAGE_SPEED_GROWTH;
-    player.speed = ENEMY_BASE_SPEED *
-        stageSpeedMult *
-        (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
+    if (player.enemyAbility != 'dash') {
+      player.speed = ENEMY_BASE_SPEED * stageSpeedMult;
+    }
   }
 
   void _handleCollisions(int now) {
@@ -995,6 +1071,16 @@ class GameEngine {
     final actual = prev - defender.hp;
     attacker.damageDealt += actual;
     defender.damageTaken += actual + shieldAbsorb;
+
+    // ── Record Damage Event for UI ──
+    _damageEvents.add(DamageEvent(
+      targetId: defender.id,
+      pos: Vec2(x: defender.pos.x, y: defender.pos.y),
+      amount: actual + shieldAbsorb,
+      isPlayer: !defender.isEnemy,
+      timestamp: DateTime.now().millisecondsSinceEpoch,
+    ));
+
     if (attacker.lifesteal > 0 && actual > 0) {
       attacker.hp =
           math.min(attacker.maxHp, attacker.hp + actual * attacker.lifesteal);
@@ -1105,115 +1191,18 @@ class GameEngine {
       winnerId: winnerId,
       roundEndsAt: roundEndsAt,
       aliveCount: players.where((p) => p.alive).length,
-      players: players
-          .map((p) => PlayerSnapshot(
-                id: p.id,
-                characterType: p.characterType,
-                isEnemy: p.isEnemy,
-                hp: p.hp,
-                maxHp: p.maxHp,
-                atk: p.atk,
-                def: p.def,
-                speed: p.speed,
-                abilityPower: p.abilityPower,
-                shield: p.shield,
-                maxShield: p.maxShield,
-                weaponLevel: p.weaponLevel,
-                weaponCount: p.weaponCount,
-                bulletReflectCount: p.bulletReflectCount,
-                bulletsPerWeapon: p.bulletsPerWeapon,
-                regen: p.regen,
-                lifesteal: p.lifesteal,
-                barrierHp: p.barrierHp,
-                barrierMaxHp: p.barrierMaxHp,
-                gold: p.gold,
-                totalGold: p.totalGold,
-                unspentUpgrades: p.pendingUpgradeCount,
-                upgradeChoices: p.upgradeChoices
-                    .map((u) => UpgradeOption(
-                          type: u.type,
-                          rarity: u.rarity,
-                          title: u.title,
-                          description: u.description,
-                          statPreview: u.statPreview,
-                        ))
-                    .toList(),
-                kills: p.kills,
-                damageDealt: p.damageDealt.roundToDouble(),
-                damageTaken: p.damageTaken.roundToDouble(),
-                x: p.pos.x,
-                y: p.pos.y,
-                vx: p.vel.x,
-                vy: p.vel.y,
-                radius: p.radius,
-                color: p.color,
-                alive: p.alive,
-                lives: p.lives,
-                maxLives: p.maxLives,
-                ownedWeapons: p.ownedWeapons,
-                lastPoisonDropAt: p.lastPoisonDropAt,
-                lastShotAt: p.lastShotAt,
-                lastBladeAt: p.lastBladeAt,
-                lastMineDropAt: p.lastMineDropAt,
-                lastAttackAt: p.lastAttackAt,
-                targetAngle: p.targetAngle,
-                activeEffects: p.activeEffects
-                    .map((e) => ActiveEffectSnapshot(
-                          type: e.type,
-                          expiresAt: e.expiresAt,
-                        ))
-                    .toList(),
-              ))
-          .toList(),
-      foods: foods
-          .map((f) => FoodSnapshot(
-                id: f.id,
-                x: f.pos.x,
-                y: f.pos.y,
-                radius: f.radius,
-                gold: f.gold,
-                kind: f.kind,
-              ))
-          .toList(),
-      projectiles: projectiles
-          .map((p) => ProjectileSnapshot(
-                id: p.id,
-                ownerId: p.ownerId,
-                x: p.pos.x,
-                y: p.pos.y,
-                vx: p.vel.x,
-                vy: p.vel.y,
-                radius: p.radius,
-                color: p.color,
-                reflectsRemaining: p.reflectsRemaining,
-              ))
-          .toList(),
-      hazards: hazards
-          .map((h) => HazardSnapshot(
-                id: h.id,
-                ownerId: h.ownerId,
-                type: h.type,
-                x: h.pos.x,
-                y: h.pos.y,
-                radius: h.radius,
-                expiresAt: h.expiresAt,
-              ))
-          .toList(),
-      attacks: attacks
-          .map((a) => AttackSnapshot(
-                id: a.id,
-                ownerId: a.ownerId,
-                type: a.type,
-                x: a.pos.x,
-                y: a.pos.y,
-                radius: a.radius,
-                angle: a.angle,
-                createdAt: a.createdAt,
-                durationMs: a.durationMs,
-                scale: a.scale,
-              ))
-          .toList(),
+      players: players.map((p) => p.toSnapshot()).toList(),
+      foods: foods.map((f) => f.toSnapshot()).toList(),
+      projectiles: projectiles.map((p) => p.toSnapshot()).toList(),
+      hazards: hazards.map((h) => h.toSnapshot()).toList(),
+      attacks: attacks.map((a) => a.toSnapshot()).toList(),
+      obstacles: obstacles.map((o) => o.toSnapshot()).toList(),
+      damageEvents: _damageEvents.map((e) => e.toSnapshot()).toList(),
     );
+
+    // Clear events after broadcasting so they only appear once
+    _damageEvents.clear();
+
     onUpdate(snapshot);
   }
 }

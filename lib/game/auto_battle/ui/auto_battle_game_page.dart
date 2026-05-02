@@ -106,15 +106,21 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       })
       ..onGameUpdate((s) {
         if (!mounted || _navigating) return;
-        final me = s.players
-            .cast<PlayerSnapshot?>()
-            .firstWhere((p) => p?.id == 'p1', orElse: () => null);
-        if (me != null) {
-          controller.playerCurrentHp.value = me.hp;
-          controller.gold.value = me.gold.round();
-          controller.playerShield.value = me.shield;
-          controller.playerBarrierHp.value = me.barrierHp;
-        }
+
+        // Perform Rx updates in a post-frame callback to avoid "setState() called during build" errors
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted || _navigating) return;
+          final me = s.players
+              .cast<PlayerSnapshot?>()
+              .firstWhere((p) => p?.id == 'p1', orElse: () => null);
+          if (me != null) {
+            controller.playerCurrentHp.value = me.hp;
+            controller.gold.value = me.gold.round();
+            controller.playerShield.value = me.shield;
+            controller.playerBarrierHp.value = me.barrierHp;
+          }
+        });
+
         setState(() => _snapshot = s);
         _game.applySnapshot(s);
         _handleTerminalSnapshot(s, controller);
@@ -131,24 +137,25 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
     final dead = snapshot.roundState == 'gameover';
     if (!win && !dead) return;
 
-    // Track run stats from snapshot
     final me = snapshot.players
         .cast<PlayerSnapshot?>()
         .firstWhere((p) => p?.id == 'p1', orElse: () => null);
-    if (me != null) {
-      controller.runEnemiesKilled.value = me.kills;
-      controller.runDamageDealt.value = me.damageDealt;
-    }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _navigating) return;
+
+      // Update terminal stats safely inside post-frame
+      if (me != null) {
+        controller.runEnemiesKilled.value = me.kills;
+        controller.runDamageDealt.value = me.damageDealt;
+      }
 
       if (win) {
         // Always go to upgrade select (game is infinite, never "final")
         _stopAndNavigate(() => const UpgradeSelectScreen());
       } else if (dead && controller.lives.value > 1) {
         controller.loseLife();
-        _localService.revivePlayer();
+        _localService.revivePlayer(controller.lives.value);
       } else {
         // Game over — go to run results
         _stopAndNavigate(() => const RunResultsScreen(), offAll: true);
@@ -428,37 +435,40 @@ class _SketchTopBar extends StatelessWidget {
                   ),
                 ),
                 // Lives
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 4 : 6,
-                    vertical: compact ? 5 : 6,
-                  ),
-                  decoration: const BoxDecoration(
-                    color: Colors.white,
-                    border: Border(
-                      top: BorderSide(color: AutoBattlePalette.ink, width: 2),
-                      bottom:
-                          BorderSide(color: AutoBattlePalette.ink, width: 2),
-                      right: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                Obx(() {
+                  final lives = Get.find<GameProgressController>().lives.value;
+                  return Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 4 : 6,
+                      vertical: compact ? 5 : 6,
                     ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: List.generate(3, (i) {
-                      final hasLife = myPlayer != null && i < myPlayer!.lives;
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 0.5),
-                        child: Icon(
-                          hasLife ? Icons.favorite : Icons.favorite_border,
-                          color: hasLife
-                              ? AutoBattlePalette.primary
-                              : AutoBattlePalette.ink.withValues(alpha: 0.2),
-                          size: compact ? 12 : 14,
-                        ),
-                      );
-                    }),
-                  ),
-                ),
+                    decoration: const BoxDecoration(
+                      color: Colors.white,
+                      border: Border(
+                        top: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                        bottom:
+                            BorderSide(color: AutoBattlePalette.ink, width: 2),
+                        right: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: List.generate(3, (i) {
+                        final hasLife = i < lives;
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 0.5),
+                          child: Icon(
+                            hasLife ? Icons.favorite : Icons.favorite_border,
+                            color: hasLife
+                                ? AutoBattlePalette.primary
+                                : AutoBattlePalette.ink.withValues(alpha: 0.2),
+                            size: compact ? 12 : 14,
+                          ),
+                        );
+                      }),
+                    ),
+                  );
+                }),
               ],
             ),
           ),

@@ -20,6 +20,9 @@ class MetaProgressData {
   /// Weapon upgrade levels: weapon_id → level.
   Map<String, int> weaponLevels;
 
+  /// Permanent stat upgrade levels: stat_type → level.
+  Map<String, int> statLevels;
+
   // ── Cumulative stats (for achievement tracking) ──
   int totalEnemiesKilled;
   int totalBossesDefeated;
@@ -35,6 +38,7 @@ class MetaProgressData {
     this.equippedWeapon = 'gunner',
     Map<String, bool>? achievements,
     Map<String, int>? weaponLevels,
+    Map<String, int>? statLevels,
     this.totalEnemiesKilled = 0,
     this.totalBossesDefeated = 0,
     this.totalDamageDealt = 0,
@@ -44,7 +48,8 @@ class MetaProgressData {
   })  : unlockedWeapons = unlockedWeapons ?? ['gunner'],
         unlockedSkills = unlockedSkills ?? [],
         achievements = achievements ?? {},
-        weaponLevels = weaponLevels ?? {};
+        weaponLevels = weaponLevels ?? {},
+        statLevels = statLevels ?? {};
 
   /// Serialize to JSON-compatible map.
   Map<String, dynamic> toJson() => {
@@ -54,6 +59,7 @@ class MetaProgressData {
         'equippedWeapon': equippedWeapon,
         'achievements': achievements,
         'weaponLevels': weaponLevels,
+        'statLevels': statLevels,
         'totalEnemiesKilled': totalEnemiesKilled,
         'totalBossesDefeated': totalBossesDefeated,
         'totalDamageDealt': totalDamageDealt,
@@ -80,6 +86,10 @@ class MetaProgressData {
           ) ??
           {},
       weaponLevels: (json['weaponLevels'] as Map?)?.map(
+            (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+          ) ??
+          {},
+      statLevels: (json['statLevels'] as Map?)?.map(
             (k, v) => MapEntry(k.toString(), (v as num).toInt()),
           ) ??
           {},

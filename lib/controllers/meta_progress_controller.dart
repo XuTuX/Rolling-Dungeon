@@ -107,6 +107,60 @@ const List<WeaponShopDef> kAllShopWeapons = [
   ),
 ];
 
+/// Stat upgrade definition for the meta shop.
+class StatShopDef {
+  final String id;
+  final String statType;
+  final String title;
+  final String description;
+  final int basePrice;
+  final String icon;
+
+  const StatShopDef({
+    required this.id,
+    required this.statType,
+    required this.title,
+    required this.description,
+    required this.basePrice,
+    required this.icon,
+  });
+}
+
+const List<StatShopDef> kAllStatUpgrades = [
+  StatShopDef(
+    id: 'hp',
+    statType: 'hp',
+    title: '최대 체력',
+    description: '공의 최대 체력을 영구적으로 증가시킵니다.',
+    basePrice: 50,
+    icon: '❤️',
+  ),
+  StatShopDef(
+    id: 'atk',
+    statType: 'atk',
+    title: '공격력',
+    description: '모든 무기의 기본 공격력을 영구적으로 증가시킵니다.',
+    basePrice: 60,
+    icon: '⚔️',
+  ),
+  StatShopDef(
+    id: 'spd',
+    statType: 'speed',
+    title: '이동 속도',
+    description: '공의 이동 속도를 영구적으로 증가시킵니다.',
+    basePrice: 80,
+    icon: '👟',
+  ),
+  StatShopDef(
+    id: 'regen',
+    statType: 'regen',
+    title: '자동 회복',
+    description: '초당 체력 회복량을 영구적으로 증가시킵니다.',
+    basePrice: 100,
+    icon: '🧪',
+  ),
+];
+
 /// Controller for persistent meta-progression (shop, achievements, currency).
 /// This persists across runs and app restarts.
 class MetaProgressController extends GetxController {
@@ -117,6 +171,7 @@ class MetaProgressController extends GetxController {
   final equippedWeapon = 'gunner'.obs;
   final achievements = <String, bool>{}.obs;
   final weaponLevels = <String, int>{}.obs;
+  final statLevels = <String, int>{}.obs;
   final totalEnemiesKilled = 0.obs;
   final totalBossesDefeated = 0.obs;
   final totalDamageDealt = 0.0.obs;
@@ -149,6 +204,7 @@ class MetaProgressController extends GetxController {
     equippedWeapon.value = data.equippedWeapon;
     achievements.value = Map<String, bool>.from(data.achievements);
     weaponLevels.value = Map<String, int>.from(data.weaponLevels);
+    statLevels.value = Map<String, int>.from(data.statLevels);
     totalEnemiesKilled.value = data.totalEnemiesKilled;
     totalBossesDefeated.value = data.totalBossesDefeated;
     totalDamageDealt.value = data.totalDamageDealt;
@@ -171,6 +227,7 @@ class MetaProgressController extends GetxController {
       equippedWeapon: equippedWeapon.value,
       achievements: Map<String, bool>.from(achievements),
       weaponLevels: Map<String, int>.from(weaponLevels),
+      statLevels: Map<String, int>.from(statLevels),
       totalEnemiesKilled: totalEnemiesKilled.value,
       totalBossesDefeated: totalBossesDefeated.value,
       totalDamageDealt: totalDamageDealt.value,
@@ -223,6 +280,29 @@ class MetaProgressController extends GetxController {
     currency.value -= cost;
     final currentLevel = getWeaponLevel(weapon.weaponType);
     weaponLevels[weapon.weaponType] = currentLevel + 1;
+    saveToDisk();
+    return true;
+  }
+
+  // ──────────────────────────────────────────
+  //  Shop: Upgrade Stat
+  // ──────────────────────────────────────────
+  int getStatLevel(String statType) {
+    return statLevels[statType] ?? 0;
+  }
+
+  int getStatUpgradeCost(StatShopDef stat) {
+    final level = getStatLevel(stat.statType);
+    return stat.basePrice + (level * (stat.basePrice ~/ 1.5).round());
+  }
+
+  bool upgradeStat(StatShopDef stat) {
+    final cost = getStatUpgradeCost(stat);
+    if (currency.value < cost) return false;
+
+    currency.value -= cost;
+    final currentLevel = getStatLevel(stat.statType);
+    statLevels[stat.statType] = currentLevel + 1;
     saveToDisk();
     return true;
   }

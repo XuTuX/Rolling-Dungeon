@@ -40,8 +40,8 @@ class LocalGameService {
     _onConnectionChanged?.call(false);
   }
 
-  void revivePlayer() {
-    _engine?.revivePlayer();
+  void revivePlayer(int newLives) {
+    _engine?.revivePlayer(newLives);
   }
 
   void onGameUpdate(Function(GameSnapshot) callback) {
