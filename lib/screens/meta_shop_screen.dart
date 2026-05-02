@@ -41,7 +41,6 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
                 // ── Sidebar Navigation ──
                 Container(
                   width: isCompact ? 100 : 120,
-                  padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 16),
                   decoration: const BoxDecoration(
                     border: Border(
                       right: BorderSide(color: AutoBattlePalette.ink, width: 4),
@@ -49,37 +48,47 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
                   ),
                   child: Column(
                     children: [
-                      _SidebarIconButton(
-                        onTap: () => Get.back(),
-                        icon: Icons.arrow_back,
-                        color: AutoBattlePalette.ink,
-                        size: isCompact ? 44 : 54,
-                      ),
-                      SizedBox(height: isCompact ? 12 : 24),
-                      
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: List.generate(_tabs.length, (index) {
-                            final tab = _tabs[index];
-                            final isSelected = _currentTab == index;
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 10),
-                              child: _SidebarTabButton(
-                                isSelected: isSelected,
-                                icon: tab.icon,
-                                label: tab.title,
-                                accentColor: tab.color,
-                                onTap: () => setState(() => _currentTab = index),
-                                isCompact: isCompact,
-                              ),
-                            );
-                          }),
+                      Padding(
+                        padding: EdgeInsets.only(top: isCompact ? 8 : 16),
+                        child: _SidebarIconButton(
+                          onTap: () => Get.back(),
+                          icon: Icons.arrow_back,
+                          color: AutoBattlePalette.ink,
+                          size: isCompact ? 40 : 54,
                         ),
                       ),
                       
-                      Obx(() => _CurrencyBox(amount: ctrl.currency.value, isCompact: isCompact)),
-                      const SizedBox(height: 8),
+                      Expanded(
+                        child: SingleChildScrollView(
+                          physics: const BouncingScrollPhysics(),
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: List.generate(_tabs.length, (index) {
+                                final tab = _tabs[index];
+                                final isSelected = _currentTab == index;
+                                return Padding(
+                                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 8),
+                                  child: _SidebarTabButton(
+                                    isSelected: isSelected,
+                                    icon: tab.icon,
+                                    label: tab.title,
+                                    accentColor: tab.color,
+                                    onTap: () => setState(() => _currentTab = index),
+                                    isCompact: isCompact,
+                                  ),
+                                );
+                              }),
+                            ),
+                          ),
+                        ),
+                      ),
+                      
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 8),
+                        child: Obx(() => _CurrencyBox(amount: ctrl.currency.value, isCompact: isCompact)),
+                      ),
                     ],
                   ),
                 ),
@@ -189,27 +198,29 @@ class _SidebarTabButton extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 14),
+        width: double.infinity,
+        padding: EdgeInsets.symmetric(vertical: isCompact ? 10 : 16),
         decoration: BoxDecoration(
           color: isSelected ? accentColor : Colors.white,
-          border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
+          border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2.5 : 3),
           boxShadow: isSelected
               ? null
               : [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4))],
         ),
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
               color: isSelected ? Colors.white : AutoBattlePalette.ink,
-              size: isCompact ? 24 : 32,
+              size: isCompact ? 28 : 32,
             ),
-            const SizedBox(height: 4),
+            const SizedBox(height: 6),
             Text(
               label,
               style: TextStyle(
                 color: isSelected ? Colors.white : AutoBattlePalette.ink,
-                fontSize: isCompact ? 10 : 13,
+                fontSize: isCompact ? 11 : 13,
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -228,26 +239,35 @@ class _CurrencyBox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 16, vertical: isCompact ? 4 : 8),
+      width: double.infinity,
+      margin: const EdgeInsets.symmetric(horizontal: 8),
+      padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 12),
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
+        border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
         boxShadow: [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4)),
+          BoxShadow(
+            color: AutoBattlePalette.ink, 
+            offset: Offset(isCompact ? 2 : 3, isCompact ? 2 : 3)
+          ),
         ],
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text('💎', style: TextStyle(fontSize: isCompact ? 14 : 20)),
-          SizedBox(width: isCompact ? 4 : 10),
-          Text(
-            amount.toString(),
-            style: TextStyle(
-              color: AutoBattlePalette.ink,
-              fontSize: isCompact ? 14 : 18,
-              fontWeight: FontWeight.w900,
-              letterSpacing: 0.5,
+          Text('💎', style: TextStyle(fontSize: isCompact ? 14 : 18)),
+          const SizedBox(width: 6),
+          Flexible(
+            child: FittedBox(
+              fit: BoxFit.scaleDown,
+              child: Text(
+                amount.toString(),
+                style: TextStyle(
+                  color: AutoBattlePalette.ink,
+                  fontSize: isCompact ? 14 : 18,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
             ),
           ),
         ],
@@ -308,11 +328,11 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
                     const SizedBox(height: 12),
                     Expanded(
                       child: GridView.builder(
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
+                        physics: const BouncingScrollPhysics(),
+                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                          crossAxisCount: widget.isCompact ? 3 : 2,
+                          crossAxisSpacing: 8,
+                          mainAxisSpacing: 8,
                           childAspectRatio: 1,
                         ),
                         itemCount: kAllCharacters.length,
@@ -324,12 +344,13 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
 
                           return GestureDetector(
                             onTap: () => setState(() => _selectedIndex = i),
-                            child: Container(
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
                               decoration: BoxDecoration(
-                                color: viewing ? const Color(0xFFF1F5F9) : Colors.white,
+                                color: viewing ? AutoBattlePalette.surfaceLight : Colors.white,
                                 border: Border.all(
                                   color: viewing ? AutoBattlePalette.primary : AutoBattlePalette.ink,
-                                  width: viewing ? 4 : 2.5,
+                                  width: viewing ? 3 : 2,
                                 ),
                                 boxShadow: viewing ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
                               ),
@@ -338,7 +359,7 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
                                   Center(
                                     child: CharacterBallPreview(
                                       info: charDisplayInfoMap[char.shape] ?? charDisplayInfoMap['circle']!,
-                                      size: widget.isCompact ? 36 : 44,
+                                      size: widget.isCompact ? 32 : 44,
                                     ),
                                   ),
                                   if (active)
@@ -347,13 +368,13 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
                                       child: Container(
                                         padding: const EdgeInsets.all(2),
                                         decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle),
-                                        child: const Icon(Icons.check, color: Colors.white, size: 10),
+                                        child: const Icon(Icons.check, color: Colors.white, size: 8),
                                       ),
                                     ),
                                   if (!unlocked)
                                     Container(
-                                      color: Colors.black.withValues(alpha: 0.1),
-                                      child: const Center(child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 18)),
+                                      color: Colors.black.withValues(alpha: 0.05),
+                                      child: const Center(child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 16)),
                                     ),
                                 ],
                               ),
@@ -371,15 +392,15 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
             Expanded(
               flex: 3,
               child: Container(
-                padding: EdgeInsets.all(widget.isCompact ? 12 : 20),
+                padding: EdgeInsets.all(widget.isCompact ? 10 : 20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
                       children: [
                         Container(
-                          width: widget.isCompact ? 60 : 80,
-                          height: widget.isCompact ? 60 : 80,
+                          width: widget.isCompact ? 50 : 80,
+                          height: widget.isCompact ? 50 : 80,
                           decoration: BoxDecoration(
                             color: AutoBattlePalette.surfaceLight,
                             border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
@@ -387,7 +408,7 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
                           child: Center(
                             child: CharacterBallPreview(
                               info: charDisplayInfoMap[selected.shape] ?? charDisplayInfoMap['circle']!,
-                              size: widget.isCompact ? 70 : 100,
+                              size: widget.isCompact ? 40 : 100,
                             ),
                           ),
                         ),
@@ -400,7 +421,7 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
                                 selected.title,
                                 style: TextStyle(
                                   color: AutoBattlePalette.ink,
-                                  fontSize: widget.isCompact ? 20 : 24,
+                                  fontSize: widget.isCompact ? 18 : 24,
                                   fontWeight: FontWeight.w900,
                                 ),
                               ),
@@ -421,27 +442,37 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 12),
-                    const Divider(color: AutoBattlePalette.ink, thickness: 2),
                     const SizedBox(height: 8),
-                    // Removed selected.description as requested
-                    const Spacer(),
-                    Container(
-                      padding: const EdgeInsets.all(10),
-                      decoration: BoxDecoration(
-                        color: AutoBattlePalette.background.withValues(alpha: 0.5),
-                        border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                      ),
-                      child: Column(
-                        children: [
-                          _StatBonusRow(label: 'HP', value: selected.hpBonus, icon: Icons.favorite, color: Colors.red, isCompact: widget.isCompact),
-                          _StatBonusRow(label: 'ATK', value: selected.atkBonus, icon: Icons.bolt, color: Colors.orange, isCompact: widget.isCompact),
-                          _StatBonusRow(label: 'DEF', value: selected.defBonus, icon: Icons.shield, color: Colors.blue, isCompact: widget.isCompact),
-                          _StatBonusRow(label: 'SPD', value: selected.speedBonus, icon: Icons.speed, color: Colors.green, isCompact: widget.isCompact),
-                        ],
+                    const Divider(color: AutoBattlePalette.ink, thickness: 2),
+                    
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          children: [
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.all(10),
+                              decoration: BoxDecoration(
+                                color: AutoBattlePalette.background.withValues(alpha: 0.5),
+                                border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+                              ),
+                              child: Column(
+                                children: [
+                                  _StatBonusRow(label: 'HP', value: selected.hpBonus, icon: Icons.favorite, color: Colors.red, isCompact: widget.isCompact),
+                                  _StatBonusRow(label: 'ATK', value: selected.atkBonus, icon: Icons.bolt, color: Colors.orange, isCompact: widget.isCompact),
+                                  _StatBonusRow(label: 'DEF', value: selected.defBonus, icon: Icons.shield, color: Colors.blue, isCompact: widget.isCompact),
+                                  _StatBonusRow(label: 'SPD', value: selected.speedBonus, icon: Icons.speed, color: Colors.green, isCompact: widget.isCompact),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 16),
+
+                    const SizedBox(height: 8),
                     _SketchButton(
                       onTap: isUnlocked 
                         ? (isSelected ? null : () => ctrl.selectCharacter(selected.id))
@@ -528,93 +559,106 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
       grouped.putIfAbsent(equipment.slot, () => []).add(equipment);
     }
 
-    return Obx(() {
-      final items = grouped[_selectedSlot] ?? const <EquipmentShopDef>[];
-      
-      return _ShopPage(
-        isCompact: widget.isCompact,
-        child: Row(
-          children: [
-            // ── Sub-nav ──
-            Container(
-              width: widget.isCompact ? 90 : 110,
-              decoration: const BoxDecoration(
-                border: Border(right: BorderSide(color: AutoBattlePalette.ink, width: 2)),
-              ),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: kEquipmentSlotLabels.entries.map((slotEntry) {
-                  final isSelected = _selectedSlot == slotEntry.key;
-                  final equipped = widget.ctrl.equippedDefForSlot(slotEntry.key);
-                  
-                  return GestureDetector(
-                    onTap: () => setState(() => _selectedSlot = slotEntry.key),
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
-                      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 4),
-                      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
-                      decoration: BoxDecoration(
-                        color: isSelected ? AutoBattlePalette.secondary : Colors.white,
-                        border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                        boxShadow: isSelected ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            slotEntry.value.split('/')[0],
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: isSelected ? Colors.white : AutoBattlePalette.ink,
-                              fontSize: widget.isCompact ? 10 : 12,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          if (equipped != null) ...[
-                            const SizedBox(height: 2),
-                            Text(equipped.icon, style: TextStyle(fontSize: widget.isCompact ? 14 : 16)),
-                          ],
-                        ],
-                      ),
-                    ),
-                  );
-                }).toList(),
-              ),
+    return _ShopPage(
+      isCompact: widget.isCompact,
+      child: Column(
+        children: [
+          // ── Horizontal Sub-nav (Top) ──
+          Container(
+            height: widget.isCompact ? 44 : 52,
+            decoration: const BoxDecoration(
+              border: Border(bottom: BorderSide(color: AutoBattlePalette.ink, width: 2)),
             ),
-            
-            // ── Item Grid (Fixed 2x2) ──
-            Expanded(
-              child: Padding(
-                padding: const EdgeInsets.all(12),
-                child: Column(
-                  children: [
-                    Expanded(
-                      child: Row(
-                        children: [
-                          if (items.isNotEmpty) Expanded(child: _buildItemCard(items[0])),
-                          const SizedBox(width: 12),
-                          if (items.length > 1) Expanded(child: _buildItemCard(items[1])),
-                        ],
+            child: ListView.builder(
+              scrollDirection: Axis.horizontal,
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              itemCount: kEquipmentSlotLabels.length,
+              itemBuilder: (context, index) {
+                final slotKey = kEquipmentSlotLabels.keys.elementAt(index);
+                final slotLabel = kEquipmentSlotLabels[slotKey]!;
+                final isSelected = _selectedSlot == slotKey;
+                return GestureDetector(
+                  onTap: () => setState(() => _selectedSlot = slotKey),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: isSelected ? AutoBattlePalette.secondary : Colors.white,
+                      border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                      boxShadow: isSelected ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
+                    ),
+                    child: Center(
+                      child: Text(
+                        slotLabel.split('/')[0],
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : AutoBattlePalette.ink,
+                          fontSize: widget.isCompact ? 11 : 13,
+                          fontWeight: FontWeight.w900,
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    Expanded(
-                      child: Row(
-                        children: [
-                          if (items.length > 2) Expanded(child: _buildItemCard(items[2])),
-                          const SizedBox(width: 12),
-                          if (items.length > 3) Expanded(child: _buildItemCard(items[3])),
-                        ],
-                      ),
-                    ),
-                  ],
+                  ),
+                );
+              },
+            ),
+          ),
+          
+          // ── Item Grid ──
+          Expanded(
+            child: Obx(() {
+              // Accessing Rx variables here ensures Obx always has a listener
+              final unlockedCount = widget.ctrl.unlockedEquipment.length;
+              final currentCurrency = widget.ctrl.currency.value;
+              
+              final items = grouped[_selectedSlot] ?? const <EquipmentShopDef>[];
+              
+              if (items.isEmpty) {
+                return const Center(
+                  child: Text(
+                    '항목이 없습니다.',
+                    style: TextStyle(color: AutoBattlePalette.inkSubtle, fontWeight: FontWeight.w900),
+                  ),
+                );
+              }
+
+              return GridView.builder(
+                padding: const EdgeInsets.all(8),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 8,
+                  mainAxisSpacing: 8,
+                  mainAxisExtent: widget.isCompact ? 96 : 124,
                 ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+                itemCount: items.length,
+                itemBuilder: (context, index) {
+                  final equipment = items[index];
+                  final unlocked = widget.ctrl.unlockedEquipment.contains(equipment.id);
+                  final isEquipped = widget.ctrl.equippedEquipment[equipment.slot] == equipment.id;
+                  final canAfford = currentCurrency >= equipment.price;
+                  
+                  return _EquipmentCard(
+                    equipment: equipment,
+                    unlocked: unlocked,
+                    equipped: isEquipped,
+                    canAfford: canAfford,
+                    ctrl: widget.ctrl,
+                    isCompact: widget.isCompact,
+                    onTap: () {
+                      if (unlocked) {
+                        widget.ctrl.equipEquipment(equipment);
+                      } else {
+                        widget.ctrl.buyEquipment(equipment);
+                      }
+                    },
+                  );
+                },
+              );
+            }),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildItemCard(EquipmentShopDef equipment) {
@@ -674,125 +718,68 @@ class _EquipmentCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 2 : 3),
-        boxShadow: [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4)),
+        border: Border.all(color: AutoBattlePalette.ink, width: 2),
+        boxShadow: const [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
         ],
       ),
-      child: Column(
+      child: Row(
         children: [
-          // Header / Icon
+          // Left: Icon
+          Container(
+            width: isCompact ? 50 : 60,
+            decoration: const BoxDecoration(
+              color: AutoBattlePalette.surfaceLight,
+              border: Border(right: BorderSide(color: AutoBattlePalette.ink, width: 1.5)),
+            ),
+            child: Center(
+              child: Text(equipment.icon, style: TextStyle(fontSize: isCompact ? 24 : 32)),
+            ),
+          ),
+          
+          // Right: Content
           Expanded(
-            child: Container(
-              width: double.infinity,
-              decoration: const BoxDecoration(
-                color: AutoBattlePalette.surfaceLight,
-                border: Border(
-                  bottom: BorderSide(color: AutoBattlePalette.ink, width: 2),
-                ),
-              ),
-              child: Stack(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Center(
-                    child: Hero(
-                      tag: 'eq_${equipment.id}',
-                      child: Text(
-                        equipment.icon, 
-                        style: TextStyle(fontSize: isCompact ? 32 : 44)
+                  Column(
+                    children: [
+                      Text(
+                        equipment.title,
+                        style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 10 : 12, fontWeight: FontWeight.w900),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
+                      Text(
+                        equipment.statSummary,
+                        style: TextStyle(color: accentColor, fontSize: 8, fontWeight: FontWeight.w900),
+                      ),
+                    ],
+                  ),
+                  
+                  _SketchButton(
+                    onTap: equipped ? null : onTap,
+                    height: isCompact ? 24 : 28,
+                    color: buttonColor,
+                    isCompact: true,
+                    child: Text(
+                      !unlocked ? '💎${equipment.price}' : (equipped ? 'EQUIPPED' : 'SELECT'),
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w900),
                     ),
                   ),
-                  if (equipped)
-                    Positioned(
-                      top: 6,
-                      left: 6,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFF4CAF50),
-                          border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                        ),
-                        child: const Text(
-                          'EQUIPPED', 
-                          style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.w900)
-                        ),
-                      ),
+
+                  if (unlocked && equipment.weaponType != null)
+                    _EquipmentUpgradeRow(
+                      equipment: equipment, 
+                      ctrl: ctrl, 
+                      isCompact: isCompact
                     ),
                 ],
               ),
             ),
           ),
-          
-          // Info Area
-          Padding(
-            padding: EdgeInsets.all(isCompact ? 6.0 : 10.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                Text(
-                  equipment.title,
-                  style: TextStyle(
-                    color: AutoBattlePalette.ink, 
-                    fontSize: isCompact ? 12 : 14, 
-                    fontWeight: FontWeight.w900
-                  ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 2),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Text(
-                    equipment.statSummary,
-                    style: TextStyle(
-                      color: accentColor, 
-                      fontSize: 10, 
-                      fontWeight: FontWeight.w900
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                _SketchButton(
-                  onTap: equipped ? null : onTap,
-                  height: isCompact ? 32 : 38,
-                  color: buttonColor,
-                  isCompact: isCompact,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      if (!unlocked) ...[
-                        Text('💎 ', style: TextStyle(fontSize: isCompact ? 10 : 12)),
-                        Text(
-                          '${equipment.price} BUY',
-                          style: TextStyle(color: Colors.white, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900),
-                        ),
-                      ] else ...[
-                        Text(
-                          equipped ? 'EQUIPPED' : 'SELECT',
-                          style: TextStyle(color: Colors.white, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          
-          // Upgrade Row for Weapons
-          if (unlocked && equipment.weaponType != null)
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 0, 10, 10),
-              child: _EquipmentUpgradeRow(
-                equipment: equipment, 
-                ctrl: ctrl, 
-                isCompact: isCompact
-              ),
-            ),
         ],
       ),
     );
@@ -835,21 +822,22 @@ class _StatUpgradeTab extends StatelessWidget {
               decoration: BoxDecoration(
                 color: Colors.white,
                 border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
+                boxShadow: [
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 2 : 3, isCompact ? 2 : 3)),
                 ],
               ),
               child: Row(
                 children: [
                   Container(
-                    width: isCompact ? 32 : 44,
-                    height: isCompact ? 32 : 44,
+                    width: isCompact ? 36 : 48,
+                    height: isCompact ? 36 : 48,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
-                      color: AutoBattlePalette.background,
+                      color: AutoBattlePalette.surfaceLight,
                       border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+                      shape: BoxShape.circle,
                     ),
-                    child: Text(def.icon, style: TextStyle(fontSize: isCompact ? 16 : 20)),
+                    child: Text(def.icon, style: TextStyle(fontSize: isCompact ? 18 : 24)),
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -858,10 +846,14 @@ class _StatUpgradeTab extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          '${def.title} (Lv.$level)',
-                          style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 12 : 14, fontWeight: FontWeight.w900),
+                          def.title,
+                          style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
+                        ),
+                        Text(
+                          'LV.$level',
+                          style: TextStyle(color: AutoBattlePalette.inkSubtle, fontSize: isCompact ? 9 : 11, fontWeight: FontWeight.w700),
                         ),
                       ],
                     ),
@@ -869,15 +861,15 @@ class _StatUpgradeTab extends StatelessWidget {
                   const SizedBox(width: 8),
                   _SketchButton(
                     onTap: () => ctrl.upgradeStat(def),
-                    width: isCompact ? 60 : 70,
-                    height: isCompact ? 38 : 46,
+                    width: isCompact ? 54 : 64,
+                    height: isCompact ? 36 : 44,
                     isCompact: isCompact,
                     color: canAfford ? AutoBattlePalette.gold : const Color(0xFFE5E7EB),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Text('UP', style: TextStyle(color: Colors.white, fontSize: isCompact ? 10 : 11, fontWeight: FontWeight.w900)),
-                        Text('💎$cost', style: TextStyle(color: Colors.white, fontSize: isCompact ? 8 : 9, fontWeight: FontWeight.w700)),
+                        Text('UP', style: TextStyle(color: Colors.white, fontSize: isCompact ? 9 : 11, fontWeight: FontWeight.w900)),
+                        Text('💎$cost', style: TextStyle(color: Colors.white, fontSize: isCompact ? 8 : 10, fontWeight: FontWeight.w700)),
                       ],
                     ),
                   ),
@@ -1007,51 +999,49 @@ class _EquipmentUpgradeRow extends StatelessWidget {
   Widget build(BuildContext context) {
     if (equipment.weaponType == null) return const SizedBox.shrink();
 
-    return Obx(() {
-      final level = ctrl.getWeaponLevel(equipment.weaponType!);
-      final cost = ctrl.getWeaponUpgradeCost(equipment.weaponType!);
-      final canAfford = ctrl.currency.value >= cost;
+    final level = ctrl.getWeaponLevel(equipment.weaponType!);
+    final cost = ctrl.getWeaponUpgradeCost(equipment.weaponType!);
+    final canAfford = ctrl.currency.value >= cost;
 
-      return Container(
-        padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 8 : 12, 
-          vertical: isCompact ? 4 : 8
-        ),
-        margin: const EdgeInsets.only(top: 4),
-        decoration: BoxDecoration(
-          color: AutoBattlePalette.background.withValues(alpha: 0.5),
-          borderRadius: BorderRadius.circular(4),
-        ),
-        child: Row(
-          children: [
-            Text(
-              'LV.$level 강화',
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: isCompact ? 6 : 10, 
+        vertical: isCompact ? 3 : 6
+      ),
+      margin: const EdgeInsets.only(top: 2),
+      decoration: BoxDecoration(
+        color: AutoBattlePalette.background.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: Row(
+        children: [
+          Text(
+            'LV.$level 강화',
+            style: TextStyle(
+              color: AutoBattlePalette.ink,
+              fontSize: isCompact ? 8.5 : 10.5,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          const Spacer(),
+          _SketchButton(
+            onTap: canAfford ? () => ctrl.upgradeWeapon(equipment.weaponType!) : null,
+            width: isCompact ? 56 : 64,
+            height: isCompact ? 24 : 30,
+            isCompact: true,
+            color: canAfford ? AutoBattlePalette.primary : Colors.grey,
+            child: Text(
+              '💎$cost',
               style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: isCompact ? 9 : 11,
-                fontWeight: FontWeight.w800,
+                color: Colors.white,
+                fontSize: isCompact ? 8 : 10,
+                fontWeight: FontWeight.w900,
               ),
             ),
-            const Spacer(),
-            _SketchButton(
-              onTap: canAfford ? () => ctrl.upgradeWeapon(equipment.weaponType!) : null,
-              width: isCompact ? 60 : 70,
-              height: isCompact ? 28 : 34,
-              isCompact: true,
-              color: canAfford ? AutoBattlePalette.primary : Colors.grey,
-              child: Text(
-                '💎$cost',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 9 : 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ),
-          ],
-        ),
-      );
-    });
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -1180,33 +1170,36 @@ class _ShopHeader extends StatelessWidget {
     return Container(
       padding: EdgeInsets.symmetric(
         horizontal: isCompact ? 12 : 24, 
-        vertical: isCompact ? 12 : 20
+        vertical: isCompact ? 10 : 20
       ),
       child: Row(
         children: [
-          Container(
-            padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? 16 : 24, 
-              vertical: isCompact ? 8 : 12
-            ),
-            decoration: BoxDecoration(
-              color: AutoBattlePalette.primary,
-              border: Border.all(color: AutoBattlePalette.ink, width: 3),
-              boxShadow: const [
-                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
-              ],
-            ),
-            child: Text(
-              title,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isCompact ? 18 : 24,
-                fontWeight: FontWeight.w900,
+          Transform.rotate(
+            angle: -0.02, // Slight tilt for sketchy look
+            child: Container(
+              padding: EdgeInsets.symmetric(
+                horizontal: isCompact ? 16 : 24, 
+                vertical: isCompact ? 6 : 12
+              ),
+              decoration: BoxDecoration(
+                color: AutoBattlePalette.primary,
+                border: Border.all(color: AutoBattlePalette.ink, width: 3),
+                boxShadow: const [
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+                ],
+              ),
+              child: Text(
+                title,
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: isCompact ? 18 : 24,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.2,
+                ),
               ),
             ),
           ),
           const Spacer(),
-          // Optional "Tape" effect on the title
         ],
       ),
     );
@@ -1222,26 +1215,51 @@ class _ShopPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 3),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(6, 6)),
-        ],
-      ),
-      child: Stack(
-        children: [
-          // Subtle notebook lines
-          Positioned.fill(
-            child: Opacity(
-              opacity: 0.1,
-              child: CustomPaint(painter: _NotebookLinesPainter()),
+    return Stack(
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AutoBattlePalette.ink, width: 3),
+            boxShadow: const [
+              BoxShadow(color: AutoBattlePalette.ink, offset: Offset(5, 5)),
+            ],
+          ),
+          child: Stack(
+            children: [
+              // Subtle notebook lines
+              Positioned.fill(
+                child: Opacity(
+                  opacity: 0.1,
+                  child: CustomPaint(painter: _NotebookLinesPainter()),
+                ),
+              ),
+              child,
+            ],
+          ),
+        ),
+        
+        // Decorative "Tape" effect
+        Positioned(
+          top: -10,
+          left: 40,
+          child: Transform.rotate(
+            angle: -0.1,
+            child: Container(
+              width: 50,
+              height: 20,
+              decoration: BoxDecoration(
+                color: const Color(0xAAFFFFFF),
+                border: Border.all(color: AutoBattlePalette.ink.withValues(alpha: 0.1), width: 1),
+                boxShadow: [
+                  BoxShadow(color: Colors.black.withValues(alpha: 0.05), offset: const Offset(1, 1)),
+                ],
+              ),
             ),
           ),
-          child,
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
