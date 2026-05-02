@@ -402,8 +402,6 @@ class MetaProgressController extends GetxController {
   /// Load persistent data from SharedPreferences.
   Future<void> loadFromDisk() async {
     final data = await PersistenceService.loadMeta();
-    // For simulation/testing: force currency to 10000
-    currency.value = 10000;
     
     unlockedCharacters.value = _normalizedUnlockedCharacters(data.unlockedCharacters);
     selectedCharacter.value = unlockedCharacters.contains(data.selectedCharacter)

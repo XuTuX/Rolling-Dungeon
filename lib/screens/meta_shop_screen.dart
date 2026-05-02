@@ -1,6 +1,5 @@
 import 'package:circle_war/controllers/meta_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
-import 'package:circle_war/game/auto_battle/models/achievement_data.dart';
 import 'package:circle_war/game/auto_battle/ui/character_display.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -21,7 +20,6 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
     _ShopTabDef(title: '캐릭터', icon: Icons.person, color: AutoBattlePalette.primary),
     _ShopTabDef(title: '무기/장비', icon: Icons.shopping_bag, color: AutoBattlePalette.secondary),
     _ShopTabDef(title: '능력치', icon: Icons.upgrade, color: AutoBattlePalette.gold),
-    _ShopTabDef(title: '업적', icon: Icons.emoji_events, color: const Color(0xFF7C3AED)),
   ];
 
   @override
@@ -128,7 +126,6 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
       case 0: return _CharacterShopTab(key: const ValueKey(0), ctrl: ctrl, isCompact: isCompact);
       case 1: return _EquipmentShopTab(key: const ValueKey(1), ctrl: ctrl, isCompact: isCompact);
       case 2: return _StatUpgradeTab(key: const ValueKey(2), ctrl: ctrl, isCompact: isCompact);
-      case 3: return _AchievementTab(key: const ValueKey(3), ctrl: ctrl, isCompact: isCompact);
       default: return const SizedBox.shrink();
     }
   }
@@ -787,9 +784,6 @@ class _EquipmentCard extends StatelessWidget {
 }
 
 // ─────────────────────────────────────────────
-//  Achievement Tab
-// ─────────────────────────────────────────────
-// ─────────────────────────────────────────────
 //  Stat Upgrade Tab
 // ─────────────────────────────────────────────
 class _StatUpgradeTab extends StatelessWidget {
@@ -883,104 +877,6 @@ class _StatUpgradeTab extends StatelessWidget {
   }
 }
 
-class _AchievementTab extends StatelessWidget {
-  final MetaProgressController ctrl;
-  final bool isCompact;
-  const _AchievementTab({super.key, required this.ctrl, required this.isCompact});
-
-  static const _categoryInfo = <String, _AchCategoryInfo>{
-    'kill': _AchCategoryInfo(title: '처치', icon: Icons.my_location, color: AutoBattlePalette.primary),
-    'stage': _AchCategoryInfo(title: '탐험', icon: Icons.explore, color: AutoBattlePalette.secondary),
-    'boss': _AchCategoryInfo(title: '보스', icon: Icons.shield, color: Color(0xFF7C3AED)),
-    'damage': _AchCategoryInfo(title: '피해', icon: Icons.whatshot, color: AutoBattlePalette.gold),
-  };
-
-  @override
-  Widget build(BuildContext context) {
-    return _ShopPage(
-      isCompact: isCompact,
-      child: Obx(() {
-        final completedCount = kAllAchievements.where((a) => ctrl.achievements[a.id] == true).length;
-        final earnedReward = kAllAchievements.where((a) => ctrl.achievements[a.id] == true).fold<int>(0, (sum, a) => sum + a.currencyReward);
-        final totalReward = kAllAchievements.fold<int>(0, (sum, a) => sum + a.currencyReward);
-
-        final grouped = <String, List<AchievementDef>>{};
-        for (final a in kAllAchievements) {
-          grouped.putIfAbsent(a.category, () => []).add(a);
-        }
-
-        return Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: AutoBattlePalette.background,
-                  border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                ),
-                child: Row(
-                  children: [
-                    Icon(Icons.emoji_events, color: AutoBattlePalette.gold, size: isCompact ? 14 : 18),
-                    const SizedBox(width: 8),
-                    Text('PROGRESS: $completedCount / ${kAllAchievements.length}', style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 11 : 13, fontWeight: FontWeight.w900)),
-                    const Spacer(),
-                    Text('💎 $earnedReward / $totalReward', style: TextStyle(color: AutoBattlePalette.inkSubtle, fontSize: isCompact ? 10 : 12, fontWeight: FontWeight.w800)),
-                  ],
-                ),
-              ),
-            ),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
-                children: grouped.entries.map((entry) {
-                  final info = _categoryInfo[entry.key];
-                  final achievements = entry.value;
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Padding(
-                        padding: const EdgeInsets.only(left: 4, bottom: 8),
-                        child: Text(
-                          info?.title ?? entry.key,
-                          style: TextStyle(color: info?.color ?? AutoBattlePalette.ink, fontSize: 16, fontWeight: FontWeight.w900),
-                        ),
-                      ),
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                          crossAxisCount: 2,
-                          crossAxisSpacing: 10,
-                          mainAxisSpacing: 10,
-                          mainAxisExtent: isCompact ? 48 : 64,
-                        ),
-                        itemCount: achievements.length,
-                        itemBuilder: (context, i) {
-                          final ach = achievements[i];
-                          final done = ctrl.achievements[ach.id] == true;
-                          return _AchievementRow(
-                            achievement: ach,
-                            completed: done,
-                            accentColor: info?.color ?? AutoBattlePalette.ink,
-                            isCompact: isCompact,
-                          );
-                        },
-                      ),
-                      const SizedBox(height: 24),
-                    ],
-                  );
-                }).toList(),
-              ),
-            ),
-          ],
-        );
-      }),
-    );
-  }
-}
-
 // ─────────────────────────────────────────────
 //  Equipment Upgrade Row (Inside Equipment Tab for Weapons)
 // ─────────────────────────────────────────────
@@ -1045,120 +941,7 @@ class _EquipmentUpgradeRow extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Achievement Row
-// ─────────────────────────────────────────────
-class _AchievementRow extends StatelessWidget {
-  final AchievementDef achievement;
-  final bool completed;
-  final Color accentColor;
-  final bool isCompact;
 
-  const _AchievementRow({
-    required this.achievement,
-    required this.completed,
-    required this.accentColor,
-    required this.isCompact,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: isCompact ? 8 : 12, vertical: isCompact ? 6 : 10),
-      decoration: BoxDecoration(
-        color: completed
-            ? accentColor.withValues(alpha: 0.06)
-            : Colors.transparent,
-        border: Border(
-          bottom: BorderSide(
-            color: AutoBattlePalette.ink.withValues(alpha: 0.08),
-            width: isCompact ? 0.5 : 1,
-          ),
-        ),
-      ),
-      child: Row(
-        children: [
-          // Status icon
-          Container(
-            width: isCompact ? 18 : 24,
-            height: isCompact ? 18 : 24,
-            decoration: BoxDecoration(
-              color: completed
-                  ? accentColor
-                  : AutoBattlePalette.ink.withValues(alpha: 0.06),
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: completed
-                    ? accentColor
-                    : AutoBattlePalette.ink.withValues(alpha: 0.2),
-                width: isCompact ? 1.5 : 2,
-              ),
-            ),
-            child: completed
-                ? Icon(Icons.check, color: Colors.white, size: isCompact ? 10 : 14)
-                : null,
-          ),
-          const SizedBox(width: 10),
-
-          // Title + Description
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  achievement.title,
-                  style: TextStyle(
-                    color: completed
-                        ? AutoBattlePalette.inkSubtle
-                        : AutoBattlePalette.ink,
-                    fontSize: isCompact ? 11 : 13,
-                    fontWeight: FontWeight.w900,
-                    decoration: completed ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                if (!isCompact) ...[
-                  const SizedBox(height: 1),
-                  Text(
-                    achievement.description,
-                    style: const TextStyle(
-                      color: AutoBattlePalette.text3,
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-
-          // Reward badge
-          Container(
-            padding: EdgeInsets.symmetric(horizontal: isCompact ? 4 : 8, vertical: isCompact ? 2 : 4),
-            decoration: BoxDecoration(
-              color: completed
-                  ? accentColor.withValues(alpha: 0.15)
-                  : const Color(0xFFF3F4F6),
-              border: Border.all(
-                color: completed
-                    ? accentColor
-                    : AutoBattlePalette.ink.withValues(alpha: 0.15),
-                width: isCompact ? 1 : 1.5,
-              ),
-            ),
-            child: Text(
-              '💎 ${achievement.currencyReward}',
-              style: TextStyle(
-                color: completed ? accentColor : AutoBattlePalette.text3,
-                fontSize: isCompact ? 9 : 11,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
 
 class _ShopHeader extends StatelessWidget {
   final String title;
@@ -1334,17 +1117,6 @@ class _SketchButtonState extends State<_SketchButton> {
 // ─────────────────────────────────────────────
 //  Achievement Category Info
 // ─────────────────────────────────────────────
-class _AchCategoryInfo {
-  final String title;
-  final IconData icon;
-  final Color color;
-
-  const _AchCategoryInfo({
-    required this.title,
-    required this.icon,
-    required this.color,
-  });
-}
 
 // ─────────────────────────────────────────────
 //  Shop Background Painter

@@ -61,8 +61,8 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       totalGold: controller.gold.value.toDouble(),
       pendingUpgradeCount: 0,
       upgradeChoices: [],
-      kills: 0,
-      damageDealt: 0,
+      kills: controller.runEnemiesKilled.value,
+      damageDealt: controller.runDamageDealt.value,
       damageTaken: 0,
       pos: Vec2(x: 250, y: 250),
       vel: normalize(Vec2(x: 1, y: 0.1)),
@@ -74,7 +74,9 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         controller.characterType.value,
       }.toList(),
       weaponLevels: metaController.weaponLevels,
-      color: '#4F8CFF',
+      color: controller.characterType.value == 'circle' ? '#F87171' : 
+             controller.characterType.value == 'square' ? '#3B82F6' :
+             controller.characterType.value == 'triangle' ? '#EAB308' : '#4F8CFF',
       alive: true,
       lives: controller.lives.value,
       maxLives: 3,

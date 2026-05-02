@@ -177,7 +177,7 @@ class PlayerBallComponent extends PositionComponent {
     canvas.rotate(_facingAngle + math.pi / 2);
     canvas.scale(stretch, squash);
 
-    final bodyPath = _localTrianglePath(ballRadius);
+    final bodyPath = _getPathForType(characterType, ballRadius);
     canvas.drawPath(
       bodyPath.shift(Offset(0, ballRadius * 0.16)),
       Paint()..color = const Color(0xFF9DB5D3).withValues(alpha: 0.22),
@@ -360,6 +360,24 @@ class PlayerBallComponent extends PositionComponent {
       ..lineTo(radius * 0.96, radius * 0.76)
       ..lineTo(-radius * 0.96, radius * 0.76)
       ..close();
+  }
+
+  Path _getPathForType(String type, double radius) {
+    switch (type) {
+      case 'square':
+        return Path()
+          ..addRRect(RRect.fromRectAndRadius(
+            Rect.fromCenter(
+                center: Offset.zero, width: radius * 1.9, height: radius * 1.9),
+            const Radius.circular(4),
+          ));
+      case 'triangle':
+        return _localTrianglePath(radius);
+      case 'circle':
+      default:
+        return Path()
+          ..addOval(Rect.fromCircle(center: Offset.zero, radius: radius));
+    }
   }
 
   static double _directionFromVelocity(PlayerSnapshot snapshot) {
