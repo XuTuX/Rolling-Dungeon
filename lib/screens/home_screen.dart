@@ -168,12 +168,31 @@ class HomeScreen extends StatelessWidget {
                                         const SizedBox(height: 8),
                                         // Weapon count indicator
                                         Text(
-                                          '${idx + 1} / ${unlocked.length} 무기 보유',
+                                          '시작 무기 ${idx + 1} / ${unlocked.length}',
                                           style: const TextStyle(
                                             color: AutoBattlePalette.text3,
                                             fontSize: 11,
                                             fontWeight: FontWeight.w800,
                                           ),
+                                        ),
+                                        const SizedBox(height: 10),
+                                        Wrap(
+                                          alignment: WrapAlignment.center,
+                                          spacing: 6,
+                                          runSpacing: 6,
+                                          children: kEquipmentSlotLabels.keys
+                                              .map((slot) {
+                                            final equipment = metaCtrl
+                                                .equippedDefForSlot(slot);
+                                            return _LoadoutSlotChip(
+                                              label:
+                                                  kEquipmentSlotLabels[slot]!,
+                                              icon: equipment?.icon ?? '＋',
+                                              title:
+                                                  equipment?.title ?? '비어 있음',
+                                              equipped: equipment != null,
+                                            );
+                                          }).toList(),
                                         ),
                                       ],
                                     ),
@@ -195,7 +214,12 @@ class HomeScreen extends StatelessWidget {
                                     child: GestureDetector(
                                       onTap: () {
                                         runCtrl.startNewRun(
-                                            metaCtrl.equippedWeapon.value);
+                                          metaCtrl.equippedWeapon.value,
+                                          unlockedWeapons:
+                                              metaCtrl.unlockedWeapons,
+                                          equippedEquipment:
+                                              metaCtrl.equippedEquipment,
+                                        );
                                         Get.to(
                                             () => const AutoBattleGamePage());
                                       },
@@ -369,6 +393,70 @@ class _ArrowButton extends StatelessWidget {
           ],
         ),
         child: Icon(icon, color: AutoBattlePalette.ink, size: 24),
+      ),
+    );
+  }
+}
+
+class _LoadoutSlotChip extends StatelessWidget {
+  final String label;
+  final String icon;
+  final String title;
+  final bool equipped;
+
+  const _LoadoutSlotChip({
+    required this.label,
+    required this.icon,
+    required this.title,
+    required this.equipped,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: 112,
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
+      decoration: BoxDecoration(
+        color: equipped ? const Color(0xFFEFF6FF) : const Color(0xFFF8FAFC),
+        border: Border.all(
+          color:
+              equipped ? AutoBattlePalette.secondary : const Color(0xFFCBD5E1),
+          width: 2,
+        ),
+      ),
+      child: Row(
+        children: [
+          Text(icon, style: const TextStyle(fontSize: 15)),
+          const SizedBox(width: 5),
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AutoBattlePalette.text3,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                Text(
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: AutoBattlePalette.ink,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

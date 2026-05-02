@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'package:circle_war/controllers/meta_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:get/get.dart';
 
@@ -78,6 +79,8 @@ class GameProgressController extends GetxController {
   // ── Character Type ──
   // ── Character Type & Weapons ──
   var characterType = 'none'.obs; // 'gunner', 'blade', 'miner', 'poison'
+  final runUnlockedWeapons = <String>['gunner'].obs;
+  final activeEquipment = <String, EquipmentShopDef>{}.obs;
   final ownedWeapons = <String>[].obs;
   final shopItems = <ShopItem>[].obs;
 
@@ -90,7 +93,11 @@ class GameProgressController extends GetxController {
   // ───────────────────────────────────────────
   //  New Run
   // ───────────────────────────────────────────
-  void startNewRun(String selectedCharacter) {
+  void startNewRun(
+    String selectedCharacter, {
+    Iterable<String>? unlockedWeapons,
+    Map<String, String>? equippedEquipment,
+  }) {
     currentStage.value = 1;
     currentCycle.value = 1;
     stageInCycle.value = 1;
@@ -98,6 +105,7 @@ class GameProgressController extends GetxController {
     lives.value = 3;
     gold.value = 0;
     appliedUpgrades.clear();
+    activeEquipment.clear();
     ownedWeapons.clear();
     shopItems.clear();
 
@@ -106,8 +114,14 @@ class GameProgressController extends GetxController {
     runBossesDefeated.value = 0;
     runDamageDealt.value = 0;
 
-    characterType.value =
-        selectedCharacter == 'none' ? 'gunner' : selectedCharacter;
+    final unlockedSet = <String>{
+      'gunner',
+      ...?unlockedWeapons,
+    };
+    final selected = selectedCharacter == 'none' ? 'gunner' : selectedCharacter;
+    characterType.value = unlockedSet.contains(selected) ? selected : 'gunner';
+    runUnlockedWeapons.value = _orderedRunWeapons(unlockedSet);
+    activeEquipment.value = _resolvedEquipment(equippedEquipment ?? const {});
 
     playerMaxHp.value = PLAYER_BASE_HP;
     playerAtk.value = PLAYER_BASE_ATTACK;
@@ -115,7 +129,6 @@ class GameProgressController extends GetxController {
     playerSpd.value = PLAYER_BASE_SPEED;
     playerRadius.value = PLAYER_BASE_RADIUS;
 
-    playerCurrentHp.value = playerMaxHp.value;
     playerAbilityPower.value = 1.0;
     playerShield.value = 0;
     playerMaxShield.value = 0;
@@ -127,6 +140,8 @@ class GameProgressController extends GetxController {
     playerLifesteal.value = 0;
     playerBarrierHp.value = 0;
     playerBarrierMaxHp.value = 0;
+    _applyEquipmentLoadoutBonuses();
+    playerCurrentHp.value = playerMaxHp.value;
   }
 
   // ───────────────────────────────────────────
@@ -206,6 +221,15 @@ class GameProgressController extends GetxController {
       'defense_up',
       'barrier',
     ];
+    if (activeEquipment.containsKey('hand')) {
+      allTypes.add('hand_tune');
+    }
+    if (activeEquipment.containsKey('boots')) {
+      allTypes.add('boots_tune');
+    }
+    if (activeEquipment.containsKey('armor')) {
+      allTypes.add('armor_tune');
+    }
     if (playerWeaponCount.value < PLAYER_MAX_WEAPON_COUNT) {
       allTypes.add('weapon_count');
     }
@@ -288,6 +312,33 @@ class GameProgressController extends GetxController {
             statPreview: 'BAR +${UPGRADE_BARRIER_HP_GAIN.toStringAsFixed(0)}',
             multiplier: 1,
           );
+        case 'hand_tune':
+          return UpgradeCard(
+            type: type,
+            rarity: 'common',
+            title: '${activeEquipment['hand']?.title ?? '손 장비'} 개조',
+            description: '손/장신구 슬롯을 발전시킵니다.\n투사체 수, 반사, 공격 보조가 강화됩니다.',
+            statPreview: 'HAND+',
+            multiplier: 1,
+          );
+        case 'boots_tune':
+          return UpgradeCard(
+            type: type,
+            rarity: 'common',
+            title: '${activeEquipment['boots']?.title ?? '신발'} 개조',
+            description: '신발/발 슬롯을 발전시킵니다.\n이동 속도가 올라 일부 무기 쿨타임도 짧아집니다.',
+            statPreview: 'SPD/CD',
+            multiplier: 1,
+          );
+        case 'armor_tune':
+          return UpgradeCard(
+            type: type,
+            rarity: 'common',
+            title: '${activeEquipment['armor']?.title ?? '갑옷'} 개조',
+            description: '갑옷/옷 슬롯을 발전시킵니다.\n체력, 방어, 피격 전 보호막이 강화됩니다.',
+            statPreview: 'HP/DEF',
+            multiplier: 1,
+          );
         default:
           return UpgradeCard(
             type: type,
@@ -350,9 +401,69 @@ class GameProgressController extends GetxController {
         playerBarrierMaxHp.value += UPGRADE_BARRIER_HP_GAIN;
         playerBarrierHp.value = playerBarrierMaxHp.value;
         break;
+      case 'hand_tune':
+        playerAtk.value += 1.2;
+        if (playerBulletsPerWeapon.value < PLAYER_MAX_BULLETS_PER_WEAPON) {
+          playerBulletsPerWeapon.value += 1;
+        } else if (playerWeaponCount.value < PLAYER_MAX_WEAPON_COUNT) {
+          playerWeaponCount.value += 1;
+        } else {
+          playerBulletReflectCount.value += 1;
+        }
+        break;
+      case 'boots_tune':
+        playerSpd.value = math.min(MAX_SPEED, playerSpd.value + 0.34);
+        playerRadius.value = math.max(
+          PLAYER_MIN_RADIUS,
+          playerRadius.value - 1.5,
+        );
+        break;
+      case 'armor_tune':
+        playerMaxHp.value += 26;
+        heal(26);
+        playerDef.value += 0.7;
+        playerBarrierMaxHp.value += 24;
+        playerBarrierHp.value = playerBarrierMaxHp.value;
+        break;
     }
     _clampRunScalingStats();
     appliedUpgrades.add(card.type);
+  }
+
+  Map<String, EquipmentShopDef> _resolvedEquipment(
+    Map<String, String> equippedEquipment,
+  ) {
+    final resolved = <String, EquipmentShopDef>{};
+    for (final entry in equippedEquipment.entries) {
+      for (final equipment in kAllEquipment) {
+        if (equipment.id == entry.value && equipment.slot == entry.key) {
+          resolved[entry.key] = equipment;
+          break;
+        }
+      }
+    }
+    return resolved;
+  }
+
+  void _applyEquipmentLoadoutBonuses() {
+    for (final equipment in activeEquipment.values) {
+      playerMaxHp.value += equipment.hpBonus;
+      playerAtk.value += equipment.atkBonus;
+      playerDef.value += equipment.defBonus;
+      playerSpd.value =
+          math.min(MAX_SPEED, playerSpd.value + equipment.speedBonus);
+      playerWeaponCount.value = math.min(
+        PLAYER_MAX_WEAPON_COUNT,
+        playerWeaponCount.value + equipment.weaponCountBonus,
+      );
+      playerBulletsPerWeapon.value = math.min(
+        PLAYER_MAX_BULLETS_PER_WEAPON,
+        playerBulletsPerWeapon.value + equipment.bulletsPerWeaponBonus,
+      );
+      playerBulletReflectCount.value += equipment.bulletReflectBonus;
+      playerBarrierMaxHp.value += equipment.barrierBonus;
+      playerBarrierHp.value = playerBarrierMaxHp.value;
+    }
   }
 
   void _clampRunScalingStats() {
@@ -377,92 +488,72 @@ class GameProgressController extends GetxController {
   //  Shop Logic
   // ───────────────────────────────────────────
   void generateShopItems() {
-    final allWeapons = [
-      const ShopItem(
-          id: 'minigun',
-          title: '미니건',
-          description: '빠른 연사 속도로 적을 압도합니다.',
-          price: 150,
-          weaponType: 'minigun',
-          icon: '🔫'),
-      const ShopItem(
-          id: 'long_gun',
-          title: '장거리 포',
-          description: '느리지만 강력한 대구경 탄환을 발사합니다.',
-          price: 200,
-          weaponType: 'long_gun',
-          icon: '🚀'),
-      const ShopItem(
-          id: 'poison_gun',
-          title: '독 가스 분무기',
-          description: '지나가는 자리에 치명적인 독구름을 남깁니다.',
-          price: 180,
-          weaponType: 'poison',
-          icon: '☣️'),
-      const ShopItem(
-          id: 'blade_master',
-          title: '회전 칼날',
-          description: '공 주변을 회전하며 근접한 적을 베어버립니다.',
-          price: 220,
-          weaponType: 'blade',
-          icon: '⚔️'),
-      const ShopItem(
-          id: 'mine_layer',
-          title: '지뢰 매설기',
-          description: '뒤쪽으로 강력한 폭발 지뢰를 투척합니다.',
-          price: 170,
-          weaponType: 'miner',
-          icon: '💣'),
-      const ShopItem(
-          id: 'footsteps',
-          title: '불타는 발자국',
-          description: '지나간 자리에 불꽃 자취를 남겨 지속 피해를 줍니다.',
-          price: 190,
-          weaponType: 'footsteps',
-          icon: '👣'),
-      const ShopItem(
-          id: 'burst_gun',
-          title: '전방위 버스트',
-          description: '사방으로 퍼지는 탄환을 발사합니다.',
-          price: 250,
-          weaponType: 'burst',
-          icon: '💢'),
-      const ShopItem(
-          id: 'heavy_blade',
-          title: '거대 대검',
-          description: '매우 크고 강력한 칼날이 천천히 회전합니다.',
-          price: 280,
-          weaponType: 'heavy_blade',
-          icon: '🗡️'),
-      const ShopItem(
-          id: 'ricochet',
-          title: '도탄 사격',
-          description: '벽에 여러 번 튕기는 특수 탄환을 사용합니다.',
-          price: 210,
-          weaponType: 'ricochet',
-          icon: '✨'),
-      const ShopItem(
-          id: 'aura',
-          title: '수호자의 오라',
-          description: '주변의 적에게 지속적인 피해를 주는 영역을 생성합니다.',
-          price: 300,
-          weaponType: 'aura',
-          icon: '🌀'),
-    ];
+    final unlocked = runUnlockedWeapons.toSet();
+    final allWeapons = kAllShopWeapons
+        .where((w) => unlocked.contains(w.weaponType))
+        .map(_shopItemFromMetaWeapon)
+        .toList();
 
-    // Filter out already owned weapons
-    final available =
-        allWeapons.where((w) => !ownedWeapons.contains(w.weaponType)).toList();
+    // During a run, only permanently unlocked weapons can appear.
+    final available = allWeapons
+        .where((w) =>
+            w.weaponType != characterType.value &&
+            !ownedWeapons.contains(w.weaponType))
+        .toList();
     available.shuffle(_rand);
     shopItems.value = available.take(2).toList();
   }
 
   bool buyWeapon(ShopItem item) {
+    if (item.weaponType == characterType.value) return false;
+    if (!runUnlockedWeapons.contains(item.weaponType)) return false;
     if (gold.value >= item.price && !ownedWeapons.contains(item.weaponType)) {
       gold.value -= item.price;
       ownedWeapons.add(item.weaponType);
       return true;
     }
     return false;
+  }
+
+  List<String> _orderedRunWeapons(Set<String> unlockedSet) {
+    final ordered = <String>['gunner'];
+    for (final weapon in kAllShopWeapons) {
+      if (unlockedSet.contains(weapon.weaponType)) {
+        ordered.add(weapon.weaponType);
+      }
+    }
+    for (final weapon in unlockedSet) {
+      if (!ordered.contains(weapon)) {
+        ordered.add(weapon);
+      }
+    }
+    return ordered;
+  }
+
+  ShopItem _shopItemFromMetaWeapon(WeaponShopDef weapon) {
+    return ShopItem(
+      id: weapon.id,
+      title: weapon.title,
+      description: weapon.description,
+      price: _runWeaponPrice(weapon),
+      weaponType: weapon.weaponType,
+      icon: weapon.icon,
+    );
+  }
+
+  int _runWeaponPrice(WeaponShopDef weapon) {
+    const overrides = {
+      'minigun': 150,
+      'long_gun': 200,
+      'poison': 180,
+      'blade': 220,
+      'miner': 170,
+      'footsteps': 190,
+      'burst': 250,
+      'heavy_blade': 280,
+      'ricochet': 210,
+      'aura': 300,
+    };
+    return overrides[weapon.weaponType] ?? weapon.price;
   }
 }

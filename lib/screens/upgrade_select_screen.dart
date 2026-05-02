@@ -149,7 +149,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
 
   Widget _buildSubtitle(bool compact) {
     return Text(
-      '강력한 능력을 선택하여 더 깊은 던전으로 향하세요',
+      '증강 1개를 고르고, 해금한 장비로 이번 런을 확장하세요',
       style: TextStyle(
         fontSize: compact ? 12 : 14,
         fontWeight: FontWeight.w800,
@@ -225,7 +225,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                   Icon(Icons.shopping_cart,
                       color: AutoBattlePalette.ink, size: compact ? 16 : 20),
                   const SizedBox(width: 8),
-                  Text('무기 상점',
+                  Text('해금 무기 장착',
                       style: TextStyle(
                           fontSize: compact ? 16 : 18,
                           fontWeight: FontWeight.w900,
@@ -238,7 +238,8 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                         vertical: compact ? 3 : 4),
                     decoration: BoxDecoration(
                       color: AutoBattlePalette.gold,
-                      border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                      border:
+                          Border.all(color: AutoBattlePalette.ink, width: 2),
                     ),
                     child: Text('💰 ${_ctrl.gold.value.round()}',
                         style: TextStyle(
@@ -249,22 +250,28 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
             ],
           ),
           SizedBox(height: compact ? 8 : 12),
-          Obx(() => Row(
-                children: _ctrl.shopItems.map((item) {
-                  return Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 4),
-                      child: _ShopItemWidget(
-                        item: item,
-                        compact: compact,
-                        isOwned: _ctrl.ownedWeapons.contains(item.weaponType),
-                        canAfford: _ctrl.gold.value >= item.price,
-                        onBuy: () => _ctrl.buyWeapon(item),
-                      ),
+          Obx(() {
+            if (_ctrl.shopItems.isEmpty) {
+              return _EmptyRunShopHint(compact: compact);
+            }
+
+            return Row(
+              children: _ctrl.shopItems.map((item) {
+                return Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    child: _ShopItemWidget(
+                      item: item,
+                      compact: compact,
+                      isOwned: _ctrl.ownedWeapons.contains(item.weaponType),
+                      canAfford: _ctrl.gold.value >= item.price,
+                      onBuy: () => _ctrl.buyWeapon(item),
                     ),
-                  );
-                }).toList(),
-              )),
+                  ),
+                );
+              }).toList(),
+            );
+          }),
         ],
       ),
     );
@@ -285,7 +292,8 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
             border: Border.all(color: AutoBattlePalette.ink, width: 3),
             boxShadow: enabled
                 ? const [
-                    BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
+                    BoxShadow(
+                        color: AutoBattlePalette.ink, offset: Offset(4, 4))
                   ]
                 : null,
           ),
@@ -421,7 +429,7 @@ class _ShopItemWidget extends StatelessWidget {
                 border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
               ),
               child: Text(
-                isOwned ? 'OWNED' : '${item.price}G',
+                isOwned ? 'EQUIPPED' : '${item.price}G',
                 style: const TextStyle(
                     color: Colors.white,
                     fontSize: 10,
@@ -430,6 +438,47 @@ class _ShopItemWidget extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+class _EmptyRunShopHint extends StatelessWidget {
+  final bool compact;
+
+  const _EmptyRunShopHint({required this.compact});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 8 : 10,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.inkSubtle, width: 2),
+      ),
+      child: Row(
+        children: [
+          Icon(
+            Icons.lock_open,
+            color: AutoBattlePalette.inkSubtle,
+            size: compact ? 16 : 18,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '이번 런에 더 장착할 해금 무기가 없습니다',
+              style: TextStyle(
+                color: AutoBattlePalette.inkSubtle,
+                fontSize: compact ? 11 : 12,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -504,6 +553,12 @@ class _UpgradeCardWidget extends StatelessWidget {
         return const Color(0xFF0284C7);
       case 'barrier':
         return const Color(0xFF38BDF8);
+      case 'hand_tune':
+        return const Color(0xFFDB2777);
+      case 'boots_tune':
+        return const Color(0xFF16A34A);
+      case 'armor_tune':
+        return const Color(0xFF475569);
       default:
         return const Color(0xFF6B7280);
     }
@@ -527,6 +582,12 @@ class _UpgradeCardWidget extends StatelessWidget {
         return Icons.change_circle;
       case 'barrier':
         return Icons.security;
+      case 'hand_tune':
+        return Icons.pan_tool_alt;
+      case 'boots_tune':
+        return Icons.directions_run;
+      case 'armor_tune':
+        return Icons.health_and_safety;
       default:
         return Icons.help_outline;
     }

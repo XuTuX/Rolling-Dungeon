@@ -23,6 +23,121 @@ class WeaponShopDef {
   });
 }
 
+class EquipmentShopDef {
+  final String id;
+  final String slot;
+  final String title;
+  final String description;
+  final int price;
+  final String icon;
+  final double hpBonus;
+  final double atkBonus;
+  final double defBonus;
+  final double speedBonus;
+  final int weaponCountBonus;
+  final int bulletsPerWeaponBonus;
+  final int bulletReflectBonus;
+  final double barrierBonus;
+
+  const EquipmentShopDef({
+    required this.id,
+    required this.slot,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.icon,
+    this.hpBonus = 0,
+    this.atkBonus = 0,
+    this.defBonus = 0,
+    this.speedBonus = 0,
+    this.weaponCountBonus = 0,
+    this.bulletsPerWeaponBonus = 0,
+    this.bulletReflectBonus = 0,
+    this.barrierBonus = 0,
+  });
+
+  String get statSummary {
+    final parts = <String>[];
+    if (hpBonus != 0) parts.add('HP +${hpBonus.toStringAsFixed(0)}');
+    if (atkBonus != 0) parts.add('ATK +${atkBonus.toStringAsFixed(1)}');
+    if (defBonus != 0) parts.add('DEF +${defBonus.toStringAsFixed(1)}');
+    if (speedBonus != 0) parts.add('SPD +${speedBonus.toStringAsFixed(2)}');
+    if (weaponCountBonus != 0) parts.add('WPN +$weaponCountBonus');
+    if (bulletsPerWeaponBonus != 0) parts.add('SHOT +$bulletsPerWeaponBonus');
+    if (bulletReflectBonus != 0) parts.add('REF +$bulletReflectBonus');
+    if (barrierBonus != 0) parts.add('BAR +${barrierBonus.toStringAsFixed(0)}');
+    return parts.join(' / ');
+  }
+}
+
+const Map<String, String> kEquipmentSlotLabels = {
+  'hand': '장신구/손',
+  'boots': '신발/발',
+  'armor': '갑옷/옷',
+};
+
+const List<EquipmentShopDef> kAllEquipment = [
+  EquipmentShopDef(
+    id: 'rapid_glove',
+    slot: 'hand',
+    title: '속사 장갑',
+    description: '손 장비. 투사체 계열 무기의 발사 밀도를 올립니다.',
+    price: 140,
+    icon: '🧤',
+    bulletsPerWeaponBonus: 1,
+    speedBonus: 0.12,
+  ),
+  EquipmentShopDef(
+    id: 'scope_ring',
+    slot: 'hand',
+    title: '조준 반지',
+    description: '장신구. 공격 보조와 치명타 감각을 공격력으로 환산합니다.',
+    price: 160,
+    icon: '💍',
+    atkBonus: 2.0,
+    bulletReflectBonus: 1,
+  ),
+  EquipmentShopDef(
+    id: 'spring_boots',
+    slot: 'boots',
+    title: '스프링 부츠',
+    description: '발 장비. 이동 속도와 회피 여지를 늘립니다.',
+    price: 130,
+    icon: '👟',
+    speedBonus: 0.42,
+  ),
+  EquipmentShopDef(
+    id: 'knockback_boots',
+    slot: 'boots',
+    title: '반동 부츠',
+    description: '발 장비. 더 빠른 충돌 템포로 전장을 휘젓습니다.',
+    price: 170,
+    icon: '🥾',
+    speedBonus: 0.24,
+    atkBonus: 1.0,
+  ),
+  EquipmentShopDef(
+    id: 'plate_armor',
+    slot: 'armor',
+    title: '판금 갑옷',
+    description: '옷 장비. 최대 체력과 방어력을 안정적으로 올립니다.',
+    price: 150,
+    icon: '🛡️',
+    hpBonus: 32,
+    defBonus: 0.8,
+  ),
+  EquipmentShopDef(
+    id: 'reactive_coat',
+    slot: 'armor',
+    title: '반응 코트',
+    description: '옷 장비. 피격 전 보호막을 먼저 두릅니다.',
+    price: 190,
+    icon: '🦺',
+    hpBonus: 16,
+    barrierBonus: 36,
+  ),
+];
+
 /// All weapons available for purchase in the meta shop.
 const List<WeaponShopDef> kAllShopWeapons = [
   WeaponShopDef(
@@ -168,7 +283,9 @@ class MetaProgressController extends GetxController {
   final currency = 0.obs;
   final unlockedWeapons = <String>['gunner'].obs;
   final unlockedSkills = <String>[].obs;
+  final unlockedEquipment = <String>[].obs;
   final equippedWeapon = 'gunner'.obs;
+  final equippedEquipment = <String, String>{}.obs;
   final achievements = <String, bool>{}.obs;
   final weaponLevels = <String, int>{}.obs;
   final statLevels = <String, int>{}.obs;
@@ -196,12 +313,15 @@ class MetaProgressController extends GetxController {
     final data = await PersistenceService.loadMeta();
     // For simulation/testing: force currency to 10000
     currency.value = 10000;
-    unlockedWeapons.value = List<String>.from(data.unlockedWeapons);
-    if (!unlockedWeapons.contains('gunner')) {
-      unlockedWeapons.insert(0, 'gunner');
-    }
+    unlockedWeapons.value = _normalizedUnlockedWeapons(data.unlockedWeapons);
     unlockedSkills.value = List<String>.from(data.unlockedSkills);
-    equippedWeapon.value = data.equippedWeapon;
+    unlockedEquipment.value =
+        _normalizedUnlockedEquipment(data.unlockedEquipment);
+    equippedWeapon.value = unlockedWeapons.contains(data.equippedWeapon)
+        ? data.equippedWeapon
+        : 'gunner';
+    equippedEquipment.value =
+        _normalizedEquippedEquipment(data.equippedEquipment);
     achievements.value = Map<String, bool>.from(data.achievements);
     weaponLevels.value = Map<String, int>.from(data.weaponLevels);
     statLevels.value = Map<String, int>.from(data.statLevels);
@@ -224,7 +344,9 @@ class MetaProgressController extends GetxController {
       currency: currency.value,
       unlockedWeapons: List<String>.from(unlockedWeapons),
       unlockedSkills: List<String>.from(unlockedSkills),
+      unlockedEquipment: List<String>.from(unlockedEquipment),
       equippedWeapon: equippedWeapon.value,
+      equippedEquipment: Map<String, String>.from(equippedEquipment),
       achievements: Map<String, bool>.from(achievements),
       weaponLevels: Map<String, int>.from(weaponLevels),
       statLevels: Map<String, int>.from(statLevels),
@@ -260,6 +382,68 @@ class MetaProgressController extends GetxController {
     }
   }
 
+  bool buyEquipment(EquipmentShopDef equipment) {
+    if (currency.value < equipment.price) return false;
+    if (unlockedEquipment.contains(equipment.id)) return false;
+    currency.value -= equipment.price;
+    unlockedEquipment.add(equipment.id);
+    equippedEquipment[equipment.slot] = equipment.id;
+    saveToDisk();
+    return true;
+  }
+
+  void equipEquipment(EquipmentShopDef equipment) {
+    if (!unlockedEquipment.contains(equipment.id)) return;
+    equippedEquipment[equipment.slot] = equipment.id;
+    saveToDisk();
+  }
+
+  EquipmentShopDef? equippedDefForSlot(String slot) {
+    final id = equippedEquipment[slot];
+    if (id == null) return null;
+    return equipmentDefById(id);
+  }
+
+  EquipmentShopDef? equipmentDefById(String id) {
+    for (final equipment in kAllEquipment) {
+      if (equipment.id == id) return equipment;
+    }
+    return null;
+  }
+
+  List<String> _normalizedUnlockedWeapons(List<String> weapons) {
+    final normalized = <String>['gunner'];
+    for (final weapon in weapons) {
+      if (!normalized.contains(weapon)) {
+        normalized.add(weapon);
+      }
+    }
+    return normalized;
+  }
+
+  List<String> _normalizedUnlockedEquipment(List<String> equipment) {
+    final validIds = kAllEquipment.map((e) => e.id).toSet();
+    final normalized = <String>[];
+    for (final id in equipment) {
+      if (validIds.contains(id) && !normalized.contains(id)) {
+        normalized.add(id);
+      }
+    }
+    return normalized;
+  }
+
+  Map<String, String> _normalizedEquippedEquipment(Map<String, String> saved) {
+    final normalized = <String, String>{};
+    for (final entry in saved.entries) {
+      final equipment = equipmentDefById(entry.value);
+      if (equipment == null) continue;
+      if (equipment.slot != entry.key) continue;
+      if (!unlockedEquipment.contains(equipment.id)) continue;
+      normalized[entry.key] = equipment.id;
+    }
+    return normalized;
+  }
+
   // ──────────────────────────────────────────
   //  Shop: Upgrade Weapon
   // ──────────────────────────────────────────
@@ -276,7 +460,7 @@ class MetaProgressController extends GetxController {
     if (!unlockedWeapons.contains(weapon.weaponType)) return false;
     final cost = getWeaponUpgradeCost(weapon);
     if (currency.value < cost) return false;
-    
+
     currency.value -= cost;
     final currentLevel = getWeaponLevel(weapon.weaponType);
     weaponLevels[weapon.weaponType] = currentLevel + 1;

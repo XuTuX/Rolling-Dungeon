@@ -11,8 +11,14 @@ class MetaProgressData {
   /// Permanently unlocked skill IDs (future expansion).
   List<String> unlockedSkills;
 
+  /// Permanently unlocked equipment IDs.
+  List<String> unlockedEquipment;
+
   /// The weapon equipped for the current/next run.
   String equippedWeapon;
+
+  /// Equipment equipped by slot: hand / boots / armor.
+  Map<String, String> equippedEquipment;
 
   /// Achievement completion map: achievement_id → completed.
   Map<String, bool> achievements;
@@ -35,7 +41,9 @@ class MetaProgressData {
     this.currency = 0,
     List<String>? unlockedWeapons,
     List<String>? unlockedSkills,
+    List<String>? unlockedEquipment,
     this.equippedWeapon = 'gunner',
+    Map<String, String>? equippedEquipment,
     Map<String, bool>? achievements,
     Map<String, int>? weaponLevels,
     Map<String, int>? statLevels,
@@ -47,6 +55,8 @@ class MetaProgressData {
     this.totalRunCount = 0,
   })  : unlockedWeapons = unlockedWeapons ?? ['gunner'],
         unlockedSkills = unlockedSkills ?? [],
+        unlockedEquipment = unlockedEquipment ?? [],
+        equippedEquipment = equippedEquipment ?? {},
         achievements = achievements ?? {},
         weaponLevels = weaponLevels ?? {},
         statLevels = statLevels ?? {};
@@ -56,7 +66,9 @@ class MetaProgressData {
         'currency': currency,
         'unlockedWeapons': unlockedWeapons,
         'unlockedSkills': unlockedSkills,
+        'unlockedEquipment': unlockedEquipment,
         'equippedWeapon': equippedWeapon,
+        'equippedEquipment': equippedEquipment,
         'achievements': achievements,
         'weaponLevels': weaponLevels,
         'statLevels': statLevels,
@@ -80,7 +92,15 @@ class MetaProgressData {
               ?.map((e) => e.toString())
               .toList() ??
           [],
+      unlockedEquipment: (json['unlockedEquipment'] as List?)
+              ?.map((e) => e.toString())
+              .toList() ??
+          [],
       equippedWeapon: json['equippedWeapon'] as String? ?? 'gunner',
+      equippedEquipment: (json['equippedEquipment'] as Map?)?.map(
+            (k, v) => MapEntry(k.toString(), v.toString()),
+          ) ??
+          {},
       achievements: (json['achievements'] as Map?)?.map(
             (k, v) => MapEntry(k.toString(), v == true),
           ) ??

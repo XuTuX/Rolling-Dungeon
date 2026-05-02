@@ -20,7 +20,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 3, vsync: this);
+    _tabCtrl = TabController(length: 4, vsync: this);
   }
 
   @override
@@ -123,6 +123,8 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                     ),
                     child: TabBar(
                       controller: _tabCtrl,
+                      isScrollable: true,
+                      tabAlignment: TabAlignment.start,
                       indicatorColor: AutoBattlePalette.primary,
                       indicatorWeight: 4,
                       labelColor: AutoBattlePalette.ink,
@@ -146,6 +148,17 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                               Icon(Icons.shopping_cart, size: 18),
                               SizedBox(width: 6),
                               Text('무기 상점'),
+                            ],
+                          ),
+                        ),
+                        Tab(
+                          height: 44,
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(Icons.backpack, size: 18),
+                              SizedBox(width: 6),
+                              Text('장비'),
                             ],
                           ),
                         ),
@@ -183,6 +196,7 @@ class _MetaShopScreenState extends State<MetaShopScreen>
                     controller: _tabCtrl,
                     children: [
                       _WeaponShopTab(ctrl: ctrl),
+                      _EquipmentShopTab(ctrl: ctrl),
                       _StatUpgradeTab(ctrl: ctrl),
                       _AchievementTab(ctrl: ctrl),
                     ],
@@ -405,6 +419,227 @@ class _WeaponShopTabState extends State<_WeaponShopTab> {
         ),
       );
     });
+  }
+}
+
+class _EquipmentShopTab extends StatelessWidget {
+  final MetaProgressController ctrl;
+
+  const _EquipmentShopTab({required this.ctrl});
+
+  @override
+  Widget build(BuildContext context) {
+    final grouped = <String, List<EquipmentShopDef>>{};
+    for (final equipment in kAllEquipment) {
+      grouped.putIfAbsent(equipment.slot, () => []).add(equipment);
+    }
+
+    return Obx(() {
+      return ListView(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+        children: kEquipmentSlotLabels.entries.map((slotEntry) {
+          final items = grouped[slotEntry.key] ?? const <EquipmentShopDef>[];
+          final equipped = ctrl.equippedDefForSlot(slotEntry.key);
+
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+              boxShadow: const [
+                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: double.infinity,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFF1F5F9),
+                    border: Border(
+                      bottom:
+                          BorderSide(color: AutoBattlePalette.ink, width: 2),
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.inventory_2,
+                          color: AutoBattlePalette.ink, size: 17),
+                      const SizedBox(width: 8),
+                      Text(
+                        slotEntry.value,
+                        style: const TextStyle(
+                          color: AutoBattlePalette.ink,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        equipped == null
+                            ? '미장착'
+                            : '${equipped.icon} ${equipped.title}',
+                        style: const TextStyle(
+                          color: AutoBattlePalette.text3,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                ...items.map((equipment) {
+                  final unlocked =
+                      ctrl.unlockedEquipment.contains(equipment.id);
+                  final isEquipped =
+                      ctrl.equippedEquipment[equipment.slot] == equipment.id;
+                  final canAfford = ctrl.currency.value >= equipment.price;
+                  return _EquipmentRow(
+                    equipment: equipment,
+                    unlocked: unlocked,
+                    equipped: isEquipped,
+                    canAfford: canAfford,
+                    onTap: () {
+                      if (unlocked) {
+                        ctrl.equipEquipment(equipment);
+                      } else {
+                        ctrl.buyEquipment(equipment);
+                      }
+                    },
+                  );
+                }),
+              ],
+            ),
+          );
+        }).toList(),
+      );
+    });
+  }
+}
+
+class _EquipmentRow extends StatelessWidget {
+  final EquipmentShopDef equipment;
+  final bool unlocked;
+  final bool equipped;
+  final bool canAfford;
+  final VoidCallback onTap;
+
+  const _EquipmentRow({
+    required this.equipment,
+    required this.unlocked,
+    required this.equipped,
+    required this.canAfford,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final buttonColor = equipped
+        ? const Color(0xFF4CAF50)
+        : (unlocked
+            ? AutoBattlePalette.secondary
+            : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)));
+    final buttonText =
+        equipped ? '장착중' : (unlocked ? '장착' : (canAfford ? '구매' : '부족'));
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: equipped
+            ? const Color(0xFFE8F5E9)
+            : AutoBattlePalette.ink.withValues(alpha: 0.0),
+        border: Border(
+          bottom: BorderSide(
+            color: AutoBattlePalette.ink.withValues(alpha: 0.08),
+            width: 1,
+          ),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              color: const Color(0xFFF8FAFC),
+              border: Border.all(color: AutoBattlePalette.ink, width: 2),
+            ),
+            child: Text(equipment.icon, style: const TextStyle(fontSize: 22)),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  equipment.title,
+                  style: const TextStyle(
+                    color: AutoBattlePalette.ink,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  equipment.description,
+                  style: const TextStyle(
+                    color: AutoBattlePalette.text3,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                if (equipment.statSummary.isNotEmpty) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    equipment.statSummary,
+                    style: const TextStyle(
+                      color: AutoBattlePalette.secondary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: equipped ? null : onTap,
+            child: Container(
+              width: 70,
+              height: 42,
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: buttonColor,
+                border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
+                boxShadow: equipped
+                    ? null
+                    : const [
+                        BoxShadow(
+                          color: AutoBattlePalette.ink,
+                          offset: Offset(2, 2),
+                        ),
+                      ],
+              ),
+              child: Text(
+                unlocked ? buttonText : '$buttonText\n💎 ${equipment.price}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                  height: 1.1,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
