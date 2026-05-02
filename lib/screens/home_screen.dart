@@ -39,51 +39,38 @@ class HomeScreen extends StatelessWidget {
                   child: Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: 24,
-                      vertical: isTiny ? 8 : (isCompact ? 16 : 32),
+                      vertical: isTiny ? 4 : (isCompact ? 8 : 32),
                     ),
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         // Title
                         _TapedHeader(
+                          isCompact: isCompact,
                           child: Text(
                             'ROLLING DUNGEON',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               color: AutoBattlePalette.ink,
-                              fontSize: isTiny ? 28 : (isCompact ? 36 : 48),
+                              fontSize: isCompact ? 24 : 48,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -1,
                             ),
                           ),
                         ),
 
-                        SizedBox(height: isTiny ? 12 : (isCompact ? 24 : 32)),
+                        SizedBox(height: isCompact ? 12 : 32),
 
                         // Character Preview & Equip (Flexible to prevent overflow)
                         Flexible(
                           child: Obx(() {
-                            final charDef = metaCtrl.currentCharacterDef;
-                            final shape = charDef.shape;
-                            final info = charDisplayInfoMap[shape] ?? charDisplayInfoMap['circle']!;
-                            final unlocked = metaCtrl.unlockedCharacters;
-                            final idx = unlocked.indexOf(metaCtrl.selectedCharacter.value);
-
                             return _SketchbookPage(
                               width: (w * 0.95).clamp(320.0, 600.0),
                               isCompact: isCompact,
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Text(
-                                    'SELECT CHARACTER',
-                                    style: TextStyle(
-                                      color: AutoBattlePalette.ink.withValues(alpha: 0.5),
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: 1,
-                                    ),
-                                  ),
+                                  _SectionTitle(title: 'SELECT CHARACTER', isCompact: isCompact),
                                   SizedBox(height: isCompact ? 4 : 12),
                                   
                                   // Character Selection Row (All 4 in a row)
@@ -94,50 +81,56 @@ class HomeScreen extends StatelessWidget {
                                       final isSelected = metaCtrl.selectedCharacter.value == char.id;
                                       final info = charDisplayInfoMap[char.shape] ?? charDisplayInfoMap['circle']!;
                                       
-                                      return GestureDetector(
-                                        onTap: isUnlocked ? () => metaCtrl.selectCharacter(char.id) : null,
-                                        child: AnimatedContainer(
-                                          duration: const Duration(milliseconds: 200),
-                                          padding: EdgeInsets.all(isCompact ? 4 : 8),
-                                          decoration: BoxDecoration(
-                                            color: isSelected ? AutoBattlePalette.surfaceLight : Colors.white,
-                                            border: Border.all(
-                                              color: isSelected ? AutoBattlePalette.primary : AutoBattlePalette.ink.withValues(alpha: 0.2),
-                                              width: isSelected ? 3 : 2,
-                                            ),
-                                            boxShadow: isSelected ? [
-                                              const BoxShadow(color: AutoBattlePalette.primary, offset: Offset(3, 3)),
-                                            ] : null,
-                                          ),
-                                          child: Stack(
-                                            children: [
-                                              Column(
+                                      return Expanded(
+                                        child: Padding(
+                                          padding: const EdgeInsets.symmetric(horizontal: 4),
+                                          child: GestureDetector(
+                                            onTap: isUnlocked ? () => metaCtrl.selectCharacter(char.id) : null,
+                                            child: AnimatedContainer(
+                                              duration: const Duration(milliseconds: 200),
+                                              padding: EdgeInsets.all(isCompact ? 4 : 8),
+                                              decoration: BoxDecoration(
+                                                color: isSelected ? AutoBattlePalette.surfaceLight : Colors.white,
+                                                border: Border.all(
+                                                  color: isSelected ? AutoBattlePalette.primary : AutoBattlePalette.ink.withValues(alpha: 0.1),
+                                                  width: isSelected ? 3 : 2,
+                                                ),
+                                                boxShadow: isSelected ? [
+                                                  const BoxShadow(color: AutoBattlePalette.primary, offset: Offset(3, 3)),
+                                                ] : null,
+                                              ),
+                                              child: Stack(
                                                 children: [
-                                                  CharacterBallPreview(
-                                                    info: info,
-                                                    size: isTiny ? 36 : (isCompact ? 44 : 64),
+                                                  Column(
+                                                    mainAxisSize: MainAxisSize.min,
+                                                    children: [
+                                                      CharacterBallPreview(
+                                                        info: info,
+                                                        size: isCompact ? 38 : 64,
+                                                      ),
+                                                      const SizedBox(height: 2),
+                                                      Text(
+                                                        char.title,
+                                                        style: TextStyle(
+                                                          color: isSelected ? AutoBattlePalette.ink : AutoBattlePalette.ink.withValues(alpha: 0.4),
+                                                          fontSize: isCompact ? 8 : 12,
+                                                          fontWeight: FontWeight.w900,
+                                                        ),
+                                                      ),
+                                                    ],
                                                   ),
-                                                  const SizedBox(height: 2),
-                                                  Text(
-                                                    char.title,
-                                                    style: TextStyle(
-                                                      color: isSelected ? AutoBattlePalette.ink : AutoBattlePalette.ink.withValues(alpha: 0.5),
-                                                      fontSize: isTiny ? 9 : 11,
-                                                      fontWeight: FontWeight.w900,
+                                                  if (!isUnlocked)
+                                                    Positioned.fill(
+                                                      child: Container(
+                                                        color: Colors.white.withValues(alpha: 0.6),
+                                                        child: Center(
+                                                          child: Icon(Icons.lock, size: isCompact ? 14 : 18, color: AutoBattlePalette.inkSubtle),
+                                                        ),
+                                                      ),
                                                     ),
-                                                  ),
                                                 ],
                                               ),
-                                              if (!isUnlocked)
-                                                Positioned.fill(
-                                                  child: Container(
-                                                    color: Colors.white.withValues(alpha: 0.7),
-                                                    child: const Center(
-                                                      child: Icon(Icons.lock, size: 16, color: AutoBattlePalette.inkSubtle),
-                                                    ),
-                                                  ),
-                                                ),
-                                            ],
+                                            ),
                                           ),
                                         ),
                                       );
@@ -145,28 +138,7 @@ class HomeScreen extends StatelessWidget {
                                   ),
 
                                   SizedBox(height: isCompact ? 6 : 16),
-                                  
-                                  // Selected Info
-                                  Container(
-                                    padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 4 : 8),
-                                    decoration: BoxDecoration(
-                                      color: AutoBattlePalette.background.withValues(alpha: 0.5),
-                                      border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                                    ),
-                                    child: Text(
-                                      charDef.description,
-                                      textAlign: TextAlign.center,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: TextStyle(
-                                        color: AutoBattlePalette.inkSubtle,
-                                        fontSize: isCompact ? 10 : 11,
-                                        fontWeight: FontWeight.bold,
-                                        height: 1.1,
-                                      ),
-                                    ),
-                                  ),
-
+                                  _SectionTitle(title: 'EQUIPMENT', isCompact: isCompact),
                                   SizedBox(height: isCompact ? 4 : 12),
                                   
                                   // Equipment Row
@@ -180,9 +152,9 @@ class HomeScreen extends StatelessWidget {
                                           child: _EquipmentSlot(
                                             label: kEquipmentSlotLabels[slot]!,
                                             icon: equipment?.icon ?? '?',
-                                            title: equipment?.title ?? 'Empty',
+                                            title: equipment?.title ?? '비어 있음',
                                             isEquipped: equipment != null,
-                                            isTiny: isTiny,
+                                            isCompact: isCompact,
                                           ),
                                         ),
                                       );
@@ -217,10 +189,10 @@ class HomeScreen extends StatelessWidget {
                                     Get.to(() => const AutoBattleGamePage());
                                   },
                                   child: Text(
-                                    'ENTER DUNGEON',
+                                    'GO!',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: isTiny ? 16 : 20,
+                                      fontSize: isCompact ? 18 : 22,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
@@ -237,7 +209,7 @@ class HomeScreen extends StatelessWidget {
                                     'SHOP',
                                     style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: isTiny ? 16 : 18,
+                                      fontSize: isCompact ? 16 : 18,
                                       fontWeight: FontWeight.w900,
                                     ),
                                   ),
@@ -247,8 +219,8 @@ class HomeScreen extends StatelessWidget {
                           ),
                         ),
 
-                        if (!isTiny) ...[
-                          SizedBox(height: isCompact ? 8 : 20),
+                        if (!isCompact) ...[
+                          const SizedBox(height: 16),
                           Obx(() => _StatsLedger(
                             maxWidth: (w * 0.9).clamp(320.0, 500.0),
                             stats: [
@@ -259,7 +231,7 @@ class HomeScreen extends StatelessWidget {
                           )),
                         ],
 
-                        const SizedBox(height: 16),
+                        SizedBox(height: isCompact ? 4 : 16),
                         
                         Text(
                           'V.5.0 // ROLLING DUNGEON',
@@ -289,7 +261,8 @@ class HomeScreen extends StatelessWidget {
 
 class _TapedHeader extends StatelessWidget {
   final Widget child;
-  const _TapedHeader({required this.child});
+  final bool isCompact;
+  const _TapedHeader({required this.child, this.isCompact = false});
 
   @override
   Widget build(BuildContext context) {
@@ -297,31 +270,34 @@ class _TapedHeader extends StatelessWidget {
       clipBehavior: Clip.none,
       children: [
         Container(
-          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 12),
+          padding: EdgeInsets.symmetric(
+            horizontal: isCompact ? 24 : 32, 
+            vertical: isCompact ? 8 : 16
+          ),
           decoration: BoxDecoration(
             color: Colors.white,
-            border: Border.all(color: AutoBattlePalette.ink, width: 4),
-            boxShadow: const [
-              BoxShadow(color: AutoBattlePalette.ink, offset: Offset(8, 8)),
+            border: Border.all(color: AutoBattlePalette.ink, width: isCompact ? 3 : 4),
+            boxShadow: [
+              BoxShadow(color: AutoBattlePalette.ink, offset: Offset(isCompact ? 4 : 8, isCompact ? 4 : 8)),
             ],
           ),
           child: child,
         ),
-        // "Tape" effects
+        // Decorative masking tape
         Positioned(
-          top: -10,
+          top: -12,
           left: 20,
           child: Transform.rotate(
             angle: -0.1,
-            child: const _MaskingTape(width: 50, height: 20),
+            child: _MaskingTape(width: isCompact ? 40 : 60, height: isCompact ? 16 : 24),
           ),
         ),
         Positioned(
-          bottom: -10,
+          bottom: -12,
           right: 20,
           child: Transform.rotate(
-            angle: -0.1,
-            child: const _MaskingTape(width: 60, height: 22),
+            angle: 0.1,
+            child: _MaskingTape(width: isCompact ? 50 : 70, height: isCompact ? 18 : 28),
           ),
         ),
       ],
@@ -372,20 +348,37 @@ class _MaskingTape extends StatelessWidget {
     );
   }
 }
+class _SectionTitle extends StatelessWidget {
+  final String title;
+  final bool isCompact;
+  const _SectionTitle({required this.title, this.isCompact = false});
+
+  @override
+  Widget build(BuildContext context) => Text(
+    title,
+    style: TextStyle(
+      color: AutoBattlePalette.ink.withValues(alpha: 0.5),
+      fontSize: 10,
+      fontWeight: FontWeight.w900,
+      letterSpacing: 1,
+    ),
+  );
+}
+
 
 class _EquipmentSlot extends StatelessWidget {
   final String label;
   final String icon;
   final String title;
   final bool isEquipped;
-  final bool isTiny;
+  final bool isCompact;
 
   const _EquipmentSlot({
     required this.label,
     required this.icon,
     required this.title,
     this.isEquipped = false,
-    this.isTiny = false,
+    this.isCompact = false,
   });
 
   @override
@@ -397,30 +390,30 @@ class _EquipmentSlot extends StatelessWidget {
           label.toUpperCase(),
           style: TextStyle(
             color: AutoBattlePalette.ink.withValues(alpha: 0.5),
-            fontSize: isTiny ? 8 : 10,
+            fontSize: isCompact ? 8 : 10,
             fontWeight: FontWeight.w900,
           ),
         ),
-        const SizedBox(height: 4),
+        SizedBox(height: isCompact ? 2 : 4),
         Container(
-          width: isTiny ? 44 : 56,
-          height: isTiny ? 44 : 56,
+          width: isCompact ? 40 : 56,
+          height: isCompact ? 40 : 56,
           decoration: BoxDecoration(
             color: isEquipped ? AutoBattlePalette.paper : AutoBattlePalette.ink.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(8),
             border: Border.all(color: AutoBattlePalette.ink, width: 2),
             boxShadow: [
               if (isEquipped)
-                const BoxShadow(
+                BoxShadow(
                   color: AutoBattlePalette.ink,
-                  offset: Offset(2, 2),
+                  offset: Offset(isCompact ? 1 : 2, isCompact ? 1 : 2),
                 ),
             ],
           ),
           child: Center(
             child: Text(
               icon,
-              style: TextStyle(fontSize: isTiny ? 18 : 24),
+              style: TextStyle(fontSize: isCompact ? 18 : 24),
             ),
           ),
         ),
@@ -429,9 +422,10 @@ class _EquipmentSlot extends StatelessWidget {
           title,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
           style: TextStyle(
             color: AutoBattlePalette.ink,
-            fontSize: isTiny ? 8 : 10,
+            fontSize: isCompact ? 8 : 10,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -479,32 +473,6 @@ class _SketchButtonState extends State<_SketchButton> {
             : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(6, 6))],
         ),
         child: Center(child: widget.child),
-      ),
-    );
-  }
-}
-
-class _ArrowButton extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _ArrowButton({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 44,
-        height: 44,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          shape: BoxShape.circle,
-          border: Border.all(color: AutoBattlePalette.ink, width: 3),
-          boxShadow: const [
-            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
-          ],
-        ),
-        child: Icon(icon, color: AutoBattlePalette.ink, size: 24),
       ),
     );
   }
