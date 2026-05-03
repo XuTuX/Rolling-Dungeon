@@ -280,7 +280,50 @@ class AutoBattleGame extends FlameGame {
       }
     }
 
-    // Attacks (VFX) - Placeholder for future effects
+    for (final attack in _snapshot!.attacks) {
+      final pos = _toScreen(attack.x, attack.y);
+      final elapsed =
+          (_snapshot!.serverTime - attack.createdAt) / attack.durationMs;
+      final life = (1.0 - elapsed).clamp(0.0, 1.0);
+      if (attack.type == 'laser') {
+        final end = pos +
+            Offset(
+              math.cos(attack.angle) * attack.radius * _arenaScale,
+              math.sin(attack.angle) * attack.radius * _arenaScale,
+            );
+        canvas.drawLine(
+          pos,
+          end,
+          Paint()
+            ..color = const Color(0xFF0EA5E9).withValues(alpha: 0.26 * life)
+            ..strokeWidth = 15 * _arenaScale * attack.scale
+            ..strokeCap = StrokeCap.round,
+        );
+        canvas.drawLine(
+          pos,
+          end,
+          Paint()
+            ..color = Colors.white.withValues(alpha: 0.78 * life)
+            ..strokeWidth = 4 * _arenaScale * attack.scale
+            ..strokeCap = StrokeCap.round,
+        );
+      } else if (attack.type == 'explosion') {
+        canvas.drawCircle(
+          pos,
+          attack.radius * _arenaScale * (1.15 - life * 0.15),
+          Paint()
+            ..color = const Color(0xFFFFD43B).withValues(alpha: 0.2 * life),
+        );
+        canvas.drawCircle(
+          pos,
+          attack.radius * _arenaScale,
+          Paint()
+            ..color = const Color(0xFFEF4444).withValues(alpha: 0.55 * life)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4 * _arenaScale,
+        );
+      }
+    }
 
     // Projectiles (Bullets)
     for (final p in _snapshot!.projectiles) {
@@ -548,6 +591,26 @@ class AutoBattleGame extends FlameGame {
         );
       }
 
+      if (p.activeEffects.any((effect) => effect.type == 'shop_flash')) {
+        final pulse =
+            (math.sin(DateTime.now().millisecondsSinceEpoch / 90) * 0.5 + 0.5);
+        canvas.drawCircle(
+          pos,
+          r + (18 + pulse * 8) * _arenaScale,
+          Paint()
+            ..color = AutoBattlePalette.gold.withValues(alpha: 0.12)
+            ..style = PaintingStyle.fill,
+        );
+        canvas.drawCircle(
+          pos,
+          r + (18 + pulse * 8) * _arenaScale,
+          Paint()
+            ..color = AutoBattlePalette.gold.withValues(alpha: 0.78)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 4,
+        );
+      }
+
       if (p.ownedWeapons.any((w) => w == 'aura')) {
         final pulse =
             (math.sin(DateTime.now().millisecondsSinceEpoch / 250) * 0.5 + 0.5);
@@ -671,10 +734,12 @@ class AutoBattleGame extends FlameGame {
     }
 
     final angle = _weaponAngle(player);
-    final weaponTypes = [
-      player.characterType,
-      ...player.ownedWeapons.where((weapon) => weapon != player.characterType),
-    ];
+    final baseWeapon =
+        _isWeaponType(player.characterType) ? player.characterType : 'gunner';
+    final weaponTypes = <String>{
+      baseWeapon,
+      ...player.ownedWeapons.where(_isWeaponType),
+    }.toList();
 
     for (int i = 0; i < weaponTypes.length; i++) {
       final wType = weaponTypes[i];
@@ -685,6 +750,7 @@ class AutoBattleGame extends FlameGame {
           _renderBlade(canvas, pos, r, wAngle, ink, player.flutterColor, false);
           break;
         case 'heavy_blade':
+        case 'orbit_blades':
           _renderBlade(canvas, pos, r, wAngle, ink, player.flutterColor, true);
           break;
         case 'miner':
@@ -704,12 +770,31 @@ class AutoBattleGame extends FlameGame {
           break;
         case 'long_gun':
         case 'ricochet':
+        case 'laser':
         case 'gunner':
           _renderGunDecoration(
               canvas, pos, r, wAngle, ink, player.flutterColor);
           break;
       }
     }
+  }
+
+  bool _isWeaponType(String value) {
+    return const {
+      'gunner',
+      'minigun',
+      'long_gun',
+      'ricochet',
+      'burst',
+      'blade',
+      'heavy_blade',
+      'miner',
+      'poison',
+      'footsteps',
+      'aura',
+      'laser',
+      'orbit_blades',
+    }.contains(value);
   }
 
   void _drawHand(

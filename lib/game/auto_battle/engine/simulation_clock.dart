@@ -28,4 +28,8 @@ class SimulationClock {
   void setSpeed(double value) {
     speed = value.clamp(0.25, SIMULATION_FAST_SPEED).toDouble();
   }
+
+  void holdAt(int wallTime) {
+    lastTickAt = wallTime;
+  }
 }

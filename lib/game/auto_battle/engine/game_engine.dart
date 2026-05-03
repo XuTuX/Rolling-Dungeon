@@ -27,6 +27,7 @@ class GameEngine {
   String? winnerId;
   int? roundEndsAt;
   int idSeq = 0;
+  bool shoppingPaused = false;
 
   // ── Cycle System ──
   int currentCycle;
@@ -104,6 +105,11 @@ class GameEngine {
     _primeAbilityCooldowns(_clock.simulationTime);
     timer = Timer.periodic(const Duration(milliseconds: TICK_MS), (t) {
       final now = DateTime.now().millisecondsSinceEpoch;
+      if (shoppingPaused) {
+        _clock.holdAt(now);
+        _broadcastSnapshot();
+        return;
+      }
       _tick(_clock.advanceTo(now));
     });
   }
@@ -115,6 +121,31 @@ class GameEngine {
 
   void setSimulationSpeed(double speed) {
     _clock.setSpeed(speed);
+  }
+
+  void setShoppingPaused(bool paused) {
+    if (shoppingPaused == paused) return;
+    shoppingPaused = paused;
+    _broadcastSnapshot();
+  }
+
+  bool purchaseRunShopItem(String itemId) {
+    final player = _getPlayer('p1');
+    if (player == null || !player.alive) return false;
+    final price = _runShopPrice(player, itemId);
+    if (price == null || player.gold < price) return false;
+    if (!_canPurchaseRunShopItem(player, itemId)) return false;
+
+    player.gold -= price;
+    _applyRunShopItem(player, itemId);
+    player.activeEffects
+      ..removeWhere((effect) => effect.type == 'shop_flash')
+      ..add(ActiveEffect(
+        type: 'shop_flash',
+        expiresAt: _clock.simulationTime + 700,
+      ));
+    _broadcastSnapshot();
+    return true;
   }
 
   void revivePlayer(int newLives) {
@@ -173,6 +204,7 @@ class GameEngine {
     _updateProjectiles(dt.toDouble());
     _updateHazards(now, dt.toDouble());
     _updateEffects(now);
+    _enforceEntityCaps();
     _flushPendingSpawns();
     _checkRoundEnd(now);
     _broadcastSnapshot();
@@ -240,9 +272,10 @@ class GameEngine {
   void _updateEnemyMovement(PlayerData player, int now) {
     if (!player.isEnemy) return;
     if (player.enemyAbility != 'dash') {
+      final slowMult = _hasActiveEffect(player, 'slow', now) ? 0.55 : 1.0;
       final stageSpeedMult =
           1 + math.max(0, currentStage - 1) * ENEMY_STAGE_SPEED_GROWTH;
-      player.speed = ENEMY_BASE_SPEED * stageSpeedMult;
+      player.speed = ENEMY_BASE_SPEED * stageSpeedMult * slowMult;
       return;
     }
 
@@ -259,9 +292,11 @@ class GameEngine {
     }
     final stageSpeedMult =
         1 + math.max(0, currentStage - 1) * ENEMY_STAGE_SPEED_GROWTH;
+    final slowMult = _hasActiveEffect(player, 'slow', now) ? 0.55 : 1.0;
     player.speed = ENEMY_BASE_SPEED *
         stageSpeedMult *
-        (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9);
+        (inDashWindow ? DASH_ENEMY_SPEED_MULTIPLIER : 0.9) *
+        slowMult;
   }
 
   void _handleCollisions(int now) {
@@ -325,6 +360,116 @@ class GameEngine {
     );
 
     resolveWeaponCollision(attacker, victim, wStart, wEnd);
+  }
+
+  int? _runShopPrice(PlayerData player, String itemId) {
+    const weaponPrices = {
+      'weapon_gunner': 0,
+      'weapon_blade': 140,
+      'weapon_miner': 150,
+      'weapon_laser': 210,
+      'weapon_aura': 240,
+      'weapon_orbit_blades': 260,
+    };
+    if (weaponPrices.containsKey(itemId)) {
+      final weapon = itemId.substring('weapon_'.length);
+      if (weapon == 'gunner') return null;
+      final ownedCount = _activeWeaponsFor(player).toSet().length;
+      return weaponPrices[itemId]! + ownedCount * 30;
+    }
+
+    const baseUpgradePrices = {
+      'gun_fire_rate': 90,
+      'gun_multishot': 130,
+      'gun_pierce': 160,
+      'gun_homing': 190,
+      'gun_explosive': 220,
+      'sword_range': 110,
+      'sword_spin': 170,
+      'sword_lifesteal': 150,
+      'sword_interval': 130,
+      'mine_radius': 110,
+      'mine_chain': 180,
+      'mine_slow': 140,
+      'mine_poison': 170,
+      'stat_atk': 80,
+      'stat_def': 80,
+      'stat_spd': 90,
+      'stat_hp': 85,
+    };
+    final base = baseUpgradePrices[itemId];
+    if (base == null) return null;
+    final level = itemId.startsWith('stat_')
+        ? (player.runStatLevels[itemId] ?? 0)
+        : (player.runWeaponLevels[itemId] ?? 0);
+    return base + level * (base ~/ 2 + 20);
+  }
+
+  bool _canPurchaseRunShopItem(PlayerData player, String itemId) {
+    if (itemId.startsWith('weapon_')) {
+      final weapon = itemId.substring('weapon_'.length);
+      if (_activeWeaponsFor(player).contains(weapon)) return false;
+      return _activeWeaponsFor(player).toSet().length < 4;
+    }
+    if (itemId.startsWith('gun_')) {
+      return _activeWeaponsFor(player).contains('gunner');
+    }
+    if (itemId.startsWith('sword_')) {
+      return _activeWeaponsFor(player).any((weapon) =>
+          weapon == 'blade' ||
+          weapon == 'heavy_blade' ||
+          weapon == 'orbit_blades');
+    }
+    if (itemId.startsWith('mine_')) {
+      return _activeWeaponsFor(player).contains('miner');
+    }
+    return itemId.startsWith('stat_');
+  }
+
+  void _applyRunShopItem(PlayerData player, String itemId) {
+    switch (itemId) {
+      case 'weapon_blade':
+        player.ownedWeapons.add('blade');
+        break;
+      case 'weapon_miner':
+        player.ownedWeapons.add('miner');
+        break;
+      case 'weapon_laser':
+        player.ownedWeapons.add('laser');
+        break;
+      case 'weapon_aura':
+        player.ownedWeapons.add('aura');
+        break;
+      case 'weapon_orbit_blades':
+        player.ownedWeapons.add('orbit_blades');
+        break;
+      case 'stat_atk':
+        player.atk += 3.0;
+        player.runStatLevels[itemId] = (player.runStatLevels[itemId] ?? 0) + 1;
+        break;
+      case 'stat_def':
+        player.def += 1.2;
+        player.runStatLevels[itemId] = (player.runStatLevels[itemId] ?? 0) + 1;
+        break;
+      case 'stat_spd':
+        player.speed = math.min(MAX_SPEED, player.speed + 0.34);
+        player.runStatLevels[itemId] = (player.runStatLevels[itemId] ?? 0) + 1;
+        break;
+      case 'stat_hp':
+        player.maxHp += 28;
+        player.hp = math.min(player.maxHp, player.hp + 28);
+        player.runStatLevels[itemId] = (player.runStatLevels[itemId] ?? 0) + 1;
+        break;
+      case 'sword_lifesteal':
+        player.lifesteal = math.min(0.35, player.lifesteal + 0.05);
+        player.runWeaponLevels[itemId] =
+            (player.runWeaponLevels[itemId] ?? 0) + 1;
+        break;
+      default:
+        player.runWeaponLevels[itemId] =
+            (player.runWeaponLevels[itemId] ?? 0) + 1;
+        break;
+    }
   }
 
   PlayerData? _getPlayer(String id) {
@@ -588,10 +733,20 @@ class GameEngine {
             case 'aura':
               _applyAura(player, now);
               break;
+            case 'laser':
+              player.targetAngle = _rotatingWeaponAngle(player, now);
+              _fireLaser(player, now);
+              break;
             case 'blade':
             case 'heavy_blade':
+            case 'orbit_blades':
               player.targetAngle = _rotatingWeaponAngle(player, now);
-              _checkBladeCollision(player, now, weapon == 'heavy_blade');
+              _checkBladeCollision(
+                player,
+                now,
+                weapon == 'heavy_blade',
+                orbiting: weapon == 'orbit_blades',
+              );
               break;
             case 'burst':
               _fireBurst(player, now);
@@ -636,11 +791,30 @@ class GameEngine {
 
   List<String> _activeWeaponsFor(PlayerData player) {
     final baseWeapon =
-        player.characterType == 'none' ? 'gunner' : player.characterType;
+        _isWeaponType(player.characterType) ? player.characterType : 'gunner';
     return [
       baseWeapon,
-      ...player.ownedWeapons.where((weapon) => weapon != baseWeapon),
+      ...player.ownedWeapons
+          .where((weapon) => _isWeaponType(weapon) && weapon != baseWeapon),
     ];
+  }
+
+  bool _isWeaponType(String value) {
+    return const {
+      'gunner',
+      'minigun',
+      'long_gun',
+      'ricochet',
+      'burst',
+      'blade',
+      'heavy_blade',
+      'miner',
+      'poison',
+      'footsteps',
+      'aura',
+      'laser',
+      'orbit_blades',
+    }.contains(value);
   }
 
   bool _weaponReady(
@@ -666,6 +840,11 @@ class GameEngine {
   }) {
     int baseFireInterval = WEAPON_FIRE_INTERVAL_MS;
     final wLevel = player.weaponLevels[weaponType] ?? 0;
+    final fireRateLevel = player.runWeaponLevels['gun_fire_rate'] ?? 0;
+    final multiShotLevel = player.runWeaponLevels['gun_multishot'] ?? 0;
+    final pierceLevel = player.runWeaponLevels['gun_pierce'] ?? 0;
+    final homingLevel = player.runWeaponLevels['gun_homing'] ?? 0;
+    final explosiveLevel = player.runWeaponLevels['gun_explosive'] ?? 0;
     double damageMult = 1.0 + (wLevel * 0.15);
     double bulletRad = BULLET_RADIUS;
     int extraReflects = 0;
@@ -681,7 +860,10 @@ class GameEngine {
       extraReflects = 3;
     }
 
-    final cooldown = _getAbilityCooldown(player, baseFireInterval);
+    final cooldown = _getAbilityCooldown(
+      player,
+      (baseFireInterval * math.pow(0.88, fireRateLevel)).round(),
+    );
     if (!_weaponReady(player, weaponType, now, cooldown)) return;
     if (!players.any((other) => other.alive && other.id != player.id)) return;
     _markWeaponUsed(player, weaponType, now);
@@ -689,7 +871,8 @@ class GameEngine {
     final baseAngle = _rotatingWeaponAngle(player, now);
     player.targetAngle = baseAngle;
     final weaponCount = math.max(1, player.weaponCount);
-    final bulletsPerWeapon = math.max(1, player.bulletsPerWeapon);
+    final bulletsPerWeapon =
+        math.max(1, player.bulletsPerWeapon + multiShotLevel);
     final muzzleDist = player.radius + WEAPON_LENGTH + MUZZLE_OFFSET_EXTRA;
 
     for (int i = 0; i < weaponCount; i++) {
@@ -718,6 +901,9 @@ class GameEngine {
           color: player.color,
           reflectsRemaining: player.bulletReflectCount + extraReflects,
           damageMult: damageMult,
+          pierceRemaining: pierceLevel,
+          homing: homingLevel > 0,
+          explosive: explosiveLevel > 0,
         ));
       }
     }
@@ -787,6 +973,47 @@ class GameEngine {
     }
   }
 
+  void _fireLaser(PlayerData player, int now) {
+    final cooldown = _getAbilityCooldown(player, LASER_FIRE_MS);
+    if (!_weaponReady(player, 'laser', now, cooldown)) return;
+    final target = _nearestEnemy(player);
+    if (target == null) return;
+
+    _markWeaponUsed(player, 'laser', now);
+    player.lastShotAt = now;
+    final angle =
+        math.atan2(target.pos.y - player.pos.y, target.pos.x - player.pos.x);
+    player.targetAngle = angle;
+    attacks.add(AttackEffectData(
+      id: _nextId('laser'),
+      ownerId: player.id,
+      type: 'laser',
+      pos: player.pos.clone(),
+      radius: LASER_RANGE,
+      angle: angle,
+      createdAt: now,
+      durationMs: LASER_DURATION_MS,
+      scale: LASER_WIDTH,
+    ));
+
+    for (final enemy in players) {
+      if (!enemy.alive || enemy.isEnemy == player.isEnemy) continue;
+      final beamEnd = Vec2(
+        x: player.pos.x + math.cos(angle) * LASER_RANGE,
+        y: player.pos.y + math.sin(angle) * LASER_RANGE,
+      );
+      final hitDistance =
+          _distancePointToSegment(enemy.pos, player.pos, beamEnd);
+      if (hitDistance <= enemy.radius + LASER_WIDTH * 4) {
+        _dealDamage(
+          player,
+          enemy,
+          LASER_DAMAGE + player.atk * LASER_ATTACK_DAMAGE_RATIO,
+        );
+      }
+    }
+  }
+
   void _dropMine(PlayerData player, int now) {
     final cooldown = _getAbilityCooldown(player, MINER_DROP_MS);
     if (!_weaponReady(player, 'miner', now, cooldown)) return;
@@ -795,8 +1022,10 @@ class GameEngine {
     player.lastMineDropAt = now;
     final rearAngle = _rearAngle(player);
     final mineCount = math.max(1, player.weaponCount);
+    final radiusLevel = player.runWeaponLevels['mine_radius'] ?? 0;
     final mineDistance = player.radius + MINE_THROW_DISTANCE;
     final spread = mineCount == 1 ? 0.0 : math.pi / 7;
+    final mineRadius = MINE_RADIUS * (1 + radiusLevel * 0.18);
 
     for (int i = 0; i < mineCount; i++) {
       final t = mineCount == 1 ? 0.0 : i / (mineCount - 1);
@@ -806,7 +1035,7 @@ class GameEngine {
           x: (player.pos.x + math.cos(angle) * mineDistance),
           y: (player.pos.y + math.sin(angle) * mineDistance),
         ),
-        MINE_RADIUS,
+        mineRadius,
         angle,
       );
       hazards.add(HazardData(
@@ -814,7 +1043,7 @@ class GameEngine {
         ownerId: player.id,
         type: 'mine',
         pos: minePos,
-        radius: MINE_RADIUS,
+        radius: mineRadius,
         expiresAt: now + MINE_DURATION_MS,
         lastDamageAt: {},
       ));
@@ -936,17 +1165,32 @@ class GameEngine {
     }
   }
 
-  void _checkBladeCollision(PlayerData player, int now, bool isHeavy) {
-    final weaponCount = math.max(1, player.weaponCount);
+  void _checkBladeCollision(
+    PlayerData player,
+    int now,
+    bool isHeavy, {
+    bool orbiting = false,
+  }) {
+    final weaponCount = orbiting
+        ? math.max(3, player.weaponCount)
+        : math.max(1, player.weaponCount);
     final baseAngle = player.targetAngle;
-    final rangeMult = isHeavy ? 1.5 : 1.0;
+    final rangeLevel = player.runWeaponLevels['sword_range'] ?? 0;
+    final spinLevel = player.runWeaponLevels['sword_spin'] ?? 0;
+    final intervalLevel = player.runWeaponLevels['sword_interval'] ?? 0;
+    final rangeMult =
+        (isHeavy ? 1.5 : 1.0) + rangeLevel * 0.16 + spinLevel * 0.08;
     final visualRange = player.radius * 1.6 * rangeMult;
 
-    final wLevel = player.weaponLevels[isHeavy ? 'heavy_blade' : 'blade'] ?? 0;
-    final dmgMult =
-        (isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0) * (1.0 + wLevel * 0.15);
-    final cooldown =
+    final weaponKey =
+        orbiting ? 'orbit_blades' : (isHeavy ? 'heavy_blade' : 'blade');
+    final wLevel = player.weaponLevels[weaponKey] ?? 0;
+    final dmgMult = (isHeavy ? HEAVY_BLADE_DAMAGE_MULT : 1.0) *
+        (1.0 + wLevel * 0.15) *
+        (orbiting ? 0.72 : 1.0);
+    final baseCooldown =
         isHeavy ? HEAVY_BLADE_COOLDOWN_MS : BLADE_CONTACT_DAMAGE_MS;
+    final cooldown = (baseCooldown * math.pow(0.88, intervalLevel)).round();
 
     for (int i = 0; i < weaponCount; i++) {
       final angle = baseAngle + math.pi * 2 * i / weaponCount;
@@ -966,7 +1210,7 @@ class GameEngine {
         if (enemy.isEnemy == player.isEnemy) continue;
 
         // Damage cooldown per enemy for this specific blade
-        final hitKey = 'blade:${player.id}:$i';
+        final hitKey = '$weaponKey:${player.id}:$i';
         final lastHit = enemy.lastCollisionAt[hitKey] ?? 0;
         if (now - lastHit < cooldown) continue;
 
@@ -1015,6 +1259,24 @@ class GameEngine {
   void _updateProjectiles(double dt) {
     for (int i = projectiles.length - 1; i >= 0; i -= 1) {
       final p = projectiles[i];
+      final owner = _getPlayer(p.ownerId);
+      if (owner == null) {
+        projectiles.removeAt(i);
+        continue;
+      }
+      if (p.homing) {
+        final target = _nearestEnemy(owner);
+        if (target != null) {
+          final desired = normalize(Vec2(
+            x: target.pos.x - p.pos.x,
+            y: target.pos.y - p.pos.y,
+          ));
+          p.vel = normalize(Vec2(
+            x: p.vel.x * 0.86 + desired.x * 0.14,
+            y: p.vel.y * 0.86 + desired.y * 0.14,
+          ));
+        }
+      }
       p.pos.x += p.vel.x * BULLET_SPEED * dt;
       p.pos.y += p.vel.y * BULLET_SPEED * dt;
 
@@ -1029,17 +1291,13 @@ class GameEngine {
         }
       }
 
-      final owner = _getPlayer(p.ownerId);
-      if (owner == null) {
-        projectiles.removeAt(i);
-        continue;
-      }
       final target = players.cast<PlayerData?>().firstWhere(
             (pl) =>
                 pl != null &&
                 pl.alive &&
                 pl.id != p.ownerId &&
                 pl.isEnemy != owner.isEnemy &&
+                !p.hitIds.contains(pl.id) &&
                 distance(pl.pos, p.pos) <= pl.radius + p.radius,
             orElse: () => null,
           );
@@ -1049,7 +1307,34 @@ class GameEngine {
               : BASE_BULLET_DAMAGE + owner.atk * BULLET_ATTACK_DAMAGE_RATIO) *
           p.damageMult;
       _dealDamage(owner, target, damage);
-      projectiles.removeAt(i);
+      if (p.explosive) {
+        _explodeProjectile(owner, p.pos, damage * 0.62);
+      }
+      p.hitIds.add(target.id);
+      if (p.pierceRemaining > 0) {
+        p.pierceRemaining -= 1;
+      } else {
+        projectiles.removeAt(i);
+      }
+    }
+  }
+
+  void _explodeProjectile(PlayerData owner, Vec2 pos, double damage) {
+    const radius = 42.0;
+    attacks.add(AttackEffectData(
+      id: _nextId('bullet_explosion'),
+      ownerId: owner.id,
+      type: 'explosion',
+      pos: pos.clone(),
+      radius: radius,
+      angle: 0,
+      createdAt: _clock.simulationTime,
+      durationMs: 220,
+    ));
+    for (final target in players) {
+      if (!target.alive || target.isEnemy == owner.isEnemy) continue;
+      if (distance(target.pos, pos) > target.radius + radius) continue;
+      _dealDamage(owner, target, damage);
     }
   }
 
@@ -1073,12 +1358,34 @@ class GameEngine {
         }
         if (hazard.type == 'mine') {
           final wLevel = owner.weaponLevels['miner'] ?? 0;
+          final chainLevel = owner.runWeaponLevels['mine_chain'] ?? 0;
+          final slowLevel = owner.runWeaponLevels['mine_slow'] ?? 0;
+          final poisonLevel = owner.runWeaponLevels['mine_poison'] ?? 0;
           _dealDamage(
             owner,
             target,
             (MINE_DAMAGE + owner.atk * MINE_ATTACK_DAMAGE_RATIO) *
                 (1.0 + wLevel * 0.15),
           );
+          if (slowLevel > 0) {
+            target.activeEffects
+              ..removeWhere((effect) => effect.type == 'slow')
+              ..add(ActiveEffect(type: 'slow', expiresAt: now + 1800));
+          }
+          if (poisonLevel > 0) {
+            hazards.add(HazardData(
+              id: _nextId('mine_poison'),
+              ownerId: owner.id,
+              type: 'poison',
+              pos: hazard.pos.clone(),
+              radius: hazard.radius * 1.15,
+              expiresAt: now + POISON_DURATION_MS * (4 + poisonLevel),
+              lastDamageAt: {},
+            ));
+          }
+          if (chainLevel > 0) {
+            _triggerMineChain(owner, hazard.pos, now, chainLevel);
+          }
           hazards.removeAt(i);
           break;
         }
@@ -1093,6 +1400,9 @@ class GameEngine {
   }
 
   void _updateEffects(int now) {
+    for (final player in players) {
+      player.activeEffects.removeWhere((effect) => now >= effect.expiresAt);
+    }
     for (int i = attacks.length - 1; i >= 0; i -= 1) {
       final attack = attacks[i];
       final elapsed = now - attack.createdAt;
@@ -1104,6 +1414,49 @@ class GameEngine {
 
       // Other ephemeral effects can be handled here
     }
+  }
+
+  void _enforceEntityCaps() {
+    const maxProjectiles = 240;
+    const maxHazards = 160;
+    const maxAttacks = 80;
+    if (projectiles.length > maxProjectiles) {
+      projectiles.removeRange(0, projectiles.length - maxProjectiles);
+    }
+    if (hazards.length > maxHazards) {
+      hazards.removeRange(0, hazards.length - maxHazards);
+    }
+    if (attacks.length > maxAttacks) {
+      attacks.removeRange(0, attacks.length - maxAttacks);
+    }
+  }
+
+  void _triggerMineChain(
+    PlayerData owner,
+    Vec2 origin,
+    int now,
+    int chainLevel,
+  ) {
+    final radius = MINE_RADIUS * (1.5 + chainLevel * 0.25);
+    for (final target in players) {
+      if (!target.alive || target.isEnemy == owner.isEnemy) continue;
+      if (distance(target.pos, origin) > target.radius + radius) continue;
+      _dealDamage(
+        owner,
+        target,
+        (MINE_DAMAGE * 0.45 + owner.atk * 0.35) * chainLevel,
+      );
+    }
+    attacks.add(AttackEffectData(
+      id: _nextId('mine_chain'),
+      ownerId: owner.id,
+      type: 'explosion',
+      pos: origin.clone(),
+      radius: radius,
+      angle: 0,
+      createdAt: now,
+      durationMs: 260,
+    ));
   }
 
   void _checkRoundEnd(int now) {
@@ -1250,6 +1603,26 @@ class GameEngine {
 
   double _rearAngle(PlayerData p) =>
       _normalizeAngle(_movementAngle(p) + math.pi);
+
+  bool _hasActiveEffect(PlayerData player, String type, int now) {
+    return player.activeEffects
+        .any((effect) => effect.type == type && now < effect.expiresAt);
+  }
+
+  PlayerData? _nearestEnemy(PlayerData owner) {
+    PlayerData? nearest;
+    var nearestDistance = double.infinity;
+    for (final target in players) {
+      if (!target.alive || target.id == owner.id) continue;
+      if (target.isEnemy == owner.isEnemy) continue;
+      final d = distance(owner.pos, target.pos);
+      if (d < nearestDistance) {
+        nearest = target;
+        nearestDistance = d;
+      }
+    }
+    return nearest;
+  }
 
   double _normalizeAngle(double angle) {
     const fullTurn = math.pi * 2;

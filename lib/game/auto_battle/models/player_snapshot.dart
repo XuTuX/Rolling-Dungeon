@@ -35,6 +35,8 @@ class PlayerSnapshot {
   final double vy;
   final double radius;
   final List<String> ownedWeapons;
+  final Map<String, int> runWeaponLevels;
+  final Map<String, int> runStatLevels;
   final int lastPoisonDropAt;
   final int lastShotAt;
   final int lastBladeAt;
@@ -86,6 +88,8 @@ class PlayerSnapshot {
     required this.lives,
     required this.maxLives,
     this.ownedWeapons = const [],
+    this.runWeaponLevels = const {},
+    this.runStatLevels = const {},
     this.lastPoisonDropAt = 0,
     this.lastShotAt = 0,
     this.lastBladeAt = 0,
@@ -131,6 +135,8 @@ class PlayerSnapshot {
       'vy': vy,
       'radius': radius,
       'ownedWeapons': ownedWeapons,
+      'runWeaponLevels': runWeaponLevels,
+      'runStatLevels': runStatLevels,
       'lastPoisonDropAt': lastPoisonDropAt,
       'lastShotAt': lastShotAt,
       'lastBladeAt': lastBladeAt,
@@ -188,6 +194,14 @@ class PlayerSnapshot {
       ownedWeapons:
           (json['ownedWeapons'] as List?)?.map((e) => e.toString()).toList() ??
               const [],
+      runWeaponLevels: (json['runWeaponLevels'] as Map?)?.map(
+            (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+          ) ??
+          const {},
+      runStatLevels: (json['runStatLevels'] as Map?)?.map(
+            (k, v) => MapEntry(k.toString(), (v as num).toInt()),
+          ) ??
+          const {},
       lastPoisonDropAt: _asInt(json['lastPoisonDropAt']),
       lastShotAt: _asInt(json['lastShotAt']),
       lastBladeAt: _asInt(json['lastBladeAt']),

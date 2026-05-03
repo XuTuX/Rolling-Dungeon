@@ -80,6 +80,8 @@ class PlayerData {
 
   List<String> ownedWeapons;
   Map<String, int> weaponLevels;
+  Map<String, int> runWeaponLevels;
+  Map<String, int> runStatLevels;
   Map<String, int> lastCollisionAt;
   int lastPoisonDropAt;
   int lastShotAt;
@@ -126,6 +128,8 @@ class PlayerData {
     required this.activeEffects,
     this.ownedWeapons = const [],
     this.weaponLevels = const {},
+    Map<String, int>? runWeaponLevels,
+    Map<String, int>? runStatLevels,
     required this.color,
     required this.alive,
     required this.lives,
@@ -140,7 +144,8 @@ class PlayerData {
     this.targetAngle = 0,
     this.enemyType = 'none',
     this.enemyAbility = 'none',
-  });
+  })  : runWeaponLevels = runWeaponLevels ?? {},
+        runStatLevels = runStatLevels ?? {};
 
   PlayerSnapshot toSnapshot() => PlayerSnapshot(
         id: id,
@@ -189,6 +194,8 @@ class PlayerData {
         lives: lives,
         maxLives: maxLives,
         ownedWeapons: ownedWeapons,
+        runWeaponLevels: runWeaponLevels,
+        runStatLevels: runStatLevels,
         lastPoisonDropAt: lastPoisonDropAt,
         lastShotAt: lastShotAt,
         lastBladeAt: lastBladeAt,
@@ -247,6 +254,10 @@ class ProjectileData {
   String color;
   int reflectsRemaining;
   double damageMult;
+  int pierceRemaining;
+  bool homing;
+  bool explosive;
+  final Set<String> hitIds;
 
   ProjectileData({
     required this.id,
@@ -257,7 +268,11 @@ class ProjectileData {
     required this.color,
     this.reflectsRemaining = 0,
     this.damageMult = 1.0,
-  });
+    this.pierceRemaining = 0,
+    this.homing = false,
+    this.explosive = false,
+    Set<String>? hitIds,
+  }) : hitIds = hitIds ?? {};
 
   ProjectileSnapshot toSnapshot() => ProjectileSnapshot(
         id: id,

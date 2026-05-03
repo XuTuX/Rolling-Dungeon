@@ -48,6 +48,14 @@ class LocalGameService {
     _engine?.setSimulationSpeed(speed);
   }
 
+  void setShoppingPaused(bool paused) {
+    _engine?.setShoppingPaused(paused);
+  }
+
+  bool purchaseRunShopItem(String itemId) {
+    return _engine?.purchaseRunShopItem(itemId) ?? false;
+  }
+
   void onGameUpdate(Function(GameSnapshot) callback) {
     _onGameUpdate = callback;
   }

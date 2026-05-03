@@ -33,6 +33,8 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
   String? _myId;
   bool _connected = false;
   bool _navigating = false;
+  bool _shopOpen = false;
+  String? _purchaseToast;
   double _simulationSpeed = SIMULATION_DEFAULT_SPEED;
 
   @override
@@ -71,11 +73,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
       vel: normalize(Vec2(x: 1, y: 0.1)),
       radius: controller.playerRadius.value,
       activeEffects: [],
-      // Ensure the selected characterType is always available, even if simulating an unowned weapon
-      ownedWeapons: {
-        ...controller.ownedWeapons,
-        controller.characterType.value,
-      }.toList(),
+      ownedWeapons: controller.ownedWeapons.toList(),
       weaponLevels: metaController.weaponLevels,
       color: controller.characterType.value == 'circle'
           ? '#F87171'
@@ -239,6 +237,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                     height: topH,
                     myPlayer: myPlayer,
                     compact: true,
+                    onShop: _openShop,
                     onExit: () => _stopAndNavigate(() => const HomeScreen(),
                         offAll: true),
                   ),
@@ -280,6 +279,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                           height: topH,
                           myPlayer: myPlayer,
                           compact: compact,
+                          onShop: _openShop,
                           onExit: () => _stopAndNavigate(
                               () => const HomeScreen(),
                               offAll: true),
@@ -329,9 +329,41 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                 child: _SketchLoadingIndicator(),
               ),
             ),
+          if (_shopOpen && myPlayer != null)
+            Positioned.fill(
+              child: _RunShopOverlay(
+                player: myPlayer,
+                stageNumber: _snapshot?.totalStageNumber ?? 1,
+                toast: _purchaseToast,
+                onClose: _closeShop,
+                onPurchase: _purchaseShopItem,
+              ),
+            ),
         ],
       ),
     );
+  }
+
+  void _openShop() {
+    if (_shopOpen) return;
+    setState(() {
+      _shopOpen = true;
+      _purchaseToast = null;
+    });
+    _localService.setShoppingPaused(true);
+  }
+
+  void _closeShop() {
+    if (!_shopOpen) return;
+    setState(() => _shopOpen = false);
+    _localService.setShoppingPaused(false);
+  }
+
+  void _purchaseShopItem(String itemId, String title) {
+    final bought = _localService.purchaseRunShopItem(itemId);
+    setState(() {
+      _purchaseToast = bought ? '$title 구매 완료' : '골드가 부족합니다';
+    });
   }
 
   void _setSimulationSpeed(double speed) {
@@ -365,6 +397,490 @@ class _SketchLoadingIndicator extends StatelessWidget {
   }
 }
 
+class _RunShopOffer {
+  final String id;
+  final String category;
+  final String title;
+  final String description;
+  final int price;
+  final IconData icon;
+  final Color color;
+  final bool enabled;
+
+  const _RunShopOffer({
+    required this.id,
+    required this.category,
+    required this.title,
+    required this.description,
+    required this.price,
+    required this.icon,
+    required this.color,
+    required this.enabled,
+  });
+}
+
+class _RunShopOverlay extends StatelessWidget {
+  final PlayerSnapshot player;
+  final int stageNumber;
+  final String? toast;
+  final VoidCallback onClose;
+  final void Function(String itemId, String title) onPurchase;
+
+  const _RunShopOverlay({
+    required this.player,
+    required this.stageNumber,
+    required this.toast,
+    required this.onClose,
+    required this.onPurchase,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final media = MediaQuery.of(context);
+    final compact = media.size.width < 680 || media.size.height < 520;
+    final weapons = _activeWeapons(player);
+    final offers = _buildOffers(player, stageNumber);
+
+    return Material(
+      color: AutoBattlePalette.ink.withValues(alpha: 0.58),
+      child: SafeArea(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(
+              maxWidth: compact ? media.size.width - 18 : 760,
+              maxHeight: media.size.height - 24,
+            ),
+            child: Container(
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(color: AutoBattlePalette.ink, width: 4),
+                borderRadius: BorderRadius.circular(8),
+                boxShadow: const [
+                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(7, 7)),
+                ],
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Column(
+                children: [
+                  Container(
+                    padding: EdgeInsets.symmetric(
+                      horizontal: compact ? 12 : 16,
+                      vertical: compact ? 9 : 12,
+                    ),
+                    decoration: const BoxDecoration(
+                      color: AutoBattlePalette.gold,
+                      border: Border(
+                        bottom: BorderSide(
+                          color: AutoBattlePalette.ink,
+                          width: 3,
+                        ),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.storefront,
+                            color: Colors.white, size: compact ? 19 : 22),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'BATTLE SHOP',
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: compact ? 16 : 20,
+                              fontWeight: FontWeight.w900,
+                              shadows: const [
+                                Shadow(
+                                  color: AutoBattlePalette.ink,
+                                  offset: Offset(1.5, 1.5),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        _ShopPill(
+                          label: '${player.gold.toInt()} G',
+                          color: AutoBattlePalette.gold,
+                          compact: compact,
+                        ),
+                        const SizedBox(width: 8),
+                        _ShopPill(
+                          label: '${weapons.length}/4 WPN',
+                          color: const Color(0xFF2563EB),
+                          compact: compact,
+                        ),
+                        const SizedBox(width: 8),
+                        IconButton(
+                          tooltip: '닫기',
+                          onPressed: onClose,
+                          icon: const Icon(Icons.close),
+                          color: AutoBattlePalette.ink,
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (toast != null)
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 8,
+                      ),
+                      color: const Color(0xFFDCFCE7),
+                      child: Text(
+                        toast!,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFF166534),
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  Expanded(
+                    child: GridView.builder(
+                      padding: EdgeInsets.all(compact ? 12 : 16),
+                      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: compact ? 1 : 2,
+                        mainAxisExtent: compact ? 104 : 118,
+                        crossAxisSpacing: 12,
+                        mainAxisSpacing: 12,
+                      ),
+                      itemCount: offers.length,
+                      itemBuilder: (context, index) {
+                        final offer = offers[index];
+                        final affordable = player.gold >= offer.price;
+                        return _RunShopCard(
+                          offer: offer,
+                          compact: compact,
+                          affordable: affordable,
+                          onTap: offer.enabled && affordable
+                              ? () => onPurchase(offer.id, offer.title)
+                              : null,
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  static List<String> _activeWeapons(PlayerSnapshot player) {
+    final characterWeapon =
+        _isWeaponType(player.characterType) ? player.characterType : 'gunner';
+    return <String>{
+      characterWeapon,
+      ...player.ownedWeapons,
+    }.where(_isWeaponType).toList();
+  }
+
+  static bool _isWeaponType(String value) {
+    return const {
+      'gunner',
+      'minigun',
+      'long_gun',
+      'ricochet',
+      'burst',
+      'blade',
+      'heavy_blade',
+      'miner',
+      'poison',
+      'footsteps',
+      'aura',
+      'laser',
+      'orbit_blades',
+    }.contains(value);
+  }
+
+  static List<_RunShopOffer> _buildOffers(
+    PlayerSnapshot player,
+    int stageNumber,
+  ) {
+    final weapons = _activeWeapons(player);
+    final slotsOpen = weapons.length < 4;
+    final offers = <_RunShopOffer>[];
+
+    void weapon(String id, String title, String description, int base,
+        IconData icon, Color color) {
+      final weaponType = id.substring('weapon_'.length);
+      if (weapons.contains(weaponType)) return;
+      offers.add(_RunShopOffer(
+        id: id,
+        category: 'NEW',
+        title: title,
+        description: slotsOpen ? description : '무기 슬롯이 가득 찼습니다.',
+        price: base + weapons.length * 30,
+        icon: icon,
+        color: color,
+        enabled: slotsOpen,
+      ));
+    }
+
+    void upgrade(String id, String title, String description, int base,
+        IconData icon, Color color, bool enabled) {
+      if (!enabled) return;
+      final level = player.runWeaponLevels[id] ?? 0;
+      offers.add(_RunShopOffer(
+        id: id,
+        category: 'UPG',
+        title: level > 0 ? '$title +$level' : title,
+        description: description,
+        price: base + level * (base ~/ 2 + 20),
+        icon: icon,
+        color: color,
+        enabled: enabled,
+      ));
+    }
+
+    void stat(String id, String title, String description, int base,
+        IconData icon, Color color) {
+      final level = player.runStatLevels[id] ?? 0;
+      offers.add(_RunShopOffer(
+        id: id,
+        category: 'STAT',
+        title: level > 0 ? '$title +$level' : title,
+        description: description,
+        price: base + level * (base ~/ 2 + 20),
+        icon: icon,
+        color: color,
+        enabled: true,
+      ));
+    }
+
+    weapon('weapon_blade', '회전 칼날', '근접 범위 피해 무기를 즉시 장착합니다.', 140,
+        Icons.autorenew, const Color(0xFF7C3AED));
+    weapon('weapon_miner', '지뢰 매설기', '이동 경로 뒤에 지뢰를 떨어뜨립니다.', 150,
+        Icons.dangerous, const Color(0xFFEF4444));
+    if (stageNumber >= 2) {
+      weapon('weapon_laser', '레이저', '가장 가까운 적을 관통하는 광선을 발사합니다.', 210,
+          Icons.horizontal_rule, const Color(0xFF0EA5E9));
+      weapon('weapon_aura', '수호 오라', '주변 적에게 지속 피해를 줍니다.', 240, Icons.shield,
+          const Color(0xFFA855F7));
+    }
+    if (stageNumber >= 3) {
+      weapon('weapon_orbit_blades', '궤도 칼날', '플레이어 주변을 도는 칼날을 추가합니다.', 260,
+          Icons.blur_circular, const Color(0xFF92400E));
+    }
+
+    final hasGun = weapons.contains('gunner') ||
+        weapons
+            .any((w) => w == 'minigun' || w == 'long_gun' || w == 'ricochet');
+    final hasSword = weapons
+        .any((w) => w == 'blade' || w == 'heavy_blade' || w == 'orbit_blades');
+    final hasMine = weapons.contains('miner');
+
+    upgrade('gun_fire_rate', '속사 개조', '총기 발사 간격이 즉시 짧아집니다.', 90, Icons.bolt,
+        const Color(0xFFF59E0B), hasGun);
+    upgrade('gun_multishot', '멀티샷', '다음 탄막부터 발사 수가 증가합니다.', 130,
+        Icons.scatter_plot, const Color(0xFF2563EB), hasGun);
+    if (stageNumber >= 2) {
+      upgrade('gun_pierce', '관통탄', '총알이 적을 추가로 관통합니다.', 160, Icons.call_made,
+          const Color(0xFF0284C7), hasGun);
+      upgrade('gun_homing', '유도탄', '총알이 가까운 적을 따라갑니다.', 190, Icons.gps_fixed,
+          const Color(0xFF16A34A), hasGun);
+    }
+    if (stageNumber >= 3) {
+      upgrade('gun_explosive', '폭발탄', '명중 시 작은 폭발 피해를 줍니다.', 220, Icons.flare,
+          const Color(0xFFDC2626), hasGun);
+    }
+
+    upgrade('sword_range', '검 사거리', '칼날 충돌 범위가 증가합니다.', 110, Icons.open_in_full,
+        const Color(0xFF7C3AED), hasSword);
+    upgrade('sword_spin', '회전 강화', 'AOE 체감 범위가 커집니다.', 170, Icons.cyclone,
+        const Color(0xFF9333EA), hasSword);
+    upgrade('sword_lifesteal', '흡혈 칼날', '근접 빌드에 흡혈을 추가합니다.', 150,
+        Icons.favorite, const Color(0xFFE11D48), hasSword);
+    upgrade('sword_interval', '빠른 참격', '칼날 피해 간격이 짧아집니다.', 130, Icons.speed,
+        const Color(0xFFF97316), hasSword);
+
+    upgrade('mine_radius', '폭발 반경', '지뢰 감지와 폭발 반경이 커집니다.', 110,
+        Icons.radio_button_checked, const Color(0xFFEF4444), hasMine);
+    upgrade('mine_chain', '연쇄 폭발', '폭발 주변 적에게 추가 피해를 줍니다.', 180,
+        Icons.device_hub, const Color(0xFFDC2626), hasMine);
+    upgrade('mine_slow', '둔화 지뢰', '폭발에 맞은 적을 잠시 느리게 합니다.', 140, Icons.ac_unit,
+        const Color(0xFF0EA5E9), hasMine);
+    upgrade('mine_poison', '독성 지뢰', '폭발 지점에 독 구름을 남깁니다.', 170,
+        Icons.bubble_chart, const Color(0xFF16A34A), hasMine);
+
+    stat('stat_atk', '공격력', 'ATK +3', 80, Icons.whatshot,
+        const Color(0xFFDC2626));
+    stat('stat_def', '방어력', 'DEF +1.2', 80, Icons.shield,
+        const Color(0xFF059669));
+    stat('stat_spd', '이동 속도', 'SPD +0.34', 90, Icons.directions_run,
+        const Color(0xFFF59E0B));
+    stat('stat_hp', '최대 체력', 'HP +28 및 즉시 회복', 85, Icons.favorite,
+        const Color(0xFFE11D48));
+
+    return offers;
+  }
+}
+
+class _ShopPill extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool compact;
+
+  const _ShopPill({
+    required this.label,
+    required this.color,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 9,
+        vertical: compact ? 4 : 5,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: 2),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: color,
+          fontSize: compact ? 10 : 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _RunShopCard extends StatelessWidget {
+  final _RunShopOffer offer;
+  final bool compact;
+  final bool affordable;
+  final VoidCallback? onTap;
+
+  const _RunShopCard({
+    required this.offer,
+    required this.compact,
+    required this.affordable,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final enabled = onTap != null;
+    final muted = !offer.enabled || !affordable;
+
+    return InkWell(
+      onTap: onTap,
+      child: Container(
+        padding: EdgeInsets.all(compact ? 10 : 12),
+        decoration: BoxDecoration(
+          color: muted ? const Color(0xFFF1F5F9) : Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: muted
+                ? AutoBattlePalette.ink.withValues(alpha: 0.45)
+                : AutoBattlePalette.ink,
+            width: 2.4,
+          ),
+          boxShadow: enabled
+              ? const [
+                  BoxShadow(
+                    color: AutoBattlePalette.ink,
+                    offset: Offset(3, 3),
+                  ),
+                ]
+              : const [],
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: compact ? 42 : 48,
+              height: compact ? 42 : 48,
+              decoration: BoxDecoration(
+                color: offer.color.withValues(alpha: muted ? 0.14 : 0.24),
+                border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                borderRadius: BorderRadius.circular(7),
+              ),
+              child: Icon(
+                offer.icon,
+                color: muted ? AutoBattlePalette.inkSubtle : offer.color,
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 5,
+                          vertical: 2,
+                        ),
+                        color: offer.color,
+                        child: Text(
+                          offer.category,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            height: 1,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          offer.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: muted
+                                ? AutoBattlePalette.inkSubtle
+                                : AutoBattlePalette.ink,
+                            fontSize: compact ? 13 : 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    offer.description,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AutoBattlePalette.inkSubtle,
+                      fontSize: compact ? 10.5 : 11.5,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            Text(
+              affordable ? '${offer.price}G' : '${offer.price}G',
+              style: TextStyle(
+                color: affordable
+                    ? AutoBattlePalette.gold
+                    : const Color(0xFFDC2626),
+                fontSize: compact ? 12 : 14,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _SketchTopBar extends StatelessWidget {
   final GameSnapshot? snapshot;
   final bool connected;
@@ -372,6 +888,7 @@ class _SketchTopBar extends StatelessWidget {
   final PlayerSnapshot? myPlayer;
   final bool compact;
   final VoidCallback onExit;
+  final VoidCallback onShop;
 
   const _SketchTopBar({
     required this.snapshot,
@@ -379,6 +896,7 @@ class _SketchTopBar extends StatelessWidget {
     required this.height,
     required this.compact,
     required this.onExit,
+    required this.onShop,
     this.myPlayer,
   });
 
@@ -441,6 +959,8 @@ class _SketchTopBar extends StatelessWidget {
               ),
             ),
           ),
+          SizedBox(width: compact ? 7 : 10),
+          _SketchShopButton(compact: compact, onTap: onShop),
           SizedBox(width: compact ? 7 : 10),
           _TopResourceCluster(
             compact: compact,
@@ -558,6 +1078,41 @@ class _SketchExitButton extends StatelessWidget {
         child: Icon(
           Icons.arrow_back,
           color: AutoBattlePalette.ink,
+          size: compact ? 18 : 22,
+        ),
+      ),
+    );
+  }
+}
+
+class _SketchShopButton extends StatelessWidget {
+  final bool compact;
+  final VoidCallback onTap;
+
+  const _SketchShopButton({
+    required this.compact,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: EdgeInsets.only(bottom: compact ? 8 : 12),
+        width: compact ? 38 : 44,
+        height: compact ? 34 : 40,
+        decoration: BoxDecoration(
+          color: AutoBattlePalette.gold,
+          border:
+              Border.all(color: AutoBattlePalette.ink, width: compact ? 2 : 3),
+          boxShadow: const [
+            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+          ],
+        ),
+        child: Icon(
+          Icons.storefront,
+          color: Colors.white,
           size: compact ? 18 : 22,
         ),
       ),
@@ -1013,6 +1568,22 @@ class _WeaponStatusIcon extends StatelessWidget {
           'color': const Color(0xFFA855F7),
           'persistent': true,
         };
+      case 'laser':
+        return {
+          'icon': Icons.horizontal_rule,
+          'label': 'LASR',
+          'name': '레이저',
+          'color': const Color(0xFF0EA5E9),
+          'persistent': false,
+        };
+      case 'orbit_blades':
+        return {
+          'icon': Icons.blur_circular,
+          'label': 'ORBT',
+          'name': '궤도 칼날',
+          'color': const Color(0xFF92400E),
+          'persistent': true,
+        };
       case 'gunner':
       default:
         return {
@@ -1035,6 +1606,7 @@ class _WeaponStatusIcon extends StatelessWidget {
         return p.lastBladeAt;
       case 'miner':
         return p.lastMineDropAt;
+      case 'laser':
       case 'minigun':
       case 'long_gun':
       case 'ricochet':
@@ -1053,6 +1625,8 @@ class _WeaponStatusIcon extends StatelessWidget {
         return (WEAPON_FIRE_INTERVAL_MS * 1.8).round();
       case 'burst':
         return BURST_FIRE_MS;
+      case 'laser':
+        return LASER_FIRE_MS;
       case 'miner':
         return MINER_DROP_MS;
       case 'poison':
@@ -1164,10 +1738,7 @@ class _PlayerSidebarCard extends StatelessWidget {
             Wrap(
               spacing: compact ? 4 : 6,
               runSpacing: compact ? 4 : 6,
-              children: [
-                player.characterType,
-                ...player.ownedWeapons.where((w) => w != player.characterType),
-              ]
+              children: _RunShopOverlay._activeWeapons(player)
                   .map((w) => _WeaponStatusIcon(
                         weapon: w,
                         player: player,
