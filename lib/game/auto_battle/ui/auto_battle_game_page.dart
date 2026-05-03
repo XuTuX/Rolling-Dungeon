@@ -129,7 +129,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         });
 
         setState(() => _snapshot = s);
-        _game.applySnapshot(s);
+        _game.applySnapshot(s, myPlayerId: _myId);
         _handleTerminalSnapshot(s, controller);
       });
   }
@@ -193,16 +193,16 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
     final mediaQuery = MediaQuery.of(context);
     final viewPadding = mediaQuery.viewPadding;
     final screenSize = mediaQuery.size;
-    final compact = screenSize.width < 740 || screenSize.height < 390;
+    final compact = screenSize.width < 740 || screenSize.height < 430;
     final bottomLogPanel =
         screenSize.width < 560 || screenSize.height > screenSize.width * 1.15;
-    final sidebarW = (screenSize.width * (compact ? 0.24 : 0.26))
-        .clamp(compact ? 156.0 : 190.0, 240.0)
+    final sidebarW = (screenSize.width * (compact ? 0.30 : 0.29))
+        .clamp(compact ? 198.0 : 232.0, 304.0)
         .toDouble();
     final bottomPanelH =
         (screenSize.height * 0.23).clamp(132.0, 180.0).toDouble();
-    final topH = (screenSize.height * (compact ? 0.15 : 0.16))
-        .clamp(compact ? 56.0 : 64.0, 80.0)
+    final topH = (screenSize.height * (compact ? 0.14 : 0.13))
+        .clamp(compact ? 58.0 : 64.0, compact ? 72.0 : 82.0)
         .toDouble();
 
     _game.viewportPadding = EdgeInsets.only(
@@ -289,7 +289,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                   child: _SketchSidebar(
                     players: players,
                     myId: _myId,
-                    topPadding: topH + viewPadding.top,
+                    topPadding: viewPadding.top + (compact ? 8 : 12),
                     compact: compact,
                   ),
                 ),
@@ -309,7 +309,6 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                 child: _SketchLoadingIndicator(),
               ),
             ),
-          if (_snapshot != null && myPlayer != null) const SizedBox.shrink(),
         ],
       ),
     );
@@ -360,128 +359,154 @@ class _SketchTopBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final stage = snapshot?.currentStage ?? 1;
-    final bottomMargin = compact ? 8.0 : 12.0;
     final borderWidth = compact ? 2.0 : 3.0;
     final stageFontSize = compact ? 16.0 : 20.0;
+    final horizontalPadding = compact ? 8.0 : 12.0;
 
     return Container(
       height: height,
-      padding: EdgeInsets.symmetric(horizontal: compact ? 8 : 12),
+      padding: EdgeInsets.fromLTRB(
+        horizontalPadding,
+        8,
+        horizontalPadding,
+        compact ? 8 : 10,
+      ),
       alignment: Alignment.bottomCenter,
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           _SketchExitButton(compact: compact, onTap: onExit),
-          SizedBox(width: compact ? 8 : 14),
-
-          // Stage Indicator (Center)
-          Container(
-            margin: EdgeInsets.only(bottom: bottomMargin),
-            padding: EdgeInsets.symmetric(
-              horizontal: compact ? 12 : 16,
-              vertical: compact ? 5 : 6,
-            ),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              border:
-                  Border.all(color: AutoBattlePalette.ink, width: borderWidth),
-              boxShadow: const [
-                BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
-              ],
-            ),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                snapshot?.isBossStage == true
-                    ? 'CYCLE ${snapshot?.currentCycle ?? 1} — BOSS'
-                    : 'CYCLE ${snapshot?.currentCycle ?? 1} — ${snapshot?.stageInCycle ?? stage}',
-                style: TextStyle(
+          SizedBox(width: compact ? 8 : 10),
+          Flexible(
+            flex: compact ? 4 : 3,
+            child: Container(
+              height: compact ? 34 : 40,
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 10 : 14,
+                vertical: compact ? 4 : 5,
+              ),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                border: Border.all(
+                    color: AutoBattlePalette.ink, width: borderWidth),
+                boxShadow: const [
+                  BoxShadow(
+                    color: AutoBattlePalette.ink,
+                    offset: Offset(3, 3),
+                  )
+                ],
+              ),
+              alignment: Alignment.center,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  snapshot?.isBossStage == true
+                      ? 'CYCLE ${snapshot?.currentCycle ?? 1} - BOSS'
+                      : 'CYCLE ${snapshot?.currentCycle ?? 1} - ${snapshot?.stageInCycle ?? stage}',
+                  style: TextStyle(
                     color: (snapshot?.isBossStage == true)
                         ? AutoBattlePalette.primary
                         : AutoBattlePalette.ink,
                     fontSize: stageFontSize,
-                    fontWeight: FontWeight.w900),
-                textAlign: TextAlign.center,
+                    fontWeight: FontWeight.w900,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
               ),
             ),
           ),
-
-          SizedBox(width: compact ? 8 : 20),
-
-          // Gold & Lives (Grouped)
-          Container(
-            margin: EdgeInsets.only(bottom: bottomMargin),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Gold
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: compact ? 7 : 10,
-                    vertical: compact ? 5 : 6,
-                  ),
-                  decoration: BoxDecoration(
-                    color: AutoBattlePalette.gold,
-                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.monetization_on,
-                          color: Colors.white, size: compact ? 14 : 16),
-                      SizedBox(width: compact ? 2 : 4),
-                      Text(
-                        '${myPlayer?.gold.toInt() ?? 0}',
-                        style: TextStyle(
-                            color: Colors.white,
-                            fontSize: compact ? 12 : 14,
-                            fontWeight: FontWeight.w900),
-                      ),
-                    ],
-                  ),
-                ),
-                // Lives
-                Obx(() {
-                  final lives = Get.find<GameProgressController>().lives.value;
-                  return Container(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: compact ? 4 : 6,
-                      vertical: compact ? 5 : 6,
-                    ),
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      border: Border(
-                        top: BorderSide(color: AutoBattlePalette.ink, width: 2),
-                        bottom:
-                            BorderSide(color: AutoBattlePalette.ink, width: 2),
-                        right:
-                            BorderSide(color: AutoBattlePalette.ink, width: 2),
-                      ),
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: List.generate(3, (i) {
-                        final hasLife = i < lives;
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 0.5),
-                          child: Icon(
-                            hasLife ? Icons.favorite : Icons.favorite_border,
-                            color: hasLife
-                                ? AutoBattlePalette.primary
-                                : AutoBattlePalette.ink.withValues(alpha: 0.2),
-                            size: compact ? 12 : 14,
-                          ),
-                        );
-                      }),
-                    ),
-                  );
-                }),
-              ],
+          if (myPlayer != null) ...[
+            SizedBox(width: compact ? 7 : 10),
+            Expanded(
+              flex: compact ? 5 : 4,
+              child: _TopPlayerVitals(player: myPlayer!, compact: compact),
             ),
+          ],
+          SizedBox(width: compact ? 7 : 10),
+          _TopResourceCluster(
+            compact: compact,
+            gold: myPlayer?.gold.toInt() ?? 0,
           ),
         ],
       ),
+    );
+  }
+}
+
+class _TopResourceCluster extends StatelessWidget {
+  final bool compact;
+  final int gold;
+
+  const _TopResourceCluster({
+    required this.compact,
+    required this.gold,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: compact ? 7 : 10,
+            vertical: compact ? 5 : 6,
+          ),
+          decoration: BoxDecoration(
+            color: AutoBattlePalette.gold,
+            border: Border.all(color: AutoBattlePalette.ink, width: 2),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.monetization_on,
+                  color: Colors.white, size: compact ? 14 : 16),
+              SizedBox(width: compact ? 2 : 4),
+              Text(
+                '$gold',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: compact ? 12 : 14,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
+          ),
+        ),
+        Obx(() {
+          final lives = Get.find<GameProgressController>().lives.value;
+          return Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 4 : 6,
+              vertical: compact ? 5 : 6,
+            ),
+            decoration: const BoxDecoration(
+              color: Colors.white,
+              border: Border(
+                top: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                bottom: BorderSide(color: AutoBattlePalette.ink, width: 2),
+                right: BorderSide(color: AutoBattlePalette.ink, width: 2),
+              ),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: List.generate(3, (i) {
+                final hasLife = i < lives;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 0.5),
+                  child: Icon(
+                    hasLife ? Icons.favorite : Icons.favorite_border,
+                    color: hasLife
+                        ? AutoBattlePalette.primary
+                        : AutoBattlePalette.ink.withValues(alpha: 0.2),
+                    size: compact ? 12 : 14,
+                  ),
+                );
+              }),
+            ),
+          );
+        }),
+      ],
     );
   }
 }
@@ -540,183 +565,181 @@ class _SketchSidebar extends StatelessWidget {
         players.where((p) => !p.isEnemy || p.maxHp >= 500).toList();
     final sorted = List<PlayerSnapshot>.from(filtered)
       ..sort((a, b) => b.hp.compareTo(a.hp));
+    final visibleCombatants = compact ? sorted.take(2).toList() : sorted;
 
     final myPlayer = players
         .cast<PlayerSnapshot?>()
         .firstWhere((p) => p?.id == myId, orElse: () => null);
 
+    final sidePadding = EdgeInsets.symmetric(horizontal: compact ? 10 : 16);
+    final children = <Widget>[
+      SizedBox(height: topPadding),
+      if (myPlayer != null) ...[
+        Padding(
+          padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
+          child: _SidebarSectionTitle(label: 'PLAYER', compact: compact),
+        ),
+        SizedBox(height: compact ? 7 : 10),
+        Padding(
+          padding: sidePadding,
+          child: _PlayerSidebarCard(
+            player: myPlayer,
+            compact: compact,
+          ),
+        ),
+        SizedBox(height: compact ? 14 : 22),
+      ],
+      Padding(
+        padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
+        child: _SidebarSectionTitle(label: 'COMBATANTS', compact: compact),
+      ),
+      SizedBox(height: compact ? 8 : 12),
+      for (var i = 0; i < visibleCombatants.length; i++) ...[
+        Padding(
+          padding: sidePadding,
+          child: _CombatantCard(
+            player: visibleCombatants[i],
+            myId: myId,
+            compact: compact,
+          ),
+        ),
+        SizedBox(height: compact ? 10 : 16),
+      ],
+    ];
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SizedBox(height: topPadding + (compact ? 12 : 20)),
+      children: children,
+    );
+  }
+}
 
-        // ── MY CHARACTER Section ──
-        if (myPlayer != null) ...[
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 24),
-            child: Text(
-              'MY CHARACTER',
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: compact ? 15 : 18,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+class _SidebarSectionTitle extends StatelessWidget {
+  final String label;
+  final bool compact;
+
+  const _SidebarSectionTitle({
+    required this.label,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      label,
+      style: TextStyle(
+        color: AutoBattlePalette.ink,
+        fontSize: compact ? 12 : 14,
+        fontWeight: FontWeight.w900,
+      ),
+    );
+  }
+}
+
+class _CombatantCard extends StatelessWidget {
+  final PlayerSnapshot player;
+  final String? myId;
+  final bool compact;
+
+  const _CombatantCard({
+    required this.player,
+    required this.myId,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isMine = player.id == myId;
+    final label = isMine
+        ? 'PLAYER'
+        : player.isEnemy
+            ? 'ENEMY'
+            : 'ALLY';
+    final color = isMine
+        ? const Color(0xFF2563EB)
+        : player.isEnemy
+            ? const Color(0xFFDC2626)
+            : const Color(0xFF16A34A);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 9 : 11,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AutoBattlePalette.ink, width: 2.4),
+        boxShadow: const [
+          BoxShadow(
+            color: AutoBattlePalette.ink,
+            offset: Offset(3, 3),
           ),
-          SizedBox(height: compact ? 8 : 12),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
-            child: Container(
-              padding: EdgeInsets.all(compact ? 10 : 14),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(color: AutoBattlePalette.ink, width: 3),
-                boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
-                ],
-              ),
-              child: Row(
-                children: [
-                  CharacterBallPreview(
-                    info: charDisplayInfoMap[myPlayer.characterType] ??
-                        charDisplayInfoMap['gunner']!,
-                    size: compact ? 48 : 64,
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          myPlayer.id.toUpperCase(),
-                          style: TextStyle(
-                            color: AutoBattlePalette.ink,
-                            fontSize: compact ? 14 : 16,
-                            fontWeight: FontWeight.w900,
-                          ),
-                        ),
-                        const SizedBox(height: 6),
-                        SingleChildScrollView(
-                          scrollDirection: Axis.horizontal,
-                          child: Row(
-                            children: [
-                              myPlayer.characterType,
-                              ...myPlayer.ownedWeapons
-                                  .where((w) => w != myPlayer.characterType),
-                            ]
-                                .map((w) => Padding(
-                                      padding: const EdgeInsets.only(right: 6),
-                                      child: _WeaponStatusIcon(
-                                        weapon: w,
-                                        player: myPlayer,
-                                        now: DateTime.now()
-                                            .millisecondsSinceEpoch,
-                                        compact: compact,
-                                      ),
-                                    ))
-                                .toList(),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          SizedBox(height: compact ? 16 : 24),
         ],
-
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 14 : 24),
-          child: Text(
-            'BATTLE LOG',
-            style: TextStyle(
-              color: AutoBattlePalette.ink,
-              fontSize: compact ? 15 : 18,
-              fontWeight: FontWeight.w900,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  isMine ? 'YOU' : player.id.toUpperCase(),
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: compact ? 11.5 : 13,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 6),
+              _RoleBadge(
+                label: label,
+                color: color,
+                compact: compact,
+              ),
+            ],
+          ),
+          SizedBox(height: compact ? 6 : 8),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(999),
+            child: LinearProgressIndicator(
+              value: (player.hp / player.maxHp).clamp(0, 1).toDouble(),
+              minHeight: compact ? 8 : 9,
+              backgroundColor: const Color(0xFFF1F5F9),
+              valueColor: AlwaysStoppedAnimation<Color>(
+                _hpColor(player.maxHp <= 0 ? 0 : player.hp / player.maxHp),
+              ),
             ),
           ),
-        ),
-        SizedBox(height: compact ? 12 : 20),
-        Expanded(
-          child: ListView.separated(
-            padding: EdgeInsets.symmetric(horizontal: compact ? 10 : 16),
-            itemCount: sorted.length,
-            separatorBuilder: (_, __) => SizedBox(height: compact ? 10 : 16),
-            itemBuilder: (context, i) {
-              final p = sorted[i];
-
-              return Container(
-                padding: EdgeInsets.all(compact ? 9 : 12),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  border: Border.all(color: AutoBattlePalette.ink, width: 3),
-                  boxShadow: const [
-                    BoxShadow(
-                      color: AutoBattlePalette.ink,
-                      offset: Offset(4, 4),
-                    ),
-                  ],
+          SizedBox(height: compact ? 6 : 8),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'HP ${player.hp.ceil()} / ${player.maxHp.ceil()}',
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AutoBattlePalette.ink,
+                    fontSize: compact ? 10 : 11.5,
+                    fontWeight: FontWeight.w900,
+                  ),
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Flexible(
-                          child: Text(
-                            p.id.toUpperCase(),
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                                color: AutoBattlePalette.ink,
-                                fontSize: compact ? 12 : 14,
-                                fontWeight: FontWeight.w900),
-                          ),
-                        ),
-                        Text('${p.gold.toInt()} G',
-                            style: TextStyle(
-                                color: AutoBattlePalette.gold,
-                                fontSize: compact ? 11 : 13,
-                                fontWeight: FontWeight.w900)),
-                      ],
-                    ),
-                    SizedBox(height: compact ? 6 : 8),
-                    // HP Bar
-                    Container(
-                      height: compact ? 12 : 14,
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        border: Border.all(
-                            color: AutoBattlePalette.ink, width: 2.5),
-                        boxShadow: const [
-                          BoxShadow(
-                              color: AutoBattlePalette.ink,
-                              offset: Offset(2, 2)),
-                        ],
-                      ),
-                      child: FractionallySizedBox(
-                        alignment: Alignment.centerLeft,
-                        widthFactor: (p.hp / p.maxHp).clamp(0, 1),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            color: p.flutterColor,
-                            border: const Border(
-                              right: BorderSide(
-                                  color: AutoBattlePalette.ink, width: 2),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
+              ),
+              const SizedBox(width: 6),
+              Text(
+                '${player.gold.toInt()} G',
+                style: TextStyle(
+                  color: AutoBattlePalette.gold,
+                  fontSize: compact ? 10 : 11,
+                  fontWeight: FontWeight.w900,
                 ),
-              );
-            },
+              ),
+            ],
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
@@ -746,7 +769,7 @@ class _WeaponStatusIcon extends StatelessWidget {
     final remaining = math.max(0.0, (cooldownMs - elapsed) / 1000.0);
     final progress = (elapsed / cooldownMs).clamp(0.0, 1.0);
     final ready = isPersistent || remaining <= 0;
-    final size = compact ? 38.0 : 42.0;
+    final size = compact ? 36.0 : 40.0;
 
     return Tooltip(
       message: info['name'] as String,
@@ -756,7 +779,6 @@ class _WeaponStatusIcon extends StatelessWidget {
         height: size + 4,
         child: Stack(
           children: [
-            // Hard Shadow Layer
             Positioned(
               left: 4,
               top: 4,
@@ -765,69 +787,51 @@ class _WeaponStatusIcon extends StatelessWidget {
                 height: size,
                 decoration: BoxDecoration(
                   color: AutoBattlePalette.ink,
-                  borderRadius: BorderRadius.circular(4),
+                  borderRadius: BorderRadius.circular(6),
                 ),
               ),
             ),
-            // Main Body
             Container(
               width: size,
               height: size,
               decoration: BoxDecoration(
-                color: Colors.white,
-                border: Border.all(
-                  color: AutoBattlePalette.ink,
-                  width: 2.5,
-                ),
-                borderRadius: BorderRadius.circular(4),
+                color: ready ? color.withValues(alpha: 0.18) : Colors.white,
+                border: Border.all(color: AutoBattlePalette.ink, width: 2.2),
+                borderRadius: BorderRadius.circular(6),
               ),
               clipBehavior: Clip.antiAlias,
               child: Stack(
                 children: [
-                  // Icon Background (Color)
-                  Positioned.fill(
-                    child: Container(
-                      color: ready
-                          ? color.withValues(alpha: 0.1)
-                          : Colors.grey[200],
-                    ),
-                  ),
-
-                  // Cooldown Fill (Sketchy Overlay)
                   if (!ready)
                     Positioned.fill(
                       child: FractionallySizedBox(
                         alignment: Alignment.bottomCenter,
                         heightFactor: 1.0 - progress,
                         child: Container(
-                          color: AutoBattlePalette.ink.withValues(alpha: 0.4),
-                          child: CustomPaint(
-                            painter: _HatchingPainter(),
-                          ),
+                          color: AutoBattlePalette.ink.withValues(alpha: 0.24),
                         ),
                       ),
                     ),
-
-                  // Center Icon
                   Center(
                     child: Icon(
                       info['icon'] as IconData,
-                      size: compact ? 18 : 22,
+                      size: compact ? 17 : 20,
                       color: ready ? color : AutoBattlePalette.inkSubtle,
                     ),
                   ),
-
-                  // Label Badge (Ink Tag)
                   Positioned(
                     right: 0,
                     bottom: 0,
                     child: Container(
                       padding: const EdgeInsets.symmetric(
-                          horizontal: 3, vertical: 1),
+                        horizontal: 3,
+                        vertical: 1,
+                      ),
                       decoration: const BoxDecoration(
                         color: AutoBattlePalette.ink,
-                        borderRadius:
-                            BorderRadius.only(topLeft: Radius.circular(4)),
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(4),
+                        ),
                       ),
                       child: Text(
                         ready
@@ -835,8 +839,9 @@ class _WeaponStatusIcon extends StatelessWidget {
                             : remaining.ceil().toString(),
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: compact ? 8 : 9,
+                          fontSize: compact ? 7.5 : 8.5,
                           fontWeight: FontWeight.w900,
+                          height: 1,
                         ),
                       ),
                     ),
@@ -986,24 +991,431 @@ class _WeaponStatusIcon extends StatelessWidget {
   }
 }
 
-/// Simple Hatching effect for a sketchy cooldown look
-class _HatchingPainter extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.2)
-      ..strokeWidth = 1.0;
+class _TopPlayerVitals extends StatelessWidget {
+  final PlayerSnapshot player;
+  final bool compact;
 
-    const spacing = 4.0;
-    for (double i = -size.height; i < size.width; i += spacing) {
-      canvas.drawLine(
-        Offset(i, 0),
-        Offset(i + size.height, size.height),
-        paint,
-      );
-    }
+  const _TopPlayerVitals({
+    required this.player,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final hpRatio =
+        player.maxHp <= 0 ? 0.0 : (player.hp / player.maxHp).clamp(0.0, 1.0);
+
+    return Container(
+      height: compact ? 34 : 40,
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 8 : 10,
+        vertical: compact ? 6 : 7,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(7),
+        border: Border.all(
+          color: AutoBattlePalette.ink.withValues(alpha: 0.18),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Text(
+            'HP',
+            style: TextStyle(
+              color: const Color(0xFF2563EB),
+              fontSize: compact ? 10 : 11,
+              fontWeight: FontWeight.w900,
+              height: 1,
+            ),
+          ),
+          SizedBox(width: compact ? 6 : 8),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(999),
+              child: LinearProgressIndicator(
+                value: hpRatio.toDouble(),
+                minHeight: compact ? 8 : 10,
+                backgroundColor: const Color(0xFFEFF3F8),
+                valueColor: AlwaysStoppedAnimation<Color>(_hpColor(hpRatio)),
+              ),
+            ),
+          ),
+          SizedBox(width: compact ? 6 : 8),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              '${player.hp.ceil()}/${player.maxHp.ceil()}',
+              style: TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: compact ? 10.5 : 11.5,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
+}
+
+class _PlayerSidebarCard extends StatelessWidget {
+  final PlayerSnapshot player;
+  final bool compact;
+
+  const _PlayerSidebarCard({
+    required this.player,
+    required this.compact,
+  });
 
   @override
-  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final stacked = !compact && constraints.maxWidth < 248;
+        final info = charDisplayInfoMap[player.characterType] ??
+            charDisplayInfoMap['gunner']!;
+        final preview = SizedBox(
+          width: stacked ? double.infinity : (compact ? 46 : 72),
+          child: Center(
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                Transform.rotate(
+                  angle: -0.12,
+                  child: Container(
+                    width: compact ? 42 : 66,
+                    height: compact ? 42 : 66,
+                    decoration: BoxDecoration(
+                      color: AutoBattlePalette.gold,
+                      border: Border.all(
+                        color: AutoBattlePalette.ink,
+                        width: 3,
+                      ),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+                CharacterBallPreview(
+                  info: info,
+                  size: compact ? 44 : 68,
+                ),
+              ],
+            ),
+          ),
+        );
+        final content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    player.id.toUpperCase(),
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: AutoBattlePalette.ink,
+                      fontSize: compact ? 14 : 16,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                _RoleBadge(
+                  label: 'PLAYER',
+                  color: const Color(0xFF2563EB),
+                  compact: compact,
+                ),
+              ],
+            ),
+            SizedBox(height: compact ? 6 : 8),
+            _StatChipWrap(
+              chips: [
+                _StatChipData(
+                  label: 'HP',
+                  value: '${player.hp.ceil()}/${player.maxHp.ceil()}',
+                  color: _hpColor(
+                    player.maxHp <= 0 ? 0 : player.hp / player.maxHp,
+                  ),
+                ),
+                if (player.shield > 0)
+                  _StatChipData(
+                    label: 'SH',
+                    value: player.shield.ceil().toString(),
+                    color: const Color(0xFF0EA5E9),
+                  ),
+                if (player.barrierHp > 0)
+                  _StatChipData(
+                    label: 'BR',
+                    value: player.barrierHp.ceil().toString(),
+                    color: const Color(0xFF4F46E5),
+                  ),
+              ],
+              compact: compact,
+            ),
+            if (!compact) ...[
+              const SizedBox(height: 6),
+              _StatChipWrap(
+                chips: [
+                  _StatChipData(
+                    label: 'ATK',
+                    value: player.atk.toStringAsFixed(0),
+                    color: const Color(0xFFDC2626),
+                  ),
+                  _StatChipData(
+                    label: 'DEF',
+                    value: player.def.toStringAsFixed(0),
+                    color: const Color(0xFF059669),
+                  ),
+                  _StatChipData(
+                    label: 'SPD',
+                    value: player.speed.toStringAsFixed(1),
+                    color: const Color(0xFFF59E0B),
+                  ),
+                ],
+                compact: compact,
+              ),
+            ],
+            SizedBox(height: compact ? 6 : 8),
+            Wrap(
+              spacing: compact ? 4 : 6,
+              runSpacing: compact ? 4 : 6,
+              children: [
+                player.characterType,
+                ...player.ownedWeapons.where((w) => w != player.characterType),
+              ]
+                  .map((w) => _WeaponStatusIcon(
+                        weapon: w,
+                        player: player,
+                        now: DateTime.now().millisecondsSinceEpoch,
+                        compact: compact,
+                      ))
+                  .toList(),
+            ),
+          ],
+        );
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            border: Border.all(color: AutoBattlePalette.ink, width: 3.2),
+            borderRadius: BorderRadius.circular(8),
+            boxShadow: const [
+              BoxShadow(
+                color: AutoBattlePalette.ink,
+                offset: Offset(5, 5),
+              ),
+            ],
+          ),
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Container(
+                padding: EdgeInsets.symmetric(
+                  horizontal: compact ? 8 : 12,
+                  vertical: compact ? 5 : 8,
+                ),
+                decoration: BoxDecoration(
+                  color: info.bodyColor,
+                  border: const Border(
+                    bottom: BorderSide(color: AutoBattlePalette.ink, width: 3),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        info.name.toUpperCase(),
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: compact ? 12 : 16,
+                          fontWeight: FontWeight.w900,
+                          shadows: const [
+                            Shadow(
+                              color: AutoBattlePalette.ink,
+                              offset: Offset(1.5, 1.5),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    _RoleBadge(
+                      label: 'PLAYER',
+                      color: AutoBattlePalette.gold,
+                      compact: compact,
+                      filled: true,
+                      textColor: AutoBattlePalette.ink,
+                    ),
+                  ],
+                ),
+              ),
+              Padding(
+                padding: EdgeInsets.all(compact ? 10 : 12),
+                child: stacked
+                    ? Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          preview,
+                          const SizedBox(height: 10),
+                          content,
+                        ],
+                      )
+                    : Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          preview,
+                          const SizedBox(width: 12),
+                          Expanded(child: content),
+                        ],
+                      ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _RoleBadge extends StatelessWidget {
+  final String label;
+  final Color color;
+  final bool compact;
+  final bool filled;
+  final Color? textColor;
+
+  const _RoleBadge({
+    required this.label,
+    required this.color,
+    required this.compact,
+    this.filled = false,
+    this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final backgroundColor = filled ? color : color.withValues(alpha: 0.18);
+    final foregroundColor = textColor ?? (filled ? Colors.white : color);
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 7 : 8,
+        vertical: compact ? 3 : 4,
+      ),
+      decoration: BoxDecoration(
+        color: backgroundColor,
+        borderRadius: BorderRadius.circular(5),
+        border: Border.all(color: AutoBattlePalette.ink, width: 2),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: foregroundColor,
+          fontSize: compact ? 8 : 9,
+          fontWeight: FontWeight.w900,
+          height: 1,
+        ),
+      ),
+    );
+  }
+}
+
+class _StatChipData {
+  final String label;
+  final String value;
+  final Color color;
+
+  const _StatChipData({
+    required this.label,
+    required this.value,
+    required this.color,
+  });
+}
+
+class _StatChipWrap extends StatelessWidget {
+  final List<_StatChipData> chips;
+  final bool compact;
+
+  const _StatChipWrap({
+    required this.chips,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children:
+          chips.map((chip) => _StatChip(chip: chip, compact: compact)).toList(),
+    );
+  }
+}
+
+class _StatChip extends StatelessWidget {
+  final _StatChipData chip;
+  final bool compact;
+
+  const _StatChip({
+    required this.chip,
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: AutoBattlePalette.ink, width: 2),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 5 : 6,
+              vertical: compact ? 4 : 5,
+            ),
+            color: chip.color,
+            child: Text(
+              chip.label,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: compact ? 8 : 9,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+          Padding(
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 6 : 8,
+              vertical: compact ? 4 : 5,
+            ),
+            child: Text(
+              chip.value,
+              style: TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: compact ? 9 : 10,
+                fontWeight: FontWeight.w900,
+                height: 1,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+Color _hpColor(double hpRatio) {
+  if (hpRatio > 0.6) return const Color(0xFF16A34A);
+  if (hpRatio > 0.3) return const Color(0xFFF59E0B);
+  return const Color(0xFFDC2626);
 }

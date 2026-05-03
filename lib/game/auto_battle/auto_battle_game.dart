@@ -8,6 +8,7 @@ import 'package:circle_war/game/auto_battle/engine/constants.dart';
 
 class AutoBattleGame extends FlameGame {
   GameSnapshot? _snapshot;
+  String? myPlayerId;
 
   double _arenaScale = 1.0;
   Offset _arenaOffset = Offset.zero;
@@ -28,19 +29,30 @@ class AutoBattleGame extends FlameGame {
     _updateTransform();
   }
 
-  void applySnapshot(GameSnapshot snapshot) {
+  void applySnapshot(GameSnapshot snapshot, {String? myPlayerId}) {
+    if (myPlayerId != null) {
+      this.myPlayerId = myPlayerId;
+    }
+
     // Process Damage Events from Engine
     for (final e in snapshot.damageEvents) {
       final victim = snapshot.players
           .cast<PlayerSnapshot?>()
           .firstWhere((p) => p?.id == e.victimId, orElse: () => null);
-      final isPlayer = victim?.isEnemy == false;
+      final isMine = _isMine(victim);
+      final isEnemy = victim?.isEnemy == true;
       _damageNumbers.add(_DamageNumber(
         pos: Offset(e.x, e.y - 15),
-        value: e.damage.toInt(),
-        color: isPlayer ? const Color(0xFFFF5252) : const Color(0xFFFFD54F),
+        text: isMine ? '-${e.damage.toInt()} HP' : '${e.damage.toInt()} DMG',
+        color: isMine
+            ? const Color(0xFFEF4444)
+            : isEnemy
+                ? const Color(0xFFFFD54F)
+                : const Color(0xFF60A5FA),
+        isTaken: isMine,
+        isCritical: e.isCritical,
       ));
-      if (isPlayer) _shakeIntensity = 6.0;
+      if (isMine) _shakeIntensity = 6.0;
     }
 
     _snapshot = snapshot;
@@ -334,10 +346,14 @@ class AutoBattleGame extends FlameGame {
       final pos = _toScreen(p.x, p.y);
       final r = p.radius * _arenaScale;
       final bodyAngle = _bodyAngle(p);
+      final isMine = _isMine(p);
+      final markerColor =
+          isMine ? const Color(0xFF2563EB) : const Color(0xFFDC2626);
 
       // Body Shadow
       canvas.drawPath(
-        _getGlobalShapePath(p.characterShape, pos + const Offset(4, 4), r, bodyAngle),
+        _getGlobalShapePath(
+            p.characterShape, pos + const Offset(4, 4), r, bodyAngle),
         Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1),
       );
 
@@ -366,9 +382,11 @@ class AutoBattleGame extends FlameGame {
       canvas.drawPath(
           bodyPath,
           Paint()
-            ..color = AutoBattlePalette.ink
+            ..color = isMine
+                ? markerColor.withValues(alpha: 0.86)
+                : AutoBattlePalette.ink.withValues(alpha: 0.82)
             ..style = PaintingStyle.stroke
-            ..strokeWidth = 3);
+            ..strokeWidth = isMine ? 3.6 : 2.8);
 
       // Face (Reactive Sketch Style)
       final prevHp = _prevHp[p.id] ?? p.hp;
@@ -497,25 +515,116 @@ class AutoBattleGame extends FlameGame {
       _renderWeaponDecoration(canvas, pos, r, p);
 
       // HP Bar
-      final barW = r * 2.5;
+      final barW = math.max(r * 2.8, isMine ? 72.0 : 44.0);
       final barRect = Rect.fromCenter(
-          center: pos + Offset(0, -r - 18), width: barW, height: 8);
-      canvas.drawRect(barRect, Paint()..color = Colors.white);
-      canvas.drawRect(
-          barRect,
-          Paint()
-            ..color = AutoBattlePalette.ink
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 2);
-      canvas.drawRect(
-        Rect.fromLTWH(barRect.left, barRect.top,
-            barRect.width * (p.hp / p.maxHp), barRect.height),
-        Paint()
-          ..color = p.hp / p.maxHp > 0.3
-              ? AutoBattlePalette.mint
-              : AutoBattlePalette.primary,
+        center: pos + Offset(0, -r - (isMine ? 28 : 24)),
+        width: barW,
+        height: isMine ? 13 : 11,
+      );
+      if (!isMine) {
+        _renderHpPlate(canvas, player: p, rect: barRect, isMine: false);
+      }
+    }
+  }
+
+  void _renderHpPlate(
+    Canvas canvas, {
+    required PlayerSnapshot player,
+    required Rect rect,
+    required bool isMine,
+  }) {
+    final hpRatio =
+        player.maxHp <= 0 ? 0.0 : (player.hp / player.maxHp).clamp(0.0, 1.0);
+    final plateRect = Rect.fromCenter(
+      center: rect.center,
+      width: isMine ? rect.width + 18 : rect.width + 10,
+      height: isMine ? rect.height + 8 : rect.height + 5,
+    );
+    final bg = RRect.fromRectAndRadius(
+      plateRect,
+      const Radius.circular(999),
+    );
+    final hpColor = hpRatio > 0.6
+        ? const Color(0xFF22C55E)
+        : hpRatio > 0.3
+            ? const Color(0xFFF59E0B)
+            : const Color(0xFFEF4444);
+    final sideColor =
+        isMine ? const Color(0xFF2563EB) : const Color(0xFFDC2626);
+    final shadowOffset = isMine ? const Offset(1.5, 2.5) : const Offset(1, 2);
+
+    canvas.drawRRect(
+      bg.shift(shadowOffset),
+      Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1),
+    );
+    canvas.drawRRect(
+      bg,
+      Paint()..color = Colors.white.withValues(alpha: isMine ? 0.95 : 0.9),
+    );
+    canvas.drawRRect(
+      bg,
+      Paint()
+        ..color = AutoBattlePalette.ink.withValues(alpha: isMine ? 0.14 : 0.08)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      Paint()..color = const Color(0xFFE5E7EB),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(
+        Rect.fromLTWH(rect.left, rect.top, rect.width * hpRatio, rect.height),
+        const Radius.circular(4),
+      ),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            hpColor.withValues(alpha: 0.9),
+            Color.lerp(hpColor, Colors.white, 0.24)!,
+          ],
+        ).createShader(rect),
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      Paint()
+        ..color = AutoBattlePalette.ink.withValues(alpha: 0.16)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.9,
+    );
+    canvas.drawCircle(
+      Offset(plateRect.left + 7, plateRect.center.dy),
+      isMine ? 2.8 : 2.3,
+      Paint()..color = sideColor.withValues(alpha: isMine ? 0.92 : 0.74),
+    );
+    if (isMine) {
+      _paintCenteredText(
+        canvas,
+        '${player.hp.ceil()}/${player.maxHp.ceil()}',
+        Offset(plateRect.center.dx + 5, plateRect.center.dy),
+        const TextStyle(
+          color: AutoBattlePalette.ink,
+          fontSize: 10,
+          fontWeight: FontWeight.w900,
+        ),
       );
     }
+  }
+
+  void _paintCenteredText(
+    Canvas canvas,
+    String text,
+    Offset center,
+    TextStyle style,
+  ) {
+    final painter = TextPainter(
+      text: TextSpan(text: text, style: style),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    painter.paint(
+      canvas,
+      center - Offset(painter.width / 2, painter.height / 2),
+    );
   }
 
   void _renderWeaponDecoration(
@@ -781,37 +890,91 @@ class AutoBattleGame extends FlameGame {
   void _renderVFX(Canvas canvas) {
     for (final d in _damageNumbers) {
       final pos = _toScreen(d.pos.dx, d.pos.dy);
-      final textPainter = TextPainter(
+      final scale = d.isTaken ? 1.12 : 1.0;
+      final badgeStyle = TextStyle(
+        color: d.isTaken ? Colors.white : d.color,
+        fontSize: 13.5 * _arenaScale * scale,
+        fontWeight: FontWeight.w900,
+      );
+      final painter = TextPainter(
         text: TextSpan(
-          text: '${d.value}',
-          style: TextStyle(
-            color: d.color,
-            fontSize: 28 * _arenaScale * (1 + (1 - d.life) * 0.5),
-            fontWeight: FontWeight.w900,
-            shadows: const [
-              Shadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
-              Shadow(color: AutoBattlePalette.ink, offset: Offset(-1, -1)),
-            ],
+          text: d.isCritical ? 'CRIT ' : '',
+          style: badgeStyle.copyWith(
+            color: d.isTaken ? Colors.white : d.color.withValues(alpha: 0.92),
+            fontSize: 12 * _arenaScale * scale,
           ),
+          children: [
+            TextSpan(
+              text: d.text,
+              style: TextStyle(
+                color: d.isTaken ? Colors.white : d.color,
+                fontSize: 20 * _arenaScale * scale * (1 + (1 - d.life) * 0.34),
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ],
         ),
         textDirection: TextDirection.ltr,
       )..layout();
-      textPainter.paint(
-          canvas, pos - Offset(textPainter.width / 2, textPainter.height / 2));
+      final textOffset =
+          pos - Offset(painter.width / 2, painter.height / 2 + 2 * _arenaScale);
+      final bubbleRect = RRect.fromRectAndRadius(
+        Rect.fromLTWH(
+          textOffset.dx - 8,
+          textOffset.dy - 4,
+          painter.width + 16,
+          painter.height + 8,
+        ),
+        const Radius.circular(999),
+      );
+      final fillColor = d.isTaken
+          ? const Color(0xFFE11D48).withValues(alpha: 0.88 * d.life)
+          : Colors.white.withValues(alpha: 0.92 * d.life);
+      final strokeColor = d.isTaken
+          ? Colors.white.withValues(alpha: 0.85 * d.life)
+          : d.color.withValues(alpha: 0.7 * d.life);
+
+      canvas.drawRRect(
+        bubbleRect.shift(const Offset(2, 3)),
+        Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.12 * d.life),
+      );
+      canvas.drawRRect(bubbleRect, Paint()..color = fillColor);
+      canvas.drawRRect(
+        bubbleRect,
+        Paint()
+          ..color = strokeColor
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.6,
+      );
+      painter.paint(canvas, textOffset);
     }
   }
 
   Offset _toScreen(double x, double y) => Offset(
       _arenaOffset.dx + x * _arenaScale, _arenaOffset.dy + y * _arenaScale);
+
+  bool _isMine(PlayerSnapshot? player) {
+    if (player == null) return false;
+    if (myPlayerId != null) return player.id == myPlayerId;
+    return !player.isEnemy;
+  }
 }
 
 class _DamageNumber {
   Offset pos;
-  int value;
+  String text;
   Color color;
+  bool isTaken;
+  bool isCritical;
   double life = 1.0;
 
-  _DamageNumber({required this.pos, required this.value, required this.color});
+  _DamageNumber({
+    required this.pos,
+    required this.text,
+    required this.color,
+    required this.isTaken,
+    required this.isCritical,
+  });
 
   void update(double dt) {
     pos += const Offset(0, -50) * dt;
