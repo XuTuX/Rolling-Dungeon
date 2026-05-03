@@ -227,14 +227,19 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
           if (bottomLogPanel)
             Column(
               children: [
-                _SketchTopBar(
-                  snapshot: _snapshot,
-                  connected: _connected,
-                  height: topH + viewPadding.top,
-                  myPlayer: myPlayer,
-                  compact: true,
-                  onExit: () =>
-                      _stopAndNavigate(() => const HomeScreen(), offAll: true),
+                SafeArea(
+                  left: false,
+                  right: false,
+                  bottom: false,
+                  child: _SketchTopBar(
+                    snapshot: _snapshot,
+                    connected: _connected,
+                    height: topH,
+                    myPlayer: myPlayer,
+                    compact: true,
+                    onExit: () => _stopAndNavigate(() => const HomeScreen(),
+                        offAll: true),
+                  ),
                 ),
                 const Spacer(),
                 Container(
@@ -261,14 +266,19 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                 Expanded(
                   child: Column(
                     children: [
-                      _SketchTopBar(
-                        snapshot: _snapshot,
-                        connected: _connected,
-                        height: topH + viewPadding.top,
-                        myPlayer: myPlayer,
-                        compact: compact,
-                        onExit: () => _stopAndNavigate(() => const HomeScreen(),
-                            offAll: true),
+                      SafeArea(
+                        right: false,
+                        bottom: false,
+                        child: _SketchTopBar(
+                          snapshot: _snapshot,
+                          connected: _connected,
+                          height: topH,
+                          myPlayer: myPlayer,
+                          compact: compact,
+                          onExit: () => _stopAndNavigate(
+                              () => const HomeScreen(),
+                              offAll: true),
+                        ),
                       ),
                       const Spacer(),
                       SizedBox(height: viewPadding.bottom + 20),
@@ -279,18 +289,20 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                 // Right Sidebar: Sketch Style
                 Container(
                   width: sidebarW + viewPadding.right,
-                  padding: EdgeInsets.only(right: viewPadding.right),
                   decoration: const BoxDecoration(
                     color: Colors.white,
                     border: Border(
                         left:
                             BorderSide(color: AutoBattlePalette.ink, width: 4)),
                   ),
-                  child: _SketchSidebar(
-                    players: players,
-                    myId: _myId,
-                    topPadding: viewPadding.top + (compact ? 8 : 12),
-                    compact: compact,
+                  child: SafeArea(
+                    left: false,
+                    child: _SketchSidebar(
+                      players: players,
+                      myId: _myId,
+                      topPadding: compact ? 14 : 18,
+                      compact: compact,
+                    ),
                   ),
                 ),
               ],
@@ -378,7 +390,7 @@ class _SketchTopBar extends StatelessWidget {
           _SketchExitButton(compact: compact, onTap: onExit),
           SizedBox(width: compact ? 8 : 10),
           Flexible(
-            flex: compact ? 4 : 3,
+            flex: 1,
             child: Container(
               height: compact ? 34 : 40,
               padding: EdgeInsets.symmetric(
@@ -415,13 +427,6 @@ class _SketchTopBar extends StatelessWidget {
               ),
             ),
           ),
-          if (myPlayer != null) ...[
-            SizedBox(width: compact ? 7 : 10),
-            Expanded(
-              flex: compact ? 5 : 4,
-              child: _TopPlayerVitals(player: myPlayer!, compact: compact),
-            ),
-          ],
           SizedBox(width: compact ? 7 : 10),
           _TopResourceCluster(
             compact: compact,
@@ -561,8 +566,9 @@ class _SketchSidebar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final filtered =
-        players.where((p) => !p.isEnemy || p.maxHp >= 500).toList();
+    final filtered = players
+        .where((p) => p.id != myId && (!p.isEnemy || p.maxHp >= 500))
+        .toList();
     final sorted = List<PlayerSnapshot>.from(filtered)
       ..sort((a, b) => b.hp.compareTo(a.hp));
     final visibleCombatants = compact ? sorted.take(2).toList() : sorted;
@@ -575,11 +581,6 @@ class _SketchSidebar extends StatelessWidget {
     final children = <Widget>[
       SizedBox(height: topPadding),
       if (myPlayer != null) ...[
-        Padding(
-          padding: EdgeInsets.symmetric(horizontal: compact ? 4 : 8),
-          child: _SidebarSectionTitle(label: 'PLAYER', compact: compact),
-        ),
-        SizedBox(height: compact ? 7 : 10),
         Padding(
           padding: sidePadding,
           child: _PlayerSidebarCard(
@@ -594,22 +595,65 @@ class _SketchSidebar extends StatelessWidget {
         child: _SidebarSectionTitle(label: 'COMBATANTS', compact: compact),
       ),
       SizedBox(height: compact ? 8 : 12),
-      for (var i = 0; i < visibleCombatants.length; i++) ...[
+      if (visibleCombatants.isEmpty)
         Padding(
           padding: sidePadding,
-          child: _CombatantCard(
-            player: visibleCombatants[i],
-            myId: myId,
-            compact: compact,
+          child: _EmptyCombatantsCard(compact: compact),
+        )
+      else
+        for (var i = 0; i < visibleCombatants.length; i++) ...[
+          Padding(
+            padding: sidePadding,
+            child: _CombatantCard(
+              player: visibleCombatants[i],
+              myId: myId,
+              compact: compact,
+            ),
           ),
-        ),
-        SizedBox(height: compact ? 10 : 16),
-      ],
+          SizedBox(height: compact ? 10 : 16),
+        ],
     ];
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: children,
+    );
+  }
+}
+
+class _EmptyCombatantsCard extends StatelessWidget {
+  final bool compact;
+
+  const _EmptyCombatantsCard({
+    required this.compact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 12,
+        vertical: compact ? 10 : 12,
+      ),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AutoBattlePalette.ink, width: 2.4),
+        boxShadow: const [
+          BoxShadow(
+            color: AutoBattlePalette.ink,
+            offset: Offset(3, 3),
+          ),
+        ],
+      ),
+      child: Text(
+        'CLEAR',
+        style: TextStyle(
+          color: AutoBattlePalette.inkSubtle,
+          fontSize: compact ? 11 : 12,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
     );
   }
 }
@@ -991,77 +1035,6 @@ class _WeaponStatusIcon extends StatelessWidget {
   }
 }
 
-class _TopPlayerVitals extends StatelessWidget {
-  final PlayerSnapshot player;
-  final bool compact;
-
-  const _TopPlayerVitals({
-    required this.player,
-    required this.compact,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final hpRatio =
-        player.maxHp <= 0 ? 0.0 : (player.hp / player.maxHp).clamp(0.0, 1.0);
-
-    return Container(
-      height: compact ? 34 : 40,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 8 : 10,
-        vertical: compact ? 6 : 7,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(7),
-        border: Border.all(
-          color: AutoBattlePalette.ink.withValues(alpha: 0.18),
-          width: 1,
-        ),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Text(
-            'HP',
-            style: TextStyle(
-              color: const Color(0xFF2563EB),
-              fontSize: compact ? 10 : 11,
-              fontWeight: FontWeight.w900,
-              height: 1,
-            ),
-          ),
-          SizedBox(width: compact ? 6 : 8),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(999),
-              child: LinearProgressIndicator(
-                value: hpRatio.toDouble(),
-                minHeight: compact ? 8 : 10,
-                backgroundColor: const Color(0xFFEFF3F8),
-                valueColor: AlwaysStoppedAnimation<Color>(_hpColor(hpRatio)),
-              ),
-            ),
-          ),
-          SizedBox(width: compact ? 6 : 8),
-          FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Text(
-              '${player.hp.ceil()}/${player.maxHp.ceil()}',
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: compact ? 10.5 : 11.5,
-                fontWeight: FontWeight.w900,
-                height: 1,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _PlayerSidebarCard extends StatelessWidget {
   final PlayerSnapshot player;
   final bool compact;
@@ -1122,11 +1095,6 @@ class _PlayerSidebarCard extends StatelessWidget {
                       fontWeight: FontWeight.w900,
                     ),
                   ),
-                ),
-                _RoleBadge(
-                  label: 'PLAYER',
-                  color: const Color(0xFF2563EB),
-                  compact: compact,
                 ),
               ],
             ),
