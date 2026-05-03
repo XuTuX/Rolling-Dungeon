@@ -40,6 +40,20 @@ class ShopItem {
   });
 }
 
+class _UpgradeDraft {
+  final String type;
+  final String title;
+  final String description;
+  final String statPreview;
+
+  const _UpgradeDraft({
+    required this.type,
+    required this.title,
+    required this.description,
+    required this.statPreview,
+  });
+}
+
 class GameProgressController extends GetxController {
   // ── Run State ──
   var currentStage = 1.obs;
@@ -235,6 +249,10 @@ class GameProgressController extends GetxController {
       'body_small',
       'defense_up',
       'barrier',
+      'character_core',
+      'battle_trance',
+      'vampiric_edge',
+      'second_wind',
     ];
     if (activeEquipment.containsKey('hand')) {
       allTypes.add('hand_tune');
@@ -252,107 +270,146 @@ class GameProgressController extends GetxController {
     final selected = allTypes.sublist(0, 3);
 
     return selected.map((type) {
+      final rarity = _rollUpgradeRarity();
+      final multiplier = _rarityMultiplier(rarity);
       switch (type) {
         case 'attack_up':
-          return UpgradeCard(
+          return _buildUpgradeCard(
             type: type,
-            rarity: 'common',
             title: '공격력 증가',
             description:
-                '충돌 피해와 총알 피해가 함께 강해집니다.\nATK +${UPGRADE_ATTACK_GAIN.toStringAsFixed(0)}',
-            statPreview: 'ATK +${UPGRADE_ATTACK_GAIN.toStringAsFixed(0)}',
-            multiplier: 1,
+                '충돌 피해와 총알 피해가 함께 강해집니다.\nATK +${_fmt(UPGRADE_ATTACK_GAIN * multiplier)}',
+            statPreview: 'ATK +${_fmt(UPGRADE_ATTACK_GAIN * multiplier)}',
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'weapon_count':
-          return const UpgradeCard(
+          return _buildUpgradeCard(
             type: 'weapon_count',
-            rarity: 'common',
-            title: '무기 수 증가',
+            title: '주무기 증폭',
             description:
-                '공 주변 무기를 1개 늘립니다.\n최대 $PLAYER_MAX_WEAPON_COUNT개까지 중첩됩니다.',
+                '새 무기를 해금하지 않고 현재 무기의 발사 축을 늘립니다.\n최대 $PLAYER_MAX_WEAPON_COUNT개까지 중첩됩니다.',
             statPreview: 'WPN +1',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'bullet_burst':
-          return const UpgradeCard(
+          return _buildUpgradeCard(
             type: 'bullet_burst',
-            rarity: 'common',
             title: '2연발',
             description: '각 총구가 한 번에 총알을 1발 더 발사합니다.\n총알 계열 무기에 특히 강력합니다.',
             statPreview: 'SHOT +1',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'bullet_reflect':
-          return const UpgradeCard(
+          return _buildUpgradeCard(
             type: 'bullet_reflect',
-            rarity: 'common',
             title: '무기 반사',
             description: '총알이 벽에 닿았을 때 1회 더 튕깁니다.\n중첩 가능합니다.',
             statPreview: 'REF +1',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'body_big':
-          return const UpgradeCard(
+          return _buildUpgradeCard(
             type: 'body_big',
-            rarity: 'common',
             title: '플레이어 몸집 크게',
             description: '몸집과 체력이 증가합니다.\n충돌이 잦아지는 탱커형 증강입니다.',
             statPreview: 'SIZE/HP',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'body_small':
-          return const UpgradeCard(
+          return _buildUpgradeCard(
             type: 'body_small',
-            rarity: 'common',
             title: '플레이어 몸집 작게',
             description: '몸집이 작아지고 속도가 증가합니다.\n빠르게 튕기는 회피형 증강입니다.',
             statPreview: 'SIZE-/SPD',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'defense_up':
-          return UpgradeCard(
+          return _buildUpgradeCard(
             type: type,
-            rarity: 'common',
             title: '방어력 증가',
             description: '충돌 시 받는 피해를 줄입니다.\n최소 피해는 1 이상 유지됩니다.',
-            statPreview: 'DEF +${UPGRADE_DEFENSE_GAIN.toStringAsFixed(1)}',
-            multiplier: 1,
+            statPreview: 'DEF +${_fmt(UPGRADE_DEFENSE_GAIN * multiplier)}',
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'barrier':
-          return UpgradeCard(
+          return _buildUpgradeCard(
             type: type,
-            rarity: 'common',
             title: '베리어',
             description: '공보다 큰 보호막을 생성합니다.\n직접 충돌 시 먼저 깨지며 반격 피해를 줍니다.',
-            statPreview: 'BAR +${UPGRADE_BARRIER_HP_GAIN.toStringAsFixed(0)}',
-            multiplier: 1,
+            statPreview: 'BAR +${_fmt(UPGRADE_BARRIER_HP_GAIN * multiplier)}',
+            rarity: rarity,
+            multiplier: multiplier,
+          );
+        case 'character_core':
+          final draft = _characterCoreDraft();
+          return _buildUpgradeCard(
+            type: draft.type,
+            title: draft.title,
+            description: draft.description,
+            statPreview: draft.statPreview,
+            rarity: rarity,
+            multiplier: multiplier,
+          );
+        case 'battle_trance':
+          return _buildUpgradeCard(
+            type: type,
+            title: '전투 고양',
+            description: '공격 속도 감각과 치명타 확률이 함께 오릅니다.\n빠른 무기일수록 체감이 큽니다.',
+            statPreview: 'SPD/CRIT',
+            rarity: rarity,
+            multiplier: multiplier,
+          );
+        case 'vampiric_edge':
+          return _buildUpgradeCard(
+            type: type,
+            title: '흡혈 본능',
+            description: '입힌 피해 일부로 체력을 회복합니다.\n공격적인 생존 빌드에 어울립니다.',
+            statPreview: 'LIFE/ATK',
+            rarity: rarity,
+            multiplier: multiplier,
+          );
+        case 'second_wind':
+          return _buildUpgradeCard(
+            type: type,
+            title: '재정비',
+            description: '최대 체력과 초당 회복을 얻습니다.\n장기전에 강해지는 증강입니다.',
+            statPreview: 'HP/REG',
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'hand_tune':
-          return UpgradeCard(
+          return _buildUpgradeCard(
             type: type,
-            rarity: 'common',
             title: '${activeEquipment['hand']?.title ?? '손 장비'} 개조',
             description: '손/장신구 슬롯을 발전시킵니다.\n투사체 수, 반사, 공격 보조가 강화됩니다.',
             statPreview: 'HAND+',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'boots_tune':
-          return UpgradeCard(
+          return _buildUpgradeCard(
             type: type,
-            rarity: 'common',
             title: '${activeEquipment['boots']?.title ?? '신발'} 개조',
             description: '신발/발 슬롯을 발전시킵니다.\n이동 속도가 올라 일부 무기 쿨타임도 짧아집니다.',
             statPreview: 'SPD/CD',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         case 'armor_tune':
-          return UpgradeCard(
+          return _buildUpgradeCard(
             type: type,
-            rarity: 'common',
             title: '${activeEquipment['armor']?.title ?? '갑옷'} 개조',
             description: '갑옷/옷 슬롯을 발전시킵니다.\n체력, 방어, 피격 전 보호막이 강화됩니다.',
             statPreview: 'HP/DEF',
-            multiplier: 1,
+            rarity: rarity,
+            multiplier: multiplier,
           );
         default:
           return UpgradeCard(
@@ -371,9 +428,10 @@ class GameProgressController extends GetxController {
   //  Apply Upgrade
   // ───────────────────────────────────────────
   void applyUpgrade(UpgradeCard card) {
+    final m = card.multiplier;
     switch (card.type) {
       case 'attack_up':
-        playerAtk.value += UPGRADE_ATTACK_GAIN;
+        playerAtk.value += UPGRADE_ATTACK_GAIN * m;
         break;
       case 'weapon_count':
         playerWeaponCount.value = math.min(
@@ -394,30 +452,52 @@ class GameProgressController extends GetxController {
       case 'body_big':
         playerRadius.value = math.min(
           PLAYER_MAX_RADIUS,
-          playerRadius.value + UPGRADE_BIG_RADIUS_GAIN,
+          playerRadius.value + UPGRADE_BIG_RADIUS_GAIN * m,
         );
-        playerMaxHp.value += UPGRADE_BIG_HP_GAIN;
-        heal(UPGRADE_BIG_HP_GAIN);
+        playerMaxHp.value += UPGRADE_BIG_HP_GAIN * m;
+        heal(UPGRADE_BIG_HP_GAIN * m);
         playerSpd.value =
-            math.max(2.4, playerSpd.value - UPGRADE_BIG_SPEED_PENALTY);
+            math.max(2.4, playerSpd.value - UPGRADE_BIG_SPEED_PENALTY / m);
         break;
       case 'body_small':
         playerRadius.value = math.max(
           PLAYER_MIN_RADIUS,
-          playerRadius.value - UPGRADE_SMALL_RADIUS_LOSS,
+          playerRadius.value - UPGRADE_SMALL_RADIUS_LOSS * m,
         );
         playerSpd.value =
-            math.min(MAX_SPEED, playerSpd.value + UPGRADE_SMALL_SPEED_GAIN);
+            math.min(MAX_SPEED, playerSpd.value + UPGRADE_SMALL_SPEED_GAIN * m);
         break;
       case 'defense_up':
-        playerDef.value += UPGRADE_DEFENSE_GAIN;
+        playerDef.value += UPGRADE_DEFENSE_GAIN * m;
         break;
       case 'barrier':
-        playerBarrierMaxHp.value += UPGRADE_BARRIER_HP_GAIN;
+        playerBarrierMaxHp.value += UPGRADE_BARRIER_HP_GAIN * m;
         playerBarrierHp.value = playerBarrierMaxHp.value;
         break;
+      case 'character_core':
+        _applyCharacterCore(m);
+        break;
+      case 'battle_trance':
+        playerSpd.value = math.min(MAX_SPEED, playerSpd.value + 0.28 * m);
+        playerCritChance.value =
+            math.min(0.75, playerCritChance.value + 0.06 * m);
+        break;
+      case 'vampiric_edge':
+        playerAtk.value += 1.4 * m;
+        playerLifesteal.value =
+            math.min(0.35, playerLifesteal.value + 0.04 * m);
+        break;
+      case 'second_wind':
+        playerMaxHp.value += 24 * m;
+        heal(24 * m);
+        playerRegen.value += 0.32 * m;
+        break;
       case 'hand_tune':
-        playerAtk.value += 1.2;
+        playerAtk.value += 1.2 * m;
+        if (m >= 1.75 && playerCritChance.value < 0.75) {
+          playerCritChance.value =
+              math.min(0.75, playerCritChance.value + 0.05);
+        }
         if (playerBulletsPerWeapon.value < PLAYER_MAX_BULLETS_PER_WEAPON) {
           playerBulletsPerWeapon.value += 1;
         } else if (playerWeaponCount.value < PLAYER_MAX_WEAPON_COUNT) {
@@ -427,22 +507,150 @@ class GameProgressController extends GetxController {
         }
         break;
       case 'boots_tune':
-        playerSpd.value = math.min(MAX_SPEED, playerSpd.value + 0.34);
+        playerSpd.value = math.min(MAX_SPEED, playerSpd.value + 0.34 * m);
         playerRadius.value = math.max(
           PLAYER_MIN_RADIUS,
-          playerRadius.value - 1.5,
+          playerRadius.value - 1.5 * m,
         );
         break;
       case 'armor_tune':
-        playerMaxHp.value += 26;
-        heal(26);
-        playerDef.value += 0.7;
-        playerBarrierMaxHp.value += 24;
+        playerMaxHp.value += 26 * m;
+        heal(26 * m);
+        playerDef.value += 0.7 * m;
+        playerBarrierMaxHp.value += 24 * m;
         playerBarrierHp.value = playerBarrierMaxHp.value;
         break;
     }
     _clampRunScalingStats();
     appliedUpgrades.add(card.type);
+  }
+
+  UpgradeCard _buildUpgradeCard({
+    required String type,
+    required String title,
+    required String description,
+    required String statPreview,
+    required String rarity,
+    required double multiplier,
+  }) {
+    return UpgradeCard(
+      type: type,
+      rarity: rarity,
+      title: title,
+      description: _rarityPrefix(rarity) + description,
+      statPreview: statPreview,
+      multiplier: multiplier,
+    );
+  }
+
+  String _rollUpgradeRarity() {
+    final roll = _rand.nextDouble();
+    if (roll < 0.14) return 'epic';
+    if (roll < 0.42) return 'rare';
+    return 'common';
+  }
+
+  double _rarityMultiplier(String rarity) {
+    switch (rarity) {
+      case 'epic':
+        return 2.0;
+      case 'rare':
+        return 1.45;
+      case 'common':
+      default:
+        return 1.0;
+    }
+  }
+
+  String _rarityPrefix(String rarity) {
+    switch (rarity) {
+      case 'epic':
+        return '[EPIC] ';
+      case 'rare':
+        return '[RARE] ';
+      case 'common':
+      default:
+        return '[COMMON] ';
+    }
+  }
+
+  String _fmt(double value) {
+    if (value == value.roundToDouble()) return value.toStringAsFixed(0);
+    return value.toStringAsFixed(1);
+  }
+
+  _UpgradeDraft _characterCoreDraft() {
+    final charDef = kAllCharacters.firstWhere(
+      (c) => c.id == characterType.value,
+      orElse: () => kAllCharacters.first,
+    );
+    switch (charDef.shape) {
+      case 'square':
+        return _UpgradeDraft(
+          type: 'character_core',
+          title: '${charDef.title} 각성',
+          description: '최대 체력, 방어, 베리어 증가',
+          statPreview: 'HP/DEF/BAR',
+        );
+      case 'triangle':
+        return _UpgradeDraft(
+          type: 'character_core',
+          title: '${charDef.title} 각성',
+          description: '공격력, 속도, 치명타 증가',
+          statPreview: 'ATK/SPD/CRIT',
+        );
+      case 'pentagon':
+        return _UpgradeDraft(
+          type: 'character_core',
+          title: '${charDef.title} 각성',
+          description: '공격 보조, 회복, 반사 증가',
+          statPreview: 'POW/REG/REF',
+        );
+      case 'circle':
+      default:
+        return _UpgradeDraft(
+          type: 'character_core',
+          title: '${charDef.title} 각성',
+          description: '체력, 공격력, 속도 증가',
+          statPreview: 'HP/ATK/SPD',
+        );
+    }
+  }
+
+  void _applyCharacterCore(double multiplier) {
+    final charDef = kAllCharacters.firstWhere(
+      (c) => c.id == characterType.value,
+      orElse: () => kAllCharacters.first,
+    );
+    switch (charDef.shape) {
+      case 'square':
+        playerMaxHp.value += 32 * multiplier;
+        heal(32 * multiplier);
+        playerDef.value += 0.9 * multiplier;
+        playerBarrierMaxHp.value += 20 * multiplier;
+        playerBarrierHp.value = playerBarrierMaxHp.value;
+        break;
+      case 'triangle':
+        playerAtk.value += 2.1 * multiplier;
+        playerSpd.value =
+            math.min(MAX_SPEED, playerSpd.value + 0.22 * multiplier);
+        playerCritChance.value =
+            math.min(0.75, playerCritChance.value + 0.045 * multiplier);
+        break;
+      case 'pentagon':
+        playerAbilityPower.value += 0.18 * multiplier;
+        playerRegen.value += 0.22 * multiplier;
+        playerBulletReflectCount.value += 1;
+        break;
+      case 'circle':
+      default:
+        playerMaxHp.value += 20 * multiplier;
+        heal(20 * multiplier);
+        playerAtk.value += 1.6 * multiplier;
+        playerSpd.value =
+            math.min(MAX_SPEED, playerSpd.value + 0.14 * multiplier);
+        break;
+    }
   }
 
   Map<String, EquipmentShopDef> _resolvedEquipment(

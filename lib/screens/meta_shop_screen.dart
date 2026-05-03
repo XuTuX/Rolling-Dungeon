@@ -38,10 +38,10 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
           builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
-            final isNarrow = w < 520;
-            final isCompact = h < 500 || isNarrow;
-            final sidebarWidth = w < 380 ? 80.0 : (isCompact ? 94.0 : 120.0);
-            final pagePadding = w < 380 ? 8.0 : (isCompact ? 12.0 : 24.0);
+            final isNarrow = w < 560;
+            final isCompact = h < 560 || w < 760;
+            final sidebarWidth = w < 420 ? 82.0 : (isCompact ? 96.0 : 112.0);
+            final pagePadding = w < 420 ? 8.0 : (isCompact ? 12.0 : 18.0);
 
             return Row(
               children: [
@@ -56,7 +56,7 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
                   child: Column(
                     children: [
                       Padding(
-                        padding: EdgeInsets.only(top: isCompact ? 8 : 16),
+                        padding: EdgeInsets.only(top: isCompact ? 8 : 12),
                         child: _SidebarIconButton(
                           onTap: () => Get.back(),
                           icon: Icons.arrow_back,
@@ -65,18 +65,17 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
                         ),
                       ),
                       Expanded(
-                        child: SingleChildScrollView(
-                          physics: const BouncingScrollPhysics(),
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: List.generate(_tabs.length, (index) {
-                                final tab = _tabs[index];
-                                final isSelected = _currentTab == index;
-                                return Padding(
-                                  padding: const EdgeInsets.symmetric(
-                                      vertical: 6, horizontal: 8),
+                        child: Padding(
+                          padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: List.generate(_tabs.length, (index) {
+                              final tab = _tabs[index];
+                              final isSelected = _currentTab == index;
+                              return Expanded(
+                                child: Padding(
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 5),
                                   child: _SidebarTabButton(
                                     isSelected: isSelected,
                                     icon: tab.icon,
@@ -86,14 +85,14 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
                                         setState(() => _currentTab = index),
                                     isCompact: isCompact,
                                   ),
-                                );
-                              }),
-                            ),
+                                ),
+                              );
+                            }),
                           ),
                         ),
                       ),
                       Padding(
-                        padding: const EdgeInsets.only(bottom: 8),
+                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
                         child: Obx(() => _CurrencyBox(
                             amount: ctrl.currency.value, isCompact: isCompact)),
                       ),
@@ -113,7 +112,7 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
                         child: Padding(
                           padding: EdgeInsets.fromLTRB(
                               pagePadding, 0, pagePadding, pagePadding),
-                          child: _buildCurrentTab(ctrl, isCompact),
+                          child: _buildCurrentTab(ctrl, isCompact, isNarrow),
                         ),
                       ),
                     ],
@@ -127,17 +126,27 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
     );
   }
 
-  Widget _buildCurrentTab(MetaProgressController ctrl, bool isCompact) {
+  Widget _buildCurrentTab(
+      MetaProgressController ctrl, bool isCompact, bool isNarrow) {
     switch (_currentTab) {
       case 0:
         return _CharacterShopTab(
-            key: const ValueKey(0), ctrl: ctrl, isCompact: isCompact);
+            key: const ValueKey(0),
+            ctrl: ctrl,
+            isCompact: isCompact,
+            isNarrowPage: isNarrow);
       case 1:
         return _EquipmentShopTab(
-            key: const ValueKey(1), ctrl: ctrl, isCompact: isCompact);
+            key: const ValueKey(1),
+            ctrl: ctrl,
+            isCompact: isCompact,
+            isNarrowPage: isNarrow);
       case 2:
         return _StatUpgradeTab(
-            key: const ValueKey(2), ctrl: ctrl, isCompact: isCompact);
+            key: const ValueKey(2),
+            ctrl: ctrl,
+            isCompact: isCompact,
+            isNarrowPage: isNarrow);
       default:
         return const SizedBox.shrink();
     }
@@ -299,8 +308,12 @@ class _CurrencyBox extends StatelessWidget {
 class _CharacterShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
   final bool isCompact;
+  final bool isNarrowPage;
   const _CharacterShopTab(
-      {super.key, required this.ctrl, required this.isCompact});
+      {super.key,
+      required this.ctrl,
+      required this.isCompact,
+      required this.isNarrowPage});
 
   @override
   State<_CharacterShopTab> createState() => _CharacterShopTabState();
@@ -322,7 +335,7 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
         isCompact: widget.isCompact,
         child: LayoutBuilder(
           builder: (context, constraints) {
-            final isNarrow = constraints.maxWidth < 390;
+            final isNarrow = widget.isNarrowPage || constraints.maxWidth < 420;
             final selector = _CharacterSelectorPanel(
               ctrl: ctrl,
               selectedIndex: _selectedIndex,
@@ -344,7 +357,8 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
               return Column(
                 children: [
                   SizedBox(
-                      height: widget.isCompact ? 112 : 132, child: selector),
+                      height: widget.isCompact ? 124 : 144, child: selector),
+                  const SizedBox(height: 10),
                   Expanded(child: detail),
                 ],
               );
@@ -409,12 +423,12 @@ class _CharacterSelectorPanel extends StatelessWidget {
           ],
           Expanded(
             child: GridView.builder(
-              physics: const BouncingScrollPhysics(),
+              physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isNarrow ? 4 : (isCompact ? 3 : 2),
+                crossAxisCount: isNarrow ? 4 : 2,
                 crossAxisSpacing: 8,
                 mainAxisSpacing: 8,
-                childAspectRatio: 1,
+                childAspectRatio: isNarrow ? 1 : (isCompact ? 1.05 : 1.18),
               ),
               itemCount: kAllCharacters.length,
               itemBuilder: (context, i) {
@@ -548,58 +562,48 @@ class _CharacterDetailPanel extends StatelessWidget {
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 4),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 2),
-                      decoration: BoxDecoration(
-                        color:
-                            AutoBattlePalette.secondary.withValues(alpha: 0.1),
-                        border: Border.all(
-                            color: AutoBattlePalette.secondary, width: 1.5),
-                      ),
-                      child: Text(
-                        character.trait,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(
-                            color: AutoBattlePalette.secondary,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w900),
-                      ),
-                    ),
                   ],
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          const Divider(color: AutoBattlePalette.ink, thickness: 2),
+          SizedBox(height: isNarrow ? 8 : 10),
           Expanded(
-            child: SingleChildScrollView(
-              physics: const BouncingScrollPhysics(),
-              child: Column(
-                children: [
-                  const SizedBox(height: 8),
-                  Container(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(
+                  child: Container(
                     width: double.infinity,
-                    padding: EdgeInsets.all(isNarrow ? 8 : 10),
+                    padding: EdgeInsets.all(isNarrow ? 10 : 12),
                     decoration: BoxDecoration(
                       color:
                           AutoBattlePalette.background.withValues(alpha: 0.5),
                       border:
                           Border.all(color: AutoBattlePalette.ink, width: 1.5),
                     ),
-                    child: _ShopSummaryPanel(
-                      icon: Icons.analytics,
-                      summary: character.shopSummary,
-                      isCompact: isCompact,
-                      accentColor: AutoBattlePalette.primary,
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _ShopSummaryPanel(
+                          icon: Icons.analytics,
+                          summary: character.shopSummary,
+                          isCompact: isCompact,
+                          accentColor: AutoBattlePalette.primary,
+                        ),
+                        const Spacer(),
+                        _CharacterStatusRow(
+                          isUnlocked: isUnlocked,
+                          isSelected: isSelected,
+                          canAfford: canAfford,
+                          price: character.price,
+                          isCompact: isCompact,
+                        ),
+                      ],
                     ),
                   ),
-                  const SizedBox(height: 12),
-                ],
-              ),
+                ),
+              ],
             ),
           ),
           const SizedBox(height: 8),
@@ -627,6 +631,66 @@ class _CharacterDetailPanel extends StatelessWidget {
                     fontWeight: FontWeight.w900,
                     letterSpacing: 1),
               ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _CharacterStatusRow extends StatelessWidget {
+  final bool isUnlocked;
+  final bool isSelected;
+  final bool canAfford;
+  final int price;
+  final bool isCompact;
+
+  const _CharacterStatusRow({
+    required this.isUnlocked,
+    required this.isSelected,
+    required this.canAfford,
+    required this.price,
+    required this.isCompact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = isUnlocked
+        ? (isSelected ? '현재 선택됨' : '보유 중')
+        : (canAfford ? '구매 가능' : '재화 부족');
+    final value = isUnlocked ? 'READY' : '💎 $price';
+    final color = isUnlocked
+        ? AutoBattlePalette.secondary
+        : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF));
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 8 : 10, vertical: isCompact ? 6 : 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: isCompact ? 10 : 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: isCompact ? 10 : 12,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -736,8 +800,12 @@ class _ShopSummaryPanel extends StatelessWidget {
 class _EquipmentShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
   final bool isCompact;
+  final bool isNarrowPage;
   const _EquipmentShopTab(
-      {super.key, required this.ctrl, required this.isCompact});
+      {super.key,
+      required this.ctrl,
+      required this.isCompact,
+      required this.isNarrowPage});
 
   @override
   State<_EquipmentShopTab> createState() => _EquipmentShopTabState();
@@ -833,15 +901,25 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
 
               return LayoutBuilder(
                 builder: (context, gridConstraints) {
-                  final oneColumn = gridConstraints.maxWidth < 390;
-                  final itemExtent = oneColumn
-                      ? (widget.isCompact ? 158.0 : 172.0)
-                      : (widget.isCompact ? 148.0 : 168.0);
+                  final oneColumn =
+                      widget.isNarrowPage || gridConstraints.maxWidth < 390;
+                  final fourColumns =
+                      !oneColumn && gridConstraints.maxWidth >= 980;
+                  final crossAxisCount = oneColumn ? 1 : (fourColumns ? 4 : 2);
+                  final rowCount = (items.length / crossAxisCount).ceil();
+                  const spacing = 8.0;
+                  const padding = 16.0;
+                  final availableHeight = gridConstraints.maxHeight -
+                      padding -
+                      (spacing * (rowCount - 1));
+                  final itemExtent =
+                      (availableHeight / rowCount).clamp(134.0, 188.0);
 
                   return GridView.builder(
                     padding: const EdgeInsets.all(8),
+                    physics: const NeverScrollableScrollPhysics(),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: oneColumn ? 1 : 2,
+                      crossAxisCount: crossAxisCount,
                       crossAxisSpacing: 8,
                       mainAxisSpacing: 8,
                       mainAxisExtent: itemExtent,
@@ -963,66 +1041,53 @@ class _EquipmentCard extends StatelessWidget {
             child: Padding(
               padding: EdgeInsets.symmetric(
                   horizontal: oneColumn ? 8 : 6, vertical: 4),
-              child: LayoutBuilder(
-                builder: (context, constraints) {
-                  return FittedBox(
-                    fit: BoxFit.scaleDown,
-                    alignment: Alignment.centerLeft,
-                    child: SizedBox(
-                      width: constraints.maxWidth,
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Text(
-                            equipment.title,
-                            style: TextStyle(
-                                color: AutoBattlePalette.ink,
-                                fontSize: isCompact ? 11 : 13,
-                                fontWeight: FontWeight.w900),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          SizedBox(height: isCompact ? 4 : 6),
-                          _ShopSummaryPanel(
-                            icon: Icons.bolt,
-                            summary: equipment.statSummary,
-                            isCompact: isCompact,
-                            dense: true,
-                            maxChips: isWeaponTab ? 1 : 2,
-                            accentColor: accentColor,
-                          ),
-                          SizedBox(height: isCompact ? 6 : 8),
-                          _SketchButton(
-                            onTap: equipped ? null : onTap,
-                            height: isCompact ? 24 : 28,
-                            color: buttonColor,
-                            isCompact: true,
-                            child: FittedBox(
-                              fit: BoxFit.scaleDown,
-                              child: Text(
-                                !unlocked
-                                    ? '💎${equipment.price}'
-                                    : (equipped ? 'EQUIPPED' : 'SELECT'),
-                                style: const TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 9,
-                                    fontWeight: FontWeight.w900),
-                              ),
-                            ),
-                          ),
-                          if (unlocked && equipment.weaponType != null) ...[
-                            const SizedBox(height: 4),
-                            _EquipmentUpgradeRow(
-                                equipment: equipment,
-                                ctrl: ctrl,
-                                isCompact: isCompact),
-                          ],
-                        ],
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    equipment.title,
+                    style: TextStyle(
+                        color: AutoBattlePalette.ink,
+                        fontSize: isCompact ? 11 : 13,
+                        fontWeight: FontWeight.w900),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  SizedBox(height: isCompact ? 4 : 6),
+                  SizedBox(height: isCompact ? 5 : 6),
+                  _ShopSummaryPanel(
+                    icon: Icons.bolt,
+                    summary: equipment.statSummary,
+                    isCompact: isCompact,
+                    dense: true,
+                    maxChips: isWeaponTab ? 1 : 2,
+                    accentColor: accentColor,
+                  ),
+                  const Spacer(),
+                  _SketchButton(
+                    onTap: equipped ? null : onTap,
+                    height: isCompact ? 24 : 28,
+                    color: buttonColor,
+                    isCompact: true,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        !unlocked
+                            ? '💎${equipment.price}'
+                            : (equipped ? 'EQUIPPED' : 'SELECT'),
+                        style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900),
                       ),
                     ),
-                  );
-                },
+                  ),
+                  if (unlocked && equipment.weaponType != null) ...[
+                    const SizedBox(height: 4),
+                    _EquipmentUpgradeRow(
+                        equipment: equipment, ctrl: ctrl, isCompact: isCompact),
+                  ],
+                ],
               ),
             ),
           ),
@@ -1048,8 +1113,12 @@ class _EquipmentCard extends StatelessWidget {
 class _StatUpgradeTab extends StatelessWidget {
   final MetaProgressController ctrl;
   final bool isCompact;
+  final bool isNarrowPage;
   const _StatUpgradeTab(
-      {super.key, required this.ctrl, required this.isCompact});
+      {super.key,
+      required this.ctrl,
+      required this.isCompact,
+      required this.isNarrowPage});
 
   @override
   Widget build(BuildContext context) {
@@ -1057,16 +1126,25 @@ class _StatUpgradeTab extends StatelessWidget {
       isCompact: isCompact,
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final oneColumn = constraints.maxWidth < 390;
+          final oneColumn = isNarrowPage || constraints.maxWidth < 390;
+          final crossAxisCount = oneColumn ? 1 : 2;
+          final rowCount = (kAllStatUpgrades.length / crossAxisCount).ceil();
+          const spacing = 12.0;
+          final verticalPadding = isCompact ? 24.0 : 32.0;
+          final itemExtent = ((constraints.maxHeight -
+                      verticalPadding -
+                      (spacing * (rowCount - 1))) /
+                  rowCount)
+              .clamp(oneColumn ? 70.0 : 82.0, oneColumn ? 90.0 : 116.0);
 
           return GridView.builder(
             padding: EdgeInsets.fromLTRB(12, 12, 12, isCompact ? 12 : 20),
+            physics: const NeverScrollableScrollPhysics(),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: oneColumn ? 1 : 2,
+              crossAxisCount: crossAxisCount,
               crossAxisSpacing: 12,
               mainAxisSpacing: 12,
-              mainAxisExtent:
-                  oneColumn ? (isCompact ? 76 : 88) : (isCompact ? 92 : 112),
+              mainAxisExtent: itemExtent,
             ),
             itemCount: kAllStatUpgrades.length,
             itemBuilder: (context, index) {
@@ -1259,7 +1337,7 @@ class _ShopHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 12 : 24, vertical: isCompact ? 10 : 20),
+          horizontal: isCompact ? 12 : 20, vertical: isCompact ? 8 : 16),
       child: Row(
         children: [
           Transform.rotate(
@@ -1281,7 +1359,7 @@ class _ShopHeader extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: isCompact ? 18 : 24,
+                  fontSize: isCompact ? 17 : 22,
                   fontWeight: FontWeight.w900,
                   letterSpacing: 1.2,
                 ),

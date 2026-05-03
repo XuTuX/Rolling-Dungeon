@@ -27,7 +27,6 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
     super.initState();
     _ctrl = Get.find<GameProgressController>();
     _cards = _ctrl.generateUpgradeChoices();
-    _ctrl.generateShopItems();
     _animCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 700),
@@ -102,11 +101,6 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
 
                       const SizedBox(height: 20),
 
-                      // ── Shop Section ──
-                      _buildShopSection(compact),
-
-                      const SizedBox(height: 12),
-
                       // ── Stats bar ──
                       _buildStatsBar(compact),
 
@@ -149,7 +143,7 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
 
   Widget _buildSubtitle(bool compact) {
     return Text(
-      '증강 1개를 고르고, 해금한 장비로 이번 런을 확장하세요',
+      '증강 1개를 골라 캐릭터와 장착 장비를 강화하세요',
       style: TextStyle(
         fontSize: compact ? 12 : 14,
         fontWeight: FontWeight.w800,
@@ -201,79 +195,6 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: cardWidgets);
       },
-    );
-  }
-
-  Widget _buildShopSection(bool compact) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      padding: EdgeInsets.all(compact ? 8 : 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF1F5F9),
-        border: Border.all(color: AutoBattlePalette.ink, width: 3),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Icon(Icons.shopping_cart,
-                      color: AutoBattlePalette.ink, size: compact ? 16 : 20),
-                  const SizedBox(width: 8),
-                  Text('해금 무기 장착',
-                      style: TextStyle(
-                          fontSize: compact ? 16 : 18,
-                          fontWeight: FontWeight.w900,
-                          color: AutoBattlePalette.ink)),
-                ],
-              ),
-              Obx(() => Container(
-                    padding: EdgeInsets.symmetric(
-                        horizontal: compact ? 8 : 10,
-                        vertical: compact ? 3 : 4),
-                    decoration: BoxDecoration(
-                      color: AutoBattlePalette.gold,
-                      border:
-                          Border.all(color: AutoBattlePalette.ink, width: 2),
-                    ),
-                    child: Text('💰 ${_ctrl.gold.value.round()}',
-                        style: TextStyle(
-                            fontSize: compact ? 12 : 14,
-                            fontWeight: FontWeight.w900,
-                            color: Colors.white)),
-                  )),
-            ],
-          ),
-          SizedBox(height: compact ? 8 : 12),
-          Obx(() {
-            if (_ctrl.shopItems.isEmpty) {
-              return _EmptyRunShopHint(compact: compact);
-            }
-
-            return Row(
-              children: _ctrl.shopItems.map((item) {
-                return Expanded(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: _ShopItemWidget(
-                      item: item,
-                      compact: compact,
-                      isOwned: _ctrl.ownedWeapons.contains(item.weaponType),
-                      canAfford: _ctrl.gold.value >= item.price,
-                      onBuy: () => _ctrl.buyWeapon(item),
-                    ),
-                  ),
-                );
-              }).toList(),
-            );
-          }),
-        ],
-      ),
     );
   }
 
@@ -367,123 +288,6 @@ class _UpgradeSelectScreenState extends State<UpgradeSelectScreen>
   }
 }
 
-class _ShopItemWidget extends StatelessWidget {
-  final ShopItem item;
-  final bool isOwned;
-  final bool canAfford;
-  final bool compact;
-  final VoidCallback onBuy;
-
-  const _ShopItemWidget({
-    required this.item,
-    required this.isOwned,
-    required this.canAfford,
-    required this.compact,
-    required this.onBuy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: isOwned ? null : onBuy,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: EdgeInsets.all(compact ? 6 : 10),
-        decoration: BoxDecoration(
-          color: isOwned ? const Color(0xFFE2E8F0) : Colors.white,
-          border: Border.all(
-            color: isOwned ? const Color(0xFF94A3B8) : AutoBattlePalette.ink,
-            width: compact ? 2 : 3,
-          ),
-          boxShadow: isOwned
-              ? null
-              : [
-                  BoxShadow(
-                      color: AutoBattlePalette.ink,
-                      offset: Offset(compact ? 3 : 4, compact ? 3 : 4))
-                ],
-        ),
-        child: Row(
-          children: [
-            Text(item.icon, style: TextStyle(fontSize: compact ? 18 : 22)),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                item.title,
-                style: TextStyle(
-                    fontSize: compact ? 12 : 14,
-                    fontWeight: FontWeight.w900,
-                    color: AutoBattlePalette.ink),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-            const SizedBox(width: 4),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
-              decoration: BoxDecoration(
-                color: isOwned
-                    ? const Color(0xFF94A3B8)
-                    : (canAfford
-                        ? AutoBattlePalette.gold
-                        : const Color(0xFFEF4444)),
-                border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-              ),
-              child: Text(
-                isOwned ? 'EQUIPPED' : '${item.price}G',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w900),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _EmptyRunShopHint extends StatelessWidget {
-  final bool compact;
-
-  const _EmptyRunShopHint({required this.compact});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: compact ? 10 : 12,
-        vertical: compact ? 8 : 10,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.inkSubtle, width: 2),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            Icons.lock_open,
-            color: AutoBattlePalette.inkSubtle,
-            size: compact ? 16 : 18,
-          ),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              '이번 런에 더 장착할 해금 무기가 없습니다',
-              style: TextStyle(
-                color: AutoBattlePalette.inkSubtle,
-                fontSize: compact ? 11 : 12,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 class _SketchExitButton extends StatelessWidget {
   final VoidCallback onTap;
 
@@ -553,6 +357,14 @@ class _UpgradeCardWidget extends StatelessWidget {
         return const Color(0xFF0284C7);
       case 'barrier':
         return const Color(0xFF38BDF8);
+      case 'character_core':
+        return const Color(0xFF0F766E);
+      case 'battle_trance':
+        return const Color(0xFFF59E0B);
+      case 'vampiric_edge':
+        return const Color(0xFFDC2626);
+      case 'second_wind':
+        return const Color(0xFF059669);
       case 'hand_tune':
         return const Color(0xFFDB2777);
       case 'boots_tune':
@@ -582,6 +394,14 @@ class _UpgradeCardWidget extends StatelessWidget {
         return Icons.change_circle;
       case 'barrier':
         return Icons.security;
+      case 'character_core':
+        return Icons.auto_awesome;
+      case 'battle_trance':
+        return Icons.flash_on;
+      case 'vampiric_edge':
+        return Icons.bloodtype;
+      case 'second_wind':
+        return Icons.eco;
       case 'hand_tune':
         return Icons.pan_tool_alt;
       case 'boots_tune':
@@ -590,6 +410,30 @@ class _UpgradeCardWidget extends StatelessWidget {
         return Icons.health_and_safety;
       default:
         return Icons.help_outline;
+    }
+  }
+
+  Color get _rarityColor {
+    switch (card.rarity) {
+      case 'epic':
+        return const Color(0xFF7C3AED);
+      case 'rare':
+        return const Color(0xFF2563EB);
+      case 'common':
+      default:
+        return const Color(0xFF64748B);
+    }
+  }
+
+  String get _rarityLabel {
+    switch (card.rarity) {
+      case 'epic':
+        return 'EPIC';
+      case 'rare':
+        return 'RARE';
+      case 'common':
+      default:
+        return 'COMMON';
     }
   }
 
@@ -629,6 +473,26 @@ class _UpgradeCardWidget extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _rarityColor,
+                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
+                  ),
+                  child: Text(
+                    _rarityLabel,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 2),
               Icon(_typeIcon, color: _typeColor, size: 24),
               const SizedBox(height: 6),
               Text(
@@ -647,6 +511,22 @@ class _UpgradeCardWidget extends StatelessWidget {
                   color: _typeColor,
                   fontSize: 12,
                   fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 6),
+              Text(
+                card.description
+                    .replaceFirst('[COMMON] ', '')
+                    .replaceFirst('[RARE] ', '')
+                    .replaceFirst('[EPIC] ', ''),
+                textAlign: TextAlign.center,
+                maxLines: 3,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: AutoBattlePalette.inkSubtle,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
+                  height: 1.15,
                 ),
               ),
             ],

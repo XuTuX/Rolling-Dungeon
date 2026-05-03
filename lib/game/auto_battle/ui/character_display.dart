@@ -25,7 +25,7 @@ class CharDisplayInfo {
 const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   'gunner': CharDisplayInfo(
     name: '거너',
-    desc: '정밀한 사격으로 적을 제압',
+    desc: '',
     bodyColor: Color(0xFF3B82F6),
     accentColor: Color(0xFF60A5FA),
     icon: Icons.gps_fixed,
@@ -33,7 +33,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'minigun': CharDisplayInfo(
     name: '미니거너',
-    desc: '압도적 연사의 탄막 전사',
+    desc: '',
     bodyColor: Color(0xFF475569),
     accentColor: Color(0xFF94A3B8),
     icon: Icons.bolt,
@@ -41,7 +41,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'long_gun': CharDisplayInfo(
     name: '스나이퍼',
-    desc: '한 발의 무게가 다른 저격수',
+    desc: '',
     bodyColor: Color(0xFFDC2626),
     accentColor: Color(0xFFF87171),
     icon: Icons.center_focus_strong,
@@ -49,7 +49,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'poison': CharDisplayInfo(
     name: '독술사',
-    desc: '치명적인 독안개의 지배자',
+    desc: '',
     bodyColor: Color(0xFF16A34A),
     accentColor: Color(0xFF4ADE80),
     icon: Icons.bubble_chart,
@@ -57,7 +57,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'blade': CharDisplayInfo(
     name: '검사',
-    desc: '회전하는 칼날의 달인',
+    desc: '',
     bodyColor: Color(0xFF7C3AED),
     accentColor: Color(0xFFA78BFA),
     icon: Icons.autorenew,
@@ -65,7 +65,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'miner': CharDisplayInfo(
     name: '폭파병',
-    desc: '전장을 지뢰밭으로 만드는 전략가',
+    desc: '',
     bodyColor: Color(0xFFEF4444),
     accentColor: Color(0xFFFCA5A5),
     icon: Icons.dangerous,
@@ -73,7 +73,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'footsteps': CharDisplayInfo(
     name: '불꽃술사',
-    desc: '지나간 곳을 불태우는 방랑자',
+    desc: '',
     bodyColor: Color(0xFFF97316),
     accentColor: Color(0xFFFDBA74),
     icon: Icons.whatshot,
@@ -81,7 +81,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'burst': CharDisplayInfo(
     name: '포격수',
-    desc: '사방으로 퍼지는 탄환의 폭풍',
+    desc: '',
     bodyColor: Color(0xFFEAB308),
     accentColor: Color(0xFFFDE047),
     icon: Icons.flare,
@@ -89,7 +89,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'heavy_blade': CharDisplayInfo(
     name: '대검사',
-    desc: '거대한 검으로 모든 것을 베어버린다',
+    desc: '',
     bodyColor: Color(0xFF0F172A),
     accentColor: Color(0xFF64748B),
     icon: Icons.gavel,
@@ -97,7 +97,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'ricochet': CharDisplayInfo(
     name: '도탄사',
-    desc: '벽을 이용한 기묘한 사격의 명수',
+    desc: '',
     bodyColor: Color(0xFF0284C7),
     accentColor: Color(0xFF38BDF8),
     icon: Icons.keyboard_return,
@@ -105,7 +105,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'aura': CharDisplayInfo(
     name: '수호자',
-    desc: '수호의 오라로 적을 제압',
+    desc: '',
     bodyColor: Color(0xFF9333EA),
     accentColor: Color(0xFFC084FC),
     icon: Icons.shield,
@@ -114,7 +114,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'circle': CharDisplayInfo(
     name: '동그라미',
-    desc: '균형 잡힌 기본 형태',
+    desc: '',
     bodyColor: Color(0xFFF87171), // Vibrant Red
     accentColor: Color(0xFFFECACA),
     icon: Icons.circle,
@@ -123,7 +123,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'square': CharDisplayInfo(
     name: '네모',
-    desc: '단단하고 묵직한 형태',
+    desc: '',
     bodyColor: Color(0xFF3B82F6), // Vibrant Blue
     accentColor: Color(0xFFBFDBFE),
     icon: Icons.square,
@@ -132,7 +132,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'triangle': CharDisplayInfo(
     name: '세모',
-    desc: '날카롭고 민첩한 형태',
+    desc: '',
     bodyColor: Color(0xFFEAB308), // Vibrant Yellow
     accentColor: Color(0xFFFEF08A),
     icon: Icons.change_history,
@@ -141,7 +141,7 @@ const Map<String, CharDisplayInfo> charDisplayInfoMap = {
   ),
   'pentagon': CharDisplayInfo(
     name: '오각형',
-    desc: '신비로운 마력을 지닌 형태',
+    desc: '',
     bodyColor: Color(0xFF10B981), // Vibrant Green
     accentColor: Color(0xFFD1FAE5),
     icon: Icons.pentagon,

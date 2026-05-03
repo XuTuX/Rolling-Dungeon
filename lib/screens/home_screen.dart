@@ -3,8 +3,8 @@ import 'package:circle_war/controllers/meta_progress_controller.dart';
 import 'package:circle_war/game/auto_battle/auto_battle_palette.dart';
 import 'package:circle_war/game/auto_battle/ui/auto_battle_game_page.dart';
 import 'package:circle_war/game/auto_battle/ui/character_display.dart';
-import 'package:circle_war/screens/meta_shop_screen.dart';
 import 'package:circle_war/screens/achievement_screen.dart';
+import 'package:circle_war/screens/meta_shop_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
@@ -33,234 +33,107 @@ class HomeScreen extends StatelessWidget {
                 final w = constraints.maxWidth;
                 final h = constraints.maxHeight;
                 final isNarrow = w < 390;
-                // UI adapts based on vertical and horizontal space.
-                final isCompact = h < 600 || isNarrow;
-                final isTiny = h < 480;
-                final showLedger = h >= 760;
+                final isCompact = h < 620 || isNarrow;
+                final isTiny = h < 520;
+                final isWide = w >= 860 && h >= 520;
                 final horizontalPadding =
-                    isNarrow ? 12.0 : (isTiny ? 14.0 : 20.0);
-                final contentWidth =
-                    (w - horizontalPadding * 2).clamp(280.0, 560.0);
+                    isNarrow ? 10.0 : (isCompact ? 14.0 : 20.0);
 
-                return Center(
-                  child: Padding(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: horizontalPadding,
-                      vertical: isTiny ? 4 : (isCompact ? 8 : 16),
-                    ),
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: SizedBox(
-                        width: contentWidth,
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            // Title
-                            _TapedHeader(
-                              isCompact: isCompact,
-                              child: Text(
-                                'ROLLING DUNGEON',
-                                textAlign: TextAlign.center,
-                                style: TextStyle(
-                                  color: AutoBattlePalette.ink,
-                                  fontSize: isCompact ? 22 : 38,
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 0,
+                return Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: horizontalPadding,
+                    vertical: isTiny ? 8 : (isCompact ? 10 : 16),
+                  ),
+                  child: Column(
+                    children: [
+                      _TapedHeader(
+                        isCompact: isCompact,
+                        child: Text(
+                          'ROLLING DUNGEON',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: AutoBattlePalette.ink,
+                            fontSize: isTiny ? 20 : (isCompact ? 24 : 34),
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0,
+                          ),
+                        ),
+                      ),
+                      SizedBox(height: isCompact ? 10 : 16),
+                      Expanded(
+                        child: Obx(() {
+                          final character = metaCtrl.currentCharacterDef;
+                          final characterInfo =
+                              charDisplayInfoMap[character.shape] ??
+                                  charDisplayInfoMap['circle']!;
+                          final loadoutStats = metaCtrl.currentLoadoutStats;
+
+                          final buildPanel = _SketchbookPage(
+                            isCompact: isCompact,
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.stretch,
+                              children: [
+                                _SectionTitle(
+                                  title: 'LOADOUT',
+                                  isCompact: isCompact,
                                 ),
-                              ),
-                            ),
-
-                            SizedBox(height: isCompact ? 10 : 32),
-
-                            // Character Preview & Equip
-                            Obx(() {
-                              final loadoutStats = metaCtrl.currentLoadoutStats;
-                              final character = metaCtrl.currentCharacterDef;
-                              final characterInfo =
-                                  charDisplayInfoMap[character.shape] ??
-                                      charDisplayInfoMap['circle']!;
-
-                              return _SketchbookPage(
-                                width: contentWidth,
-                                isCompact: isCompact,
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    _SectionTitle(
-                                        title: 'CHARACTER',
-                                        isCompact: isCompact),
-                                    SizedBox(height: isCompact ? 4 : 8),
-                                    _SelectedCharacterCard(
-                                      character: character,
-                                      info: characterInfo,
-                                      isCompact: isCompact,
-                                    ),
-
-                                    SizedBox(height: isCompact ? 8 : 12),
-                                    _SectionTitle(
-                                        title: 'EQUIPMENT',
-                                        isCompact: isCompact),
-                                    SizedBox(height: isCompact ? 3 : 8),
-
-                                    // Equipment Row
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceEvenly,
-                                      children: kEquipmentSlotLabels.keys
-                                          .map<Widget>((slot) {
-                                        final equipment =
-                                            metaCtrl.equippedDefForSlot(slot);
-                                        return Expanded(
-                                          child: Padding(
-                                            padding: const EdgeInsets.symmetric(
-                                                horizontal: 2),
-                                            child: _EquipmentSlot(
-                                              label:
-                                                  kEquipmentSlotLabels[slot]!,
-                                              icon: equipment?.icon ?? '?',
-                                              title:
-                                                  equipment?.title ?? '비어 있음',
-                                              isEquipped: equipment != null,
-                                              isCompact: isCompact,
-                                            ),
-                                          ),
-                                        );
-                                      }).toList(),
-                                    ),
-
-                                    SizedBox(height: isCompact ? 8 : 12),
-                                    _SectionTitle(
-                                        title: 'CHARACTER STATS',
-                                        isCompact: isCompact),
-                                    SizedBox(height: isCompact ? 4 : 8),
-                                    _LoadoutStatsPanel(
+                                SizedBox(height: isCompact ? 4 : 8),
+                                _LoadoutSummaryRow(
+                                  character: character,
+                                  info: characterInfo,
+                                  isCompact: isCompact,
+                                ),
+                                SizedBox(height: isCompact ? 8 : 12),
+                                _SectionTitle(
+                                  title: 'CHARACTER STATS',
+                                  isCompact: isCompact,
+                                ),
+                                SizedBox(height: isCompact ? 4 : 8),
+                                Expanded(
+                                  child: Align(
+                                    alignment: Alignment.topCenter,
+                                    child: _LoadoutStatsPanel(
                                       stats: loadoutStats,
                                       isCompact: isCompact,
                                     ),
-                                  ],
+                                  ),
                                 ),
-                              );
-                            }),
-
-                            SizedBox(height: isTiny ? 10 : 14),
-
-                            // Action Buttons
-                            ConstrainedBox(
-                              constraints: BoxConstraints(
-                                  maxWidth: contentWidth.clamp(280.0, 440.0)),
-                              child: Column(
-                                children: [
-                                  _SketchButton(
-                                    color: AutoBattlePalette.primary,
-                                    isCompact: isCompact,
-                                    height: isCompact ? 42 : 56,
-                                    onTap: () {
-                                      final charDef =
-                                          metaCtrl.currentCharacterDef;
-                                      runCtrl.startNewRun(
-                                        metaCtrl.selectedCharacter.value,
-                                        charDef.shape,
-                                        unlockedWeapons:
-                                            metaCtrl.unlockedWeapons,
-                                        equippedEquipment:
-                                            metaCtrl.equippedEquipment,
-                                        statLevels: metaCtrl.statLevels,
-                                      );
-                                      Get.to(() => const AutoBattleGamePage());
-                                    },
-                                    child: Text(
-                                      'START RUN!',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: isCompact ? 16 : 22,
-                                        fontWeight: FontWeight.w900,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: isCompact ? 7 : 10),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: _SketchButton(
-                                          color: AutoBattlePalette.gold,
-                                          isCompact: isCompact,
-                                          height: isCompact ? 36 : 46,
-                                          onTap: () => Get.to(
-                                              () => const MetaShopScreen()),
-                                          child: Text(
-                                            'SHOP',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: isCompact ? 14 : 18,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: _SketchButton(
-                                          color: const Color(0xFF7C3AED),
-                                          isCompact: isCompact,
-                                          height: isCompact ? 36 : 46,
-                                          onTap: () => Get.to(
-                                              () => const AchievementScreen()),
-                                          child: Text(
-                                            'ACHIEVES',
-                                            style: TextStyle(
-                                              color: Colors.white,
-                                              fontSize: isCompact ? 14 : 18,
-                                              fontWeight: FontWeight.w900,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
+                              ],
                             ),
+                          );
 
-                            if (showLedger) ...[
-                              const SizedBox(height: 12),
-                              Obx(() => _StatsLedger(
-                                    maxWidth: contentWidth.clamp(280.0, 500.0),
-                                    stats: [
-                                      _StatItem(
-                                          Icons.emoji_events,
-                                          'BEST',
-                                          'STAGE ${metaCtrl.highestStage.value}',
-                                          AutoBattlePalette.gold),
-                                      _StatItem(
-                                          Icons.diamond,
-                                          'CRYSTAL',
-                                          '${metaCtrl.currency.value}',
-                                          const Color(0xFF7C3AED)),
-                                      _StatItem(
-                                          Icons.inventory_2,
-                                          'WEAPONS',
-                                          '${metaCtrl.unlockedWeapons.length}',
-                                          AutoBattlePalette.secondary),
-                                    ],
-                                  )),
-                            ],
-
-                            SizedBox(height: isCompact ? 6 : 10),
-
-                            Text(
-                              'V.5.0 // ROLLING DUNGEON',
-                              style: TextStyle(
-                                color: AutoBattlePalette.ink
-                                    .withValues(alpha: 0.3),
-                                fontSize: 9,
-                                fontWeight: FontWeight.w900,
-                                letterSpacing: 2,
-                              ),
-                            ),
-                          ],
-                        ),
+                          return buildPanel;
+                        }),
                       ),
-                    ),
+                      SizedBox(height: isCompact ? 10 : 14),
+                      _HomeActionPanel(
+                        isCompact: isCompact,
+                        isWide: isWide,
+                        onStart: () {
+                          final charDef = metaCtrl.currentCharacterDef;
+                          runCtrl.startNewRun(
+                            metaCtrl.selectedCharacter.value,
+                            charDef.shape,
+                            unlockedWeapons: metaCtrl.unlockedWeapons,
+                            equippedEquipment: metaCtrl.equippedEquipment,
+                            statLevels: metaCtrl.statLevels,
+                          );
+                          Get.to(() => const AutoBattleGamePage());
+                        },
+                      ),
+                      if (!isTiny) ...[
+                        SizedBox(height: isCompact ? 8 : 10),
+                        Text(
+                          'V.5.0 // ROLLING DUNGEON',
+                          style: TextStyle(
+                            color: AutoBattlePalette.ink.withValues(alpha: 0.3),
+                            fontSize: 9,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 2,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 );
               },
@@ -271,10 +144,6 @@ class HomeScreen extends StatelessWidget {
     );
   }
 }
-
-// ─────────────────────────────────────────────
-//  Styled Components
-// ─────────────────────────────────────────────
 
 class _TapedHeader extends StatelessWidget {
   final Widget child;
@@ -301,7 +170,6 @@ class _TapedHeader extends StatelessWidget {
           ),
           child: child,
         ),
-        // Decorative masking tape
         Positioned(
           top: -12,
           left: 20,
@@ -326,19 +194,19 @@ class _TapedHeader extends StatelessWidget {
 }
 
 class _SketchbookPage extends StatelessWidget {
-  final double width;
   final Widget child;
   final bool isCompact;
-  const _SketchbookPage(
-      {required this.width, required this.child, this.isCompact = false});
+  const _SketchbookPage({
+    required this.child,
+    this.isCompact = false,
+  });
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: width,
       padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 16 : 24,
-        vertical: isCompact ? 12 : 24,
+        horizontal: isCompact ? 14 : 20,
+        vertical: isCompact ? 12 : 18,
       ),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -391,79 +259,78 @@ class _SectionTitle extends StatelessWidget {
 class _EquipmentSlot extends StatelessWidget {
   final String label;
   final String icon;
-  final String title;
   final bool isEquipped;
   final bool isCompact;
 
   const _EquipmentSlot({
     required this.label,
     required this.icon,
-    required this.title,
     this.isEquipped = false,
     this.isCompact = false,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Text(
-          label.toUpperCase(),
-          style: TextStyle(
-            color: AutoBattlePalette.ink.withValues(alpha: 0.5),
-            fontSize: isCompact ? 8 : 10,
-            fontWeight: FontWeight.w900,
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        border: Border.all(
+          color: AutoBattlePalette.ink.withValues(alpha: 0.18),
+          width: 1.5,
         ),
-        SizedBox(height: isCompact ? 2 : 4),
-        Container(
-          width: isCompact ? 40 : 56,
-          height: isCompact ? 40 : 56,
-          decoration: BoxDecoration(
-            color: isEquipped
-                ? AutoBattlePalette.paper
-                : AutoBattlePalette.ink.withValues(alpha: 0.05),
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: AutoBattlePalette.ink, width: 2),
-            boxShadow: [
-              if (isEquipped)
-                BoxShadow(
-                  color: AutoBattlePalette.ink,
-                  offset: Offset(isCompact ? 1 : 2, isCompact ? 1 : 2),
-                ),
-            ],
-          ),
-          child: Center(
-            child: Text(
-              icon,
-              style: TextStyle(fontSize: isCompact ? 18 : 24),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: isCompact ? 34 : 42,
+            height: isCompact ? 34 : 42,
+            decoration: BoxDecoration(
+              color: isEquipped
+                  ? AutoBattlePalette.paper
+                  : AutoBattlePalette.ink.withValues(alpha: 0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: AutoBattlePalette.ink, width: 2),
+              boxShadow: [
+                if (isEquipped)
+                  BoxShadow(
+                    color: AutoBattlePalette.ink,
+                    offset: Offset(isCompact ? 1 : 2, isCompact ? 1 : 2),
+                  ),
+              ],
+            ),
+            child: Center(
+              child: Text(
+                icon,
+                style: TextStyle(fontSize: isCompact ? 16 : 20),
+              ),
             ),
           ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          title,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            color: AutoBattlePalette.ink,
-            fontSize: isCompact ? 8 : 10,
-            fontWeight: FontWeight.bold,
+          SizedBox(height: isCompact ? 4 : 6),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: AutoBattlePalette.ink,
+              fontSize: isCompact ? 7 : 8,
+              fontWeight: FontWeight.w900,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 }
 
-class _SelectedCharacterCard extends StatelessWidget {
+class _CharacterBadge extends StatelessWidget {
   final CharacterShopDef character;
   final CharDisplayInfo info;
   final bool isCompact;
 
-  const _SelectedCharacterCard({
+  const _CharacterBadge({
     required this.character,
     required this.info,
     required this.isCompact,
@@ -472,66 +339,101 @@ class _SelectedCharacterCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 10 : 14,
-        vertical: isCompact ? 8 : 10,
-      ),
       decoration: BoxDecoration(
-        color: AutoBattlePalette.surfaceLight,
-        border: Border.all(color: AutoBattlePalette.ink, width: 2),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
-        ],
+        color: Colors.white,
+        border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+        borderRadius: BorderRadius.circular(8),
       ),
-      child: Row(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Container(
-            width: isCompact ? 48 : 64,
-            height: isCompact ? 48 : 64,
+            width: isCompact ? 38 : 46,
+            height: isCompact ? 38 : 46,
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: AutoBattlePalette.surfaceLight,
               border: Border.all(color: AutoBattlePalette.ink, width: 2),
+              borderRadius: BorderRadius.circular(8),
             ),
             child: Center(
               child: CharacterBallPreview(
                 info: info,
-                size: isCompact ? 40 : 56,
+                size: isCompact ? 30 : 36,
               ),
             ),
           ),
-          SizedBox(width: isCompact ? 10 : 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  character.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AutoBattlePalette.ink,
-                    fontSize: isCompact ? 18 : 22,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                const SizedBox(height: 3),
-                Text(
-                  character.trait,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AutoBattlePalette.secondary,
-                    fontSize: isCompact ? 10 : 12,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ],
+          SizedBox(height: isCompact ? 4 : 6),
+          Padding(
+            padding: EdgeInsets.symmetric(horizontal: isCompact ? 3 : 4),
+            child: Text(
+              character.title,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: isCompact ? 8 : 9,
+                fontWeight: FontWeight.w900,
+              ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _LoadoutSummaryRow extends StatelessWidget {
+  final CharacterShopDef character;
+  final CharDisplayInfo info;
+  final bool isCompact;
+
+  const _LoadoutSummaryRow({
+    required this.character,
+    required this.info,
+    required this.isCompact,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final metaCtrl = Get.find<MetaProgressController>();
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(
+          child: AspectRatio(
+            aspectRatio: 1,
+            child: _CharacterBadge(
+              character: character,
+              info: info,
+              isCompact: isCompact,
+            ),
+          ),
+        ),
+        SizedBox(width: isCompact ? 8 : 10),
+        Expanded(
+          flex: 4,
+          child: Row(
+            children: kEquipmentSlotLabels.keys.map<Widget>((slot) {
+              final equipment = metaCtrl.equippedDefForSlot(slot);
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.symmetric(horizontal: isCompact ? 2 : 3),
+                  child: AspectRatio(
+                    aspectRatio: 1,
+                    child: _EquipmentSlot(
+                      label: kEquipmentSlotLabels[slot]!.split('/').first,
+                      icon: equipment?.icon ?? '?',
+                      isEquipped: equipment != null,
+                      isCompact: isCompact,
+                    ),
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
     );
   }
 }
@@ -571,6 +473,7 @@ class _LoadoutStatsPanel extends StatelessWidget {
             color: AutoBattlePalette.ink.withValues(alpha: 0.25), width: 1.5),
       ),
       child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
           Wrap(
             alignment: WrapAlignment.center,
@@ -656,6 +559,98 @@ class _LoadoutStatItem {
   const _LoadoutStatItem(this.icon, this.label, this.value, this.color);
 }
 
+class _HomeActionPanel extends StatelessWidget {
+  final bool isCompact;
+  final bool isWide;
+  final VoidCallback onStart;
+
+  const _HomeActionPanel({
+    required this.isCompact,
+    required this.isWide,
+    required this.onStart,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final secondaryHeight = isCompact ? 40.0 : 46.0;
+    final primaryButton = _SketchButton(
+      color: AutoBattlePalette.primary,
+      isCompact: isCompact,
+      height: isCompact ? 48 : 58,
+      onTap: onStart,
+      child: Text(
+        'START RUN!',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: isCompact ? 17 : 22,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+    final shopButton = _SketchButton(
+      color: AutoBattlePalette.gold,
+      isCompact: isCompact,
+      height: secondaryHeight,
+      onTap: () => Get.to(() => const MetaShopScreen()),
+      child: Text(
+        'SHOP',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: isCompact ? 14 : 17,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+    final achievementButton = _SketchButton(
+      color: const Color(0xFF7C3AED),
+      isCompact: isCompact,
+      height: secondaryHeight,
+      onTap: () => Get.to(() => const AchievementScreen()),
+      child: Text(
+        'ACHIEVES',
+        style: TextStyle(
+          color: Colors.white,
+          fontSize: isCompact ? 14 : 17,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+
+    if (isWide) {
+      return Row(
+        children: [
+          Expanded(flex: 3, child: primaryButton),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Row(
+              children: [
+                Expanded(child: shopButton),
+                const SizedBox(width: 12),
+                Expanded(child: achievementButton),
+              ],
+            ),
+          ),
+        ],
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(width: double.infinity, child: primaryButton),
+        SizedBox(height: isCompact ? 8 : 10),
+        Row(
+          children: [
+            Expanded(child: shopButton),
+            const SizedBox(width: 12),
+            Expanded(child: achievementButton),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
 class _SketchButton extends StatefulWidget {
   final Color color;
   final Widget child;
@@ -705,70 +700,6 @@ class _SketchButtonState extends State<_SketchButton> {
   }
 }
 
-class _StatsLedger extends StatelessWidget {
-  final double maxWidth;
-  final List<_StatItem> stats;
-  const _StatsLedger({required this.maxWidth, required this.stats});
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: maxWidth,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: stats.map<Widget>((s) {
-          final isLast = stats.last == s;
-          return Expanded(
-            child: Row(
-              children: [
-                Expanded(
-                  child: Column(
-                    children: [
-                      Icon(s.icon, color: s.color, size: 18),
-                      const SizedBox(height: 4),
-                      Text(s.label,
-                          style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w900,
-                              color: AutoBattlePalette.text3)),
-                      Text(s.value,
-                          style: const TextStyle(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w900,
-                              color: AutoBattlePalette.ink)),
-                    ],
-                  ),
-                ),
-                if (!isLast)
-                  Container(
-                      width: 2,
-                      height: 30,
-                      color: AutoBattlePalette.ink.withValues(alpha: 0.1)),
-              ],
-            ),
-          );
-        }).toList(),
-      ),
-    );
-  }
-}
-
-class _StatItem {
-  final IconData icon;
-  final String label;
-  final String value;
-  final Color color;
-  _StatItem(this.icon, this.label, this.value, this.color);
-}
-
 class _SketchLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
@@ -776,12 +707,10 @@ class _SketchLinesPainter extends CustomPainter {
       ..color = AutoBattlePalette.ink.withValues(alpha: 0.05)
       ..strokeWidth = 1.5;
 
-    // Horizontal notebook lines
     for (var y = 60.0; y < size.height; y += 30) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
 
-    // Vertical "margin" line
     final marginPaint = Paint()
       ..color = AutoBattlePalette.primary.withValues(alpha: 0.1)
       ..strokeWidth = 2;
