@@ -70,35 +70,11 @@ class HomeScreen extends StatelessWidget {
 
                           final buildPanel = _SketchbookPage(
                             isCompact: isCompact,
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                _SectionTitle(
-                                  title: 'LOADOUT',
-                                  isCompact: isCompact,
-                                ),
-                                SizedBox(height: isCompact ? 4 : 8),
-                                _LoadoutSummaryRow(
-                                  character: character,
-                                  info: characterInfo,
-                                  isCompact: isCompact,
-                                ),
-                                SizedBox(height: isCompact ? 8 : 12),
-                                _SectionTitle(
-                                  title: 'CHARACTER STATS',
-                                  isCompact: isCompact,
-                                ),
-                                SizedBox(height: isCompact ? 4 : 8),
-                                Expanded(
-                                  child: Align(
-                                    alignment: Alignment.topCenter,
-                                    child: _LoadoutStatsPanel(
-                                      stats: loadoutStats,
-                                      isCompact: isCompact,
-                                    ),
-                                  ),
-                                ),
-                              ],
+                            child: _HomeOverviewPanel(
+                              stats: loadoutStats,
+                              info: characterInfo,
+                              isCompact: isCompact,
+                              isNarrow: isNarrow,
                             ),
                           );
 
@@ -257,13 +233,11 @@ class _SectionTitle extends StatelessWidget {
 }
 
 class _EquipmentSlot extends StatelessWidget {
-  final String label;
   final String icon;
   final bool isEquipped;
   final bool isCompact;
 
   const _EquipmentSlot({
-    required this.label,
     required this.icon,
     this.isEquipped = false,
     this.isCompact = false,
@@ -283,41 +257,9 @@ class _EquipmentSlot extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: isCompact ? 34 : 42,
-            height: isCompact ? 34 : 42,
-            decoration: BoxDecoration(
-              color: isEquipped
-                  ? AutoBattlePalette.paper
-                  : AutoBattlePalette.ink.withValues(alpha: 0.05),
-              borderRadius: BorderRadius.circular(8),
-              border: Border.all(color: AutoBattlePalette.ink, width: 2),
-              boxShadow: [
-                if (isEquipped)
-                  BoxShadow(
-                    color: AutoBattlePalette.ink,
-                    offset: Offset(isCompact ? 1 : 2, isCompact ? 1 : 2),
-                  ),
-              ],
-            ),
-            child: Center(
-              child: Text(
-                icon,
-                style: TextStyle(fontSize: isCompact ? 16 : 20),
-              ),
-            ),
-          ),
-          SizedBox(height: isCompact ? 4 : 6),
           Text(
-            label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: TextStyle(
-              color: AutoBattlePalette.ink,
-              fontSize: isCompact ? 7 : 8,
-              fontWeight: FontWeight.w900,
-            ),
+            icon,
+            style: TextStyle(fontSize: isCompact ? 22 : 28),
           ),
         ],
       ),
@@ -326,12 +268,10 @@ class _EquipmentSlot extends StatelessWidget {
 }
 
 class _CharacterBadge extends StatelessWidget {
-  final CharacterShopDef character;
   final CharDisplayInfo info;
   final bool isCompact;
 
   const _CharacterBadge({
-    required this.character,
     required this.info,
     required this.isCompact,
   });
@@ -347,35 +287,9 @@ class _CharacterBadge extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: isCompact ? 38 : 46,
-            height: isCompact ? 38 : 46,
-            decoration: BoxDecoration(
-              color: AutoBattlePalette.surfaceLight,
-              border: Border.all(color: AutoBattlePalette.ink, width: 2),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Center(
-              child: CharacterBallPreview(
-                info: info,
-                size: isCompact ? 30 : 36,
-              ),
-            ),
-          ),
-          SizedBox(height: isCompact ? 4 : 6),
-          Padding(
-            padding: EdgeInsets.symmetric(horizontal: isCompact ? 3 : 4),
-            child: Text(
-              character.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: isCompact ? 8 : 9,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+          CharacterBallPreview(
+            info: info,
+            size: isCompact ? 34 : 42,
           ),
         ],
       ),
@@ -384,12 +298,10 @@ class _CharacterBadge extends StatelessWidget {
 }
 
 class _LoadoutSummaryRow extends StatelessWidget {
-  final CharacterShopDef character;
   final CharDisplayInfo info;
   final bool isCompact;
 
   const _LoadoutSummaryRow({
-    required this.character,
     required this.info,
     required this.isCompact,
   });
@@ -397,52 +309,118 @@ class _LoadoutSummaryRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final metaCtrl = Get.find<MetaProgressController>();
+    final gap = isCompact ? 6.0 : 8.0;
+    final equipmentSlots = kEquipmentSlotLabels.keys.toList();
+
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final tileSize =
+            ((constraints.maxWidth - (gap * equipmentSlots.length)) / 5)
+                .clamp(isCompact ? 42.0 : 48.0, isCompact ? 60.0 : 72.0);
+
+        return SizedBox(
+          height: tileSize,
+          child: Row(
+            children: [
+              SizedBox.square(
+                dimension: tileSize,
+                child: _CharacterBadge(
+                  info: info,
+                  isCompact: isCompact,
+                ),
+              ),
+              SizedBox(width: gap),
+              for (final slot in equipmentSlots) ...[
+                SizedBox.square(
+                  dimension: tileSize,
+                  child: _EquipmentSlot(
+                    icon: metaCtrl.equippedDefForSlot(slot)?.icon ?? '?',
+                    isEquipped: metaCtrl.equippedDefForSlot(slot) != null,
+                    isCompact: isCompact,
+                  ),
+                ),
+                if (slot != equipmentSlots.last) SizedBox(width: gap),
+              ],
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
+
+class _HomeOverviewPanel extends StatelessWidget {
+  final LoadoutStatProfile stats;
+  final CharDisplayInfo info;
+  final bool isCompact;
+  final bool isNarrow;
+
+  const _HomeOverviewPanel({
+    required this.stats,
+    required this.info,
+    required this.isCompact,
+    required this.isNarrow,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final loadoutBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(
+          title: 'LOADOUT',
+          isCompact: isCompact,
+        ),
+        SizedBox(height: isCompact ? 4 : 8),
+        _LoadoutSummaryRow(
+          info: info,
+          isCompact: isCompact,
+        ),
+      ],
+    );
+
+    final statBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        _SectionTitle(
+          title: 'STATS',
+          isCompact: isCompact,
+        ),
+        SizedBox(height: isCompact ? 4 : 8),
+        _CompactStatsPanel(
+          stats: stats,
+          isCompact: isCompact,
+        ),
+      ],
+    );
+
+    if (isNarrow) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          loadoutBlock,
+          SizedBox(height: isCompact ? 8 : 12),
+          statBlock,
+        ],
+      );
+    }
+
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: AspectRatio(
-            aspectRatio: 1,
-            child: _CharacterBadge(
-              character: character,
-              info: info,
-              isCompact: isCompact,
-            ),
-          ),
-        ),
-        SizedBox(width: isCompact ? 8 : 10),
-        Expanded(
-          flex: 4,
-          child: Row(
-            children: kEquipmentSlotLabels.keys.map<Widget>((slot) {
-              final equipment = metaCtrl.equippedDefForSlot(slot);
-              return Expanded(
-                child: Padding(
-                  padding: EdgeInsets.symmetric(horizontal: isCompact ? 2 : 3),
-                  child: AspectRatio(
-                    aspectRatio: 1,
-                    child: _EquipmentSlot(
-                      label: kEquipmentSlotLabels[slot]!.split('/').first,
-                      icon: equipment?.icon ?? '?',
-                      isEquipped: equipment != null,
-                      isCompact: isCompact,
-                    ),
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ),
+        Expanded(flex: 5, child: loadoutBlock),
+        SizedBox(width: isCompact ? 10 : 14),
+        Expanded(flex: 4, child: statBlock),
       ],
     );
   }
 }
 
-class _LoadoutStatsPanel extends StatelessWidget {
+class _CompactStatsPanel extends StatelessWidget {
   final LoadoutStatProfile stats;
   final bool isCompact;
 
-  const _LoadoutStatsPanel({
+  const _CompactStatsPanel({
     required this.stats,
     required this.isCompact,
   });
@@ -471,81 +449,83 @@ class _LoadoutStatsPanel extends StatelessWidget {
         color: AutoBattlePalette.background.withValues(alpha: 0.65),
         border: Border.all(
             color: AutoBattlePalette.ink.withValues(alpha: 0.25), width: 1.5),
+        borderRadius: BorderRadius.circular(8),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Wrap(
-            alignment: WrapAlignment.center,
-            runSpacing: isCompact ? 5 : 8,
-            spacing: isCompact ? 5 : 8,
-            children: items.map((item) {
-              return _LoadoutStatTile(item: item, isCompact: isCompact);
-            }).toList(),
-          ),
-          SizedBox(height: isCompact ? 4 : 6),
-          Text(
-            '체력/공격/방어/속도는 100 기준',
-            style: TextStyle(
-              color: AutoBattlePalette.ink.withValues(alpha: 0.45),
-              fontSize: isCompact ? 8 : 9,
-              fontWeight: FontWeight.w900,
+          for (var row = 0; row < items.length; row += 2) ...[
+            Row(
+              children: [
+                Expanded(
+                  child: _CompactStatRow(
+                    item: items[row],
+                    isCompact: isCompact,
+                  ),
+                ),
+                SizedBox(width: isCompact ? 8 : 10),
+                Expanded(
+                  child: row + 1 < items.length
+                      ? _CompactStatRow(
+                          item: items[row + 1],
+                          isCompact: isCompact,
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ],
             ),
-          ),
+            if (row + 2 < items.length) SizedBox(height: isCompact ? 8 : 10),
+          ],
         ],
       ),
     );
   }
 }
 
-class _LoadoutStatTile extends StatelessWidget {
+class _CompactStatRow extends StatelessWidget {
   final _LoadoutStatItem item;
   final bool isCompact;
 
-  const _LoadoutStatTile({
+  const _CompactStatRow({
     required this.item,
     required this.isCompact,
   });
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: isCompact ? 58 : 64,
-      padding: EdgeInsets.symmetric(
-        horizontal: isCompact ? 5 : 6,
-        vertical: isCompact ? 5 : 7,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(item.icon, color: item.color, size: isCompact ? 13 : 15),
-          SizedBox(height: isCompact ? 2 : 3),
-          Text(
-            item.label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AutoBattlePalette.text3,
-              fontSize: isCompact ? 8 : 9,
-              fontWeight: FontWeight.w900,
-            ),
+    return Row(
+      children: [
+        Icon(item.icon, color: item.color, size: isCompact ? 13 : 15),
+        SizedBox(width: isCompact ? 6 : 8),
+        Flexible(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AutoBattlePalette.text3,
+                  fontSize: isCompact ? 9 : 10,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              Text(
+                item.value,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  color: AutoBattlePalette.ink,
+                  fontSize: isCompact ? 11 : 13,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+            ],
           ),
-          Text(
-            item.value,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              color: AutoBattlePalette.ink,
-              fontSize: isCompact ? 12 : 14,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

@@ -703,7 +703,6 @@ class _ShopSummaryPanel extends StatelessWidget {
   final IconData icon;
   final String summary;
   final bool isCompact;
-  final bool dense;
   final int maxChips;
   final Color accentColor;
 
@@ -711,7 +710,6 @@ class _ShopSummaryPanel extends StatelessWidget {
     required this.icon,
     required this.summary,
     required this.isCompact,
-    this.dense = false,
     this.maxChips = 3,
     this.accentColor = AutoBattlePalette.secondary,
   });
@@ -729,8 +727,8 @@ class _ShopSummaryPanel extends StatelessWidget {
             Flexible(
               child: Container(
                 padding: EdgeInsets.symmetric(
-                  horizontal: dense ? 6 : 8,
-                  vertical: dense ? 3 : 5,
+                  horizontal: isCompact ? 6 : 8,
+                  vertical: isCompact ? 3 : 5,
                 ),
                 decoration: BoxDecoration(
                   color: accentColor,
@@ -739,8 +737,8 @@ class _ShopSummaryPanel extends StatelessWidget {
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(icon, color: Colors.white, size: dense ? 12 : 15),
-                    SizedBox(width: dense ? 3 : 5),
+                    Icon(icon, color: Colors.white, size: isCompact ? 12 : 15),
+                    SizedBox(width: isCompact ? 3 : 5),
                     Flexible(
                       child: Text(
                         power,
@@ -748,7 +746,7 @@ class _ShopSummaryPanel extends StatelessWidget {
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           color: Colors.white,
-                          fontSize: dense ? 11 : (isCompact ? 12 : 14),
+                          fontSize: isCompact ? 12 : 14,
                           fontWeight: FontWeight.w900,
                         ),
                       ),
@@ -760,16 +758,16 @@ class _ShopSummaryPanel extends StatelessWidget {
           ],
         ),
         if (chips.isNotEmpty) ...[
-          SizedBox(height: dense ? 4 : 7),
+          SizedBox(height: isCompact ? 4 : 7),
           Wrap(
-            spacing: dense ? 3 : 5,
-            runSpacing: dense ? 3 : 5,
+            spacing: isCompact ? 3 : 5,
+            runSpacing: isCompact ? 3 : 5,
             children: [
               for (final chip in chips.take(maxChips))
                 Container(
                   padding: EdgeInsets.symmetric(
-                    horizontal: dense ? 5 : 7,
-                    vertical: dense ? 2 : 4,
+                    horizontal: isCompact ? 5 : 7,
+                    vertical: isCompact ? 2 : 4,
                   ),
                   decoration: BoxDecoration(
                     color: accentColor.withValues(alpha: 0.10),
@@ -784,7 +782,7 @@ class _ShopSummaryPanel extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       color: AutoBattlePalette.ink,
-                      fontSize: dense ? 8 : (isCompact ? 9 : 11),
+                      fontSize: isCompact ? 9 : 11,
                       fontWeight: FontWeight.w900,
                     ),
                   ),
@@ -813,6 +811,7 @@ class _EquipmentShopTab extends StatefulWidget {
 
 class _EquipmentShopTabState extends State<_EquipmentShopTab> {
   String _selectedSlot = 'weapon';
+  final Map<String, int> _selectedIndexBySlot = {};
 
   @override
   Widget build(BuildContext context) {
@@ -823,37 +822,193 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
 
     return _ShopPage(
       isCompact: widget.isCompact,
-      child: Column(
-        children: [
-          // ── Horizontal Sub-nav (Top) ──
-          Container(
-            height: widget.isCompact ? 44 : 52,
-            decoration: const BoxDecoration(
-              border: Border(
-                  bottom: BorderSide(color: AutoBattlePalette.ink, width: 2)),
+      child: Obx(() {
+        widget.ctrl.unlockedEquipment.length;
+        widget.ctrl.currency.value;
+
+        final items = grouped[_selectedSlot] ?? const <EquipmentShopDef>[];
+        if (items.isEmpty) {
+          return const Center(
+            child: Text(
+              '항목이 없습니다.',
+              style: TextStyle(
+                  color: AutoBattlePalette.inkSubtle,
+                  fontWeight: FontWeight.w900),
             ),
-            child: ListView.builder(
+          );
+        }
+
+        final selectedIndex = (_selectedIndexBySlot[_selectedSlot] ?? 0)
+            .clamp(0, items.length - 1);
+        final selected = items[selectedIndex];
+        final unlocked = widget.ctrl.unlockedEquipment.contains(selected.id);
+        final equipped =
+            widget.ctrl.equippedEquipment[selected.slot] == selected.id;
+        final canAfford = widget.ctrl.currency.value >= selected.price;
+
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isNarrow = widget.isNarrowPage || constraints.maxWidth < 420;
+            final selector = _EquipmentSelectorPanel(
+              items: items,
+              ctrl: widget.ctrl,
+              selectedIndex: selectedIndex,
+              selectedSlot: _selectedSlot,
+              isCompact: widget.isCompact,
+              isNarrow: isNarrow,
+              onSelected: (index) =>
+                  setState(() => _selectedIndexBySlot[_selectedSlot] = index),
+              onSlotChanged: (slot) => setState(() => _selectedSlot = slot),
+            );
+            final detail = _EquipmentDetailPanel(
+              equipment: selected,
+              ctrl: widget.ctrl,
+              unlocked: unlocked,
+              equipped: equipped,
+              canAfford: canAfford,
+              isCompact: widget.isCompact,
+              isNarrow: isNarrow,
+              onTap: () {
+                if (unlocked) {
+                  widget.ctrl.equipEquipment(selected);
+                } else {
+                  widget.ctrl.buyEquipment(selected);
+                }
+              },
+            );
+
+            if (isNarrow) {
+              return Column(
+                children: [
+                  SizedBox(
+                      height: widget.isCompact ? 172 : 196, child: selector),
+                  const SizedBox(height: 10),
+                  Expanded(child: detail),
+                ],
+              );
+            }
+
+            return Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(flex: 2, child: selector),
+                Expanded(flex: 3, child: detail),
+              ],
+            );
+          },
+        );
+      }),
+    );
+  }
+}
+
+class _EquipmentSelectorPanel extends StatelessWidget {
+  final List<EquipmentShopDef> items;
+  final MetaProgressController ctrl;
+  final int selectedIndex;
+  final String selectedSlot;
+  final bool isCompact;
+  final bool isNarrow;
+  final ValueChanged<int> onSelected;
+  final ValueChanged<String> onSlotChanged;
+
+  const _EquipmentSelectorPanel({
+    required this.items,
+    required this.ctrl,
+    required this.selectedIndex,
+    required this.selectedSlot,
+    required this.isCompact,
+    required this.isNarrow,
+    required this.onSelected,
+    required this.onSlotChanged,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.all(isNarrow ? 8 : 12),
+      decoration: BoxDecoration(
+        border: Border(
+          right: isNarrow
+              ? BorderSide.none
+              : const BorderSide(color: AutoBattlePalette.ink, width: 2),
+          bottom: isNarrow
+              ? const BorderSide(color: AutoBattlePalette.ink, width: 2)
+              : BorderSide.none,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            height: isCompact ? 36 : 42,
+            child: ListView(
               scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 8),
-              itemCount: kEquipmentSlotLabels.length,
-              itemBuilder: (context, index) {
-                final slotKey = kEquipmentSlotLabels.keys.elementAt(index);
+              children: kEquipmentSlotLabels.keys.map((slotKey) {
                 final slotLabel = kEquipmentSlotLabels[slotKey]!;
-                final isSelected = _selectedSlot == slotKey;
+                final isSelected = selectedSlot == slotKey;
                 return GestureDetector(
-                  onTap: () => setState(() => _selectedSlot = slotKey),
+                  onTap: () => onSlotChanged(slotKey),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    margin:
-                        const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
-                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    margin: const EdgeInsets.only(right: 6),
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AutoBattlePalette.secondary
                           : Colors.white,
                       border:
                           Border.all(color: AutoBattlePalette.ink, width: 2),
-                      boxShadow: isSelected
+                    ),
+                    child: Center(
+                      child: Text(
+                        slotLabel.split('/').first,
+                        style: TextStyle(
+                          color:
+                              isSelected ? Colors.white : AutoBattlePalette.ink,
+                          fontSize: isCompact ? 10 : 12,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+          SizedBox(height: isNarrow ? 8 : 12),
+          Expanded(
+            child: GridView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: isNarrow ? 4 : 2,
+                crossAxisSpacing: 8,
+                mainAxisSpacing: 8,
+                childAspectRatio: isNarrow ? 1 : (isCompact ? 1.05 : 1.18),
+              ),
+              itemCount: items.length,
+              itemBuilder: (context, index) {
+                final equipment = items[index];
+                final viewing = index == selectedIndex;
+                final unlocked = ctrl.unlockedEquipment.contains(equipment.id);
+                final active =
+                    ctrl.equippedEquipment[equipment.slot] == equipment.id;
+
+                return GestureDetector(
+                  onTap: () => onSelected(index),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    decoration: BoxDecoration(
+                      color: viewing
+                          ? AutoBattlePalette.surfaceLight
+                          : Colors.white,
+                      border: Border.all(
+                        color: viewing
+                            ? AutoBattlePalette.secondary
+                            : AutoBattlePalette.ink,
+                        width: viewing ? 3 : 2,
+                      ),
+                      boxShadow: viewing
                           ? null
                           : const [
                               BoxShadow(
@@ -861,101 +1016,41 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
                                   offset: Offset(2, 2))
                             ],
                     ),
-                    child: Center(
-                      child: Text(
-                        slotLabel.split('/')[0],
-                        style: TextStyle(
-                          color:
-                              isSelected ? Colors.white : AutoBattlePalette.ink,
-                          fontSize: widget.isCompact ? 11 : 13,
-                          fontWeight: FontWeight.w900,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: Text(
+                            equipment.icon,
+                            style: TextStyle(fontSize: isNarrow ? 26 : 34),
+                          ),
                         ),
-                      ),
+                        if (active)
+                          Positioned(
+                            top: 4,
+                            right: 4,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: const BoxDecoration(
+                                  color: Color(0xFF4CAF50),
+                                  shape: BoxShape.circle),
+                              child: const Icon(Icons.check,
+                                  color: Colors.white, size: 8),
+                            ),
+                          ),
+                        if (!unlocked)
+                          Container(
+                            color: Colors.black.withValues(alpha: 0.05),
+                            child: const Center(
+                              child: Icon(Icons.lock,
+                                  color: AutoBattlePalette.inkSubtle, size: 16),
+                            ),
+                          ),
+                      ],
                     ),
                   ),
                 );
               },
             ),
-          ),
-
-          // ── Item Grid ──
-          Expanded(
-            child: Obx(() {
-              // Accessing Rx variables here ensures Obx always has listeners.
-              widget.ctrl.unlockedEquipment.length;
-              final currentCurrency = widget.ctrl.currency.value;
-
-              final items =
-                  grouped[_selectedSlot] ?? const <EquipmentShopDef>[];
-
-              if (items.isEmpty) {
-                return const Center(
-                  child: Text(
-                    '항목이 없습니다.',
-                    style: TextStyle(
-                        color: AutoBattlePalette.inkSubtle,
-                        fontWeight: FontWeight.w900),
-                  ),
-                );
-              }
-
-              return LayoutBuilder(
-                builder: (context, gridConstraints) {
-                  final oneColumn =
-                      widget.isNarrowPage || gridConstraints.maxWidth < 390;
-                  final fourColumns =
-                      !oneColumn && gridConstraints.maxWidth >= 980;
-                  final crossAxisCount = oneColumn ? 1 : (fourColumns ? 4 : 2);
-                  final rowCount = (items.length / crossAxisCount).ceil();
-                  const spacing = 8.0;
-                  const padding = 16.0;
-                  final availableHeight = gridConstraints.maxHeight -
-                      padding -
-                      (spacing * (rowCount - 1));
-                  final itemExtent =
-                      (availableHeight / rowCount).clamp(134.0, 188.0);
-
-                  return GridView.builder(
-                    padding: const EdgeInsets.all(8),
-                    physics: const NeverScrollableScrollPhysics(),
-                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: crossAxisCount,
-                      crossAxisSpacing: 8,
-                      mainAxisSpacing: 8,
-                      mainAxisExtent: itemExtent,
-                    ),
-                    itemCount: items.length,
-                    itemBuilder: (context, index) {
-                      final equipment = items[index];
-                      final unlocked =
-                          widget.ctrl.unlockedEquipment.contains(equipment.id);
-                      final isEquipped =
-                          widget.ctrl.equippedEquipment[equipment.slot] ==
-                              equipment.id;
-                      final canAfford = currentCurrency >= equipment.price;
-
-                      return _EquipmentCard(
-                        equipment: equipment,
-                        unlocked: unlocked,
-                        equipped: isEquipped,
-                        canAfford: canAfford,
-                        ctrl: widget.ctrl,
-                        isCompact: widget.isCompact,
-                        oneColumn: oneColumn,
-                        isWeaponTab: _selectedSlot == 'weapon',
-                        onTap: () {
-                          if (unlocked) {
-                            widget.ctrl.equipEquipment(equipment);
-                          } else {
-                            widget.ctrl.buyEquipment(equipment);
-                          }
-                        },
-                      );
-                    },
-                  );
-                },
-              );
-            }),
           ),
         ],
       ),
@@ -963,127 +1058,102 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
   }
 }
 
-class _EquipmentCard extends StatelessWidget {
+class _EquipmentDetailPanel extends StatelessWidget {
   final EquipmentShopDef equipment;
+  final MetaProgressController ctrl;
   final bool unlocked;
   final bool equipped;
   final bool canAfford;
-  final MetaProgressController ctrl;
   final bool isCompact;
-  final bool oneColumn;
-  final bool isWeaponTab;
+  final bool isNarrow;
   final VoidCallback onTap;
 
-  const _EquipmentCard({
+  const _EquipmentDetailPanel({
     required this.equipment,
+    required this.ctrl,
     required this.unlocked,
     required this.equipped,
     required this.canAfford,
-    required this.ctrl,
     required this.isCompact,
-    required this.oneColumn,
-    required this.isWeaponTab,
+    required this.isNarrow,
     required this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
-    final buttonColor = equipped
-        ? const Color(0xFF4CAF50)
-        : (unlocked
-            ? AutoBattlePalette.secondary
-            : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)));
-
     final accentColor = equipment.slot == 'weapon'
         ? AutoBattlePalette.primary
         : (equipment.slot == 'hand'
             ? AutoBattlePalette.secondary
             : AutoBattlePalette.gold);
+    final previewSize = isNarrow ? 46.0 : (isCompact ? 50.0 : 80.0);
 
     return Container(
-      decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 2),
-        boxShadow: const [
-          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2)),
-        ],
-      ),
-      child: Row(
+      padding: EdgeInsets.all(isNarrow ? 8 : (isCompact ? 10 : 20)),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Left: Icon
-          Container(
-            width: oneColumn ? (isCompact ? 48 : 58) : (isCompact ? 54 : 66),
-            decoration: BoxDecoration(
-              color: accentColor.withValues(alpha: 0.14),
-              border: const Border(
-                right: BorderSide(color: AutoBattlePalette.ink, width: 1.5),
-              ),
-            ),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Text(
-                  equipment.icon,
-                  style: TextStyle(fontSize: isCompact ? 24 : 31),
+          Row(
+            children: [
+              Container(
+                width: previewSize,
+                height: previewSize,
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.14),
+                  border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
                 ),
-                const SizedBox(height: 5),
-                Icon(
-                  _slotIcon(equipment.slot),
-                  color: accentColor,
-                  size: isCompact ? 14 : 16,
-                ),
-              ],
-            ),
-          ),
-
-          // Right: Content
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.symmetric(
-                  horizontal: oneColumn ? 8 : 6, vertical: 4),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  Text(
-                    equipment.title,
-                    style: TextStyle(
-                        color: AutoBattlePalette.ink,
-                        fontSize: isCompact ? 11 : 13,
-                        fontWeight: FontWeight.w900),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
+                child: Center(
+                  child: Text(
+                    equipment.icon,
+                    style: TextStyle(fontSize: isCompact ? 24 : 34),
                   ),
-                  SizedBox(height: isCompact ? 4 : 6),
-                  SizedBox(height: isCompact ? 5 : 6),
+                ),
+              ),
+              SizedBox(width: isNarrow ? 10 : 16),
+              Expanded(
+                child: Text(
+                  equipment.title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: AutoBattlePalette.ink,
+                    fontSize: isNarrow ? 16 : (isCompact ? 18 : 24),
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: isNarrow ? 8 : 10),
+          Expanded(
+            child: Container(
+              width: double.infinity,
+              padding: EdgeInsets.all(isNarrow ? 10 : 12),
+              decoration: BoxDecoration(
+                color: AutoBattlePalette.background.withValues(alpha: 0.5),
+                border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
                   _ShopSummaryPanel(
                     icon: Icons.bolt,
                     summary: equipment.statSummary,
                     isCompact: isCompact,
-                    dense: true,
-                    maxChips: isWeaponTab ? 1 : 2,
+                    maxChips: 3,
                     accentColor: accentColor,
                   ),
                   const Spacer(),
-                  _SketchButton(
-                    onTap: equipped ? null : onTap,
-                    height: isCompact ? 24 : 28,
-                    color: buttonColor,
-                    isCompact: true,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Text(
-                        !unlocked
-                            ? '💎${equipment.price}'
-                            : (equipped ? 'EQUIPPED' : 'SELECT'),
-                        style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 9,
-                            fontWeight: FontWeight.w900),
-                      ),
-                    ),
+                  _EquipmentStatusRow(
+                    unlocked: unlocked,
+                    equipped: equipped,
+                    canAfford: canAfford,
+                    price: equipment.price,
+                    isCompact: isCompact,
+                    accentColor: accentColor,
                   ),
                   if (unlocked && equipment.weaponType != null) ...[
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 8),
                     _EquipmentUpgradeRow(
                         equipment: equipment, ctrl: ctrl, isCompact: isCompact),
                   ],
@@ -1095,15 +1165,69 @@ class _EquipmentCard extends StatelessWidget {
       ),
     );
   }
+}
 
-  IconData _slotIcon(String slot) {
-    return switch (slot) {
-      'weapon' => Icons.gps_fixed,
-      'hand' => Icons.center_focus_strong,
-      'armor' => Icons.shield,
-      'boots' => Icons.speed,
-      _ => Icons.auto_awesome,
-    };
+class _EquipmentStatusRow extends StatelessWidget {
+  final bool unlocked;
+  final bool equipped;
+  final bool canAfford;
+  final int price;
+  final bool isCompact;
+  final Color accentColor;
+
+  const _EquipmentStatusRow({
+    required this.unlocked,
+    required this.equipped,
+    required this.canAfford,
+    required this.price,
+    required this.isCompact,
+    required this.accentColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final label = equipped
+        ? '현재 장착됨'
+        : (unlocked ? '보유 중' : (canAfford ? '구매 가능' : '재화 부족'));
+    final value = unlocked ? 'READY' : '💎 $price';
+    final color = equipped
+        ? const Color(0xFF4CAF50)
+        : (unlocked
+            ? accentColor
+            : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)));
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+          horizontal: isCompact ? 8 : 10, vertical: isCompact ? 6 : 8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        border: Border.all(color: color, width: 1.5),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: AutoBattlePalette.ink,
+                fontSize: isCompact ? 10 : 11,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: isCompact ? 10 : 12,
+              fontWeight: FontWeight.w900,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 
