@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import '../models/game_snapshot.dart';
 import 'constants.dart';
 import 'physics.dart';
+import 'simulation_clock.dart';
 import 'types.dart';
 
 class GameEngine {
@@ -18,7 +19,9 @@ class GameEngine {
   final List<ObstacleData> obstacles = [];
 
   Timer? timer;
-  int lastTickAt = DateTime.now().millisecondsSinceEpoch;
+  final SimulationClock _clock = SimulationClock(
+    startedAt: DateTime.now().millisecondsSinceEpoch,
+  );
   String roundState = 'waiting';
   int currentStage;
   String? winnerId;
@@ -97,19 +100,21 @@ class GameEngine {
 
   void start() {
     if (timer != null) return;
-    lastTickAt = DateTime.now().millisecondsSinceEpoch;
-    _primeAbilityCooldowns(lastTickAt);
+    _clock.reset(DateTime.now().millisecondsSinceEpoch);
+    _primeAbilityCooldowns(_clock.simulationTime);
     timer = Timer.periodic(const Duration(milliseconds: TICK_MS), (t) {
       final now = DateTime.now().millisecondsSinceEpoch;
-      final dt = now - lastTickAt;
-      lastTickAt = now;
-      _tick(dt);
+      _tick(_clock.advanceTo(now));
     });
   }
 
   void stop() {
     timer?.cancel();
     timer = null;
+  }
+
+  void setSimulationSpeed(double speed) {
+    _clock.setSpeed(speed);
   }
 
   void revivePlayer(int newLives) {
@@ -127,7 +132,7 @@ class GameEngine {
     roundState = 'running';
     winnerId = null;
     roundEndsAt = null;
-    _primeAbilityCooldowns(DateTime.now().millisecondsSinceEpoch);
+    _primeAbilityCooldowns(_clock.simulationTime);
 
     // Brief invincibility could be added here if needed
     _broadcastSnapshot();
@@ -148,7 +153,7 @@ class GameEngine {
   }
 
   void _tick(int dt) {
-    final now = DateTime.now().millisecondsSinceEpoch;
+    final now = _clock.simulationTime;
     final p1 = _getPlayer('p1');
 
     if (p1 == null) return;
@@ -1277,7 +1282,7 @@ class GameEngine {
 
   void _broadcastSnapshot() {
     final snapshot = GameSnapshot(
-      serverTime: DateTime.now().millisecondsSinceEpoch,
+      serverTime: _clock.simulationTime,
       currentStage: currentStage,
       currentCycle: currentCycle,
       stageInCycle: stageInCycle,

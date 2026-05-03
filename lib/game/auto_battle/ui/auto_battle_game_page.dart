@@ -12,6 +12,7 @@ import 'package:circle_war/game/auto_battle/engine/constants.dart';
 import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:circle_war/game/auto_battle/ui/simulation_speed_control.dart';
 import 'package:circle_war/screens/home_screen.dart';
 import 'package:circle_war/screens/upgrade_select_screen.dart';
 import 'package:circle_war/screens/run_results_screen.dart';
@@ -32,6 +33,7 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
   String? _myId;
   bool _connected = false;
   bool _navigating = false;
+  double _simulationSpeed = SIMULATION_DEFAULT_SPEED;
 
   @override
   void initState() {
@@ -254,6 +256,9 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                   child: _SketchSidebar(
                     players: players,
                     myId: _myId,
+                    snapshotTime: _snapshot?.serverTime,
+                    simulationSpeed: _simulationSpeed,
+                    onSimulationSpeedChanged: _setSimulationSpeed,
                     topPadding: 0,
                     compact: true,
                   ),
@@ -300,6 +305,9 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
                     child: _SketchSidebar(
                       players: players,
                       myId: _myId,
+                      snapshotTime: _snapshot?.serverTime,
+                      simulationSpeed: _simulationSpeed,
+                      onSimulationSpeedChanged: _setSimulationSpeed,
                       topPadding: compact ? 14 : 18,
                       compact: compact,
                     ),
@@ -324,6 +332,12 @@ class _AutoBattleGamePageState extends State<AutoBattleGamePage> {
         ],
       ),
     );
+  }
+
+  void _setSimulationSpeed(double speed) {
+    if (_simulationSpeed == speed) return;
+    setState(() => _simulationSpeed = speed);
+    _localService.setSimulationSpeed(speed);
   }
 }
 
@@ -554,12 +568,18 @@ class _SketchExitButton extends StatelessWidget {
 class _SketchSidebar extends StatelessWidget {
   final List<PlayerSnapshot> players;
   final String? myId;
+  final int? snapshotTime;
+  final double simulationSpeed;
+  final ValueChanged<double> onSimulationSpeedChanged;
   final double topPadding;
   final bool compact;
 
   const _SketchSidebar({
     required this.players,
     required this.myId,
+    required this.snapshotTime,
+    required this.simulationSpeed,
+    required this.onSimulationSpeedChanged,
     required this.topPadding,
     required this.compact,
   });
@@ -580,11 +600,21 @@ class _SketchSidebar extends StatelessWidget {
     final sidePadding = EdgeInsets.symmetric(horizontal: compact ? 10 : 16);
     final children = <Widget>[
       SizedBox(height: topPadding),
+      Padding(
+        padding: sidePadding,
+        child: SimulationSpeedControl(
+          speed: simulationSpeed,
+          onChanged: onSimulationSpeedChanged,
+          compact: compact,
+        ),
+      ),
+      SizedBox(height: compact ? 12 : 18),
       if (myPlayer != null) ...[
         Padding(
           padding: sidePadding,
           child: _PlayerSidebarCard(
             player: myPlayer,
+            now: snapshotTime ?? DateTime.now().millisecondsSinceEpoch,
             compact: compact,
           ),
         ),
@@ -614,9 +644,11 @@ class _SketchSidebar extends StatelessWidget {
         ],
     ];
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: children,
+    return SingleChildScrollView(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
     );
   }
 }
@@ -1037,10 +1069,12 @@ class _WeaponStatusIcon extends StatelessWidget {
 
 class _PlayerSidebarCard extends StatelessWidget {
   final PlayerSnapshot player;
+  final int now;
   final bool compact;
 
   const _PlayerSidebarCard({
     required this.player,
+    required this.now,
     required this.compact,
   });
 
@@ -1157,7 +1191,7 @@ class _PlayerSidebarCard extends StatelessWidget {
                   .map((w) => _WeaponStatusIcon(
                         weapon: w,
                         player: player,
-                        now: DateTime.now().millisecondsSinceEpoch,
+                        now: now,
                         compact: compact,
                       ))
                   .toList(),

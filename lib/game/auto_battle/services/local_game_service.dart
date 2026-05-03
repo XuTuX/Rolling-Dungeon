@@ -25,7 +25,7 @@ class LocalGameService {
         _onGameUpdate?.call(snapshot);
       },
     );
-    
+
     // Simulate connection delay
     Future.delayed(const Duration(milliseconds: 100), () {
       _onConnectionChanged?.call(true);
@@ -42,6 +42,10 @@ class LocalGameService {
 
   void revivePlayer(int newLives) {
     _engine?.revivePlayer(newLives);
+  }
+
+  void setSimulationSpeed(double speed) {
+    _engine?.setSimulationSpeed(speed);
   }
 
   void onGameUpdate(Function(GameSnapshot) callback) {

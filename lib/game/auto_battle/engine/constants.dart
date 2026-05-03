@@ -5,6 +5,8 @@ const int ARENA_HEIGHT = 500;
 
 const int TICK_RATE = 30;
 const int TICK_MS = 1000 ~/ TICK_RATE;
+const double SIMULATION_DEFAULT_SPEED = 0.75;
+const double SIMULATION_FAST_SPEED = 2.0;
 
 const int MAX_PLAYERS = 2;
 const int MAX_LIVES = 3;

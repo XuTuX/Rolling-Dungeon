@@ -11,7 +11,6 @@ include: package:flutter_lints/flutter.yaml
 
 analyzer:
   errors:
-    unrecognized_lint_rule: ignore
     no_wildcard_variable_uses: ignore
 
 linter:
