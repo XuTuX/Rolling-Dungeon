@@ -19,6 +19,8 @@ class AutoBattleGame extends FlameGame {
 
   // VFX State
   final List<_DamageNumber> _damageNumbers = [];
+  final List<_HitImpact> _hitImpacts = [];
+  final Map<String, double> _hitFlashByPlayerId = {};
   final Map<String, double> _prevHp = {};
   double _shakeIntensity = 0;
   int _snapshotReceivedAt = 0;
@@ -41,18 +43,28 @@ class AutoBattleGame extends FlameGame {
           .firstWhere((p) => p?.id == e.victimId, orElse: () => null);
       final isMine = _isMine(victim);
       final isEnemy = victim?.isEnemy == true;
+      final impactColor = isMine
+          ? const Color(0xFFEF4444)
+          : isEnemy
+              ? const Color(0xFFFFD54F)
+              : const Color(0xFF60A5FA);
       _damageNumbers.add(_DamageNumber(
         pos: Offset(e.x, e.y - 15),
-        text: isMine ? '-${e.damage.toInt()} HP' : '${e.damage.toInt()} DMG',
-        color: isMine
-            ? const Color(0xFFEF4444)
-            : isEnemy
-                ? const Color(0xFFFFD54F)
-                : const Color(0xFF60A5FA),
+        text: isMine ? '-${e.damage.toInt()}' : '${e.damage.toInt()}',
+        color: impactColor,
         isTaken: isMine,
         isCritical: e.isCritical,
       ));
-      if (isMine) _shakeIntensity = 6.0;
+      _hitImpacts.add(_HitImpact(
+        pos: Offset(e.x, e.y),
+        color: impactColor,
+        isTaken: isMine,
+        isCritical: e.isCritical,
+      ));
+      if (victim != null) {
+        _hitFlashByPlayerId[victim.id] = e.isCritical ? 1.25 : 1.0;
+      }
+      if (isMine) _shakeIntensity = e.isCritical ? 9.0 : 6.0;
     }
 
     _snapshot = snapshot;
@@ -93,6 +105,14 @@ class AutoBattleGame extends FlameGame {
     _damageNumbers.removeWhere((d) => d.life <= 0);
     for (final d in _damageNumbers) {
       d.update(dt);
+    }
+    _hitImpacts.removeWhere((impact) => impact.life <= 0);
+    for (final impact in _hitImpacts) {
+      impact.update(dt);
+    }
+    _hitFlashByPlayerId.removeWhere((_, value) => value <= 0);
+    for (final entry in _hitFlashByPlayerId.entries.toList()) {
+      _hitFlashByPlayerId[entry.key] = math.max(0, entry.value - dt * 4.2);
     }
   }
 
@@ -349,6 +369,29 @@ class AutoBattleGame extends FlameGame {
       final isMine = _isMine(p);
       final markerColor =
           isMine ? const Color(0xFF2563EB) : const Color(0xFFDC2626);
+      final hitFlash = (_hitFlashByPlayerId[p.id] ?? 0).clamp(0.0, 1.0);
+      final hitColor =
+          isMine ? const Color(0xFFEF4444) : const Color(0xFFFFD54F);
+
+      if (hitFlash > 0) {
+        final pulseR = r + (14 + 14 * (1 - hitFlash)) * _arenaScale;
+        canvas.drawCircle(
+          pos,
+          pulseR,
+          Paint()
+            ..color = hitColor.withValues(alpha: 0.16 * hitFlash)
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = (isMine ? 5.5 : 4.2) * hitFlash,
+        );
+        _renderHitSparks(
+          canvas,
+          pos,
+          r + 10 * _arenaScale,
+          hitColor,
+          hitFlash,
+          p.id.hashCode,
+        );
+      }
 
       // Body Shadow
       canvas.drawPath(
@@ -363,6 +406,21 @@ class AutoBattleGame extends FlameGame {
       canvas.rotate(bodyAngle + math.pi / 2);
       final bodyPath = _getLocalShapePath(p.characterShape, r);
       canvas.drawPath(bodyPath, Paint()..color = p.flutterColor);
+      if (hitFlash > 0) {
+        canvas.drawPath(
+          bodyPath,
+          Paint()
+            ..color = hitColor.withValues(
+                alpha: isMine ? 0.34 * hitFlash : 0.24 * hitFlash),
+        );
+        canvas.drawPath(
+          bodyPath,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = (5.5 * hitFlash).clamp(1.0, 5.5)
+            ..color = Colors.white.withValues(alpha: 0.76 * hitFlash),
+        );
+      }
       canvas.drawPath(
         bodyPath,
         Paint()
@@ -515,116 +573,77 @@ class AutoBattleGame extends FlameGame {
       _renderWeaponDecoration(canvas, pos, r, p);
 
       // HP Bar
-      final barW = math.max(r * 2.8, isMine ? 72.0 : 44.0);
+      final barW = math.max(r * 2.4, 34.0);
       final barRect = Rect.fromCenter(
-        center: pos + Offset(0, -r - (isMine ? 28 : 24)),
+        center: pos + Offset(0, -r - 18),
         width: barW,
-        height: isMine ? 13 : 11,
+        height: 6,
       );
       if (!isMine) {
-        _renderHpPlate(canvas, player: p, rect: barRect, isMine: false);
+        _renderEnemyHpBar(canvas, player: p, rect: barRect);
       }
     }
   }
 
-  void _renderHpPlate(
+  void _renderEnemyHpBar(
     Canvas canvas, {
     required PlayerSnapshot player,
     required Rect rect,
-    required bool isMine,
   }) {
     final hpRatio =
         player.maxHp <= 0 ? 0.0 : (player.hp / player.maxHp).clamp(0.0, 1.0);
-    final plateRect = Rect.fromCenter(
-      center: rect.center,
-      width: isMine ? rect.width + 18 : rect.width + 10,
-      height: isMine ? rect.height + 8 : rect.height + 5,
-    );
-    final bg = RRect.fromRectAndRadius(
-      plateRect,
-      const Radius.circular(999),
-    );
     final hpColor = hpRatio > 0.6
         ? const Color(0xFF22C55E)
         : hpRatio > 0.3
             ? const Color(0xFFF59E0B)
             : const Color(0xFFEF4444);
-    final sideColor =
-        isMine ? const Color(0xFF2563EB) : const Color(0xFFDC2626);
-    final shadowOffset = isMine ? const Offset(1.5, 2.5) : const Offset(1, 2);
+    final bar = RRect.fromRectAndRadius(rect, const Radius.circular(3));
 
-    canvas.drawRRect(
-      bg.shift(shadowOffset),
-      Paint()..color = AutoBattlePalette.ink.withValues(alpha: 0.1),
-    );
-    canvas.drawRRect(
-      bg,
-      Paint()..color = Colors.white.withValues(alpha: isMine ? 0.95 : 0.9),
-    );
-    canvas.drawRRect(
-      bg,
-      Paint()
-        ..color = AutoBattlePalette.ink.withValues(alpha: isMine ? 0.14 : 0.08)
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1,
-    );
-    canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
-      Paint()..color = const Color(0xFFE5E7EB),
-    );
+    canvas.drawRRect(bar, Paint()..color = Colors.white);
     canvas.drawRRect(
       RRect.fromRectAndRadius(
         Rect.fromLTWH(rect.left, rect.top, rect.width * hpRatio, rect.height),
-        const Radius.circular(4),
+        const Radius.circular(3),
       ),
-      Paint()
-        ..shader = LinearGradient(
-          colors: [
-            hpColor.withValues(alpha: 0.9),
-            Color.lerp(hpColor, Colors.white, 0.24)!,
-          ],
-        ).createShader(rect),
+      Paint()..color = hpColor,
     );
     canvas.drawRRect(
-      RRect.fromRectAndRadius(rect, const Radius.circular(4)),
+      bar,
       Paint()
-        ..color = AutoBattlePalette.ink.withValues(alpha: 0.16)
+        ..color = AutoBattlePalette.ink
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.9,
+        ..strokeWidth = 1.4,
     );
-    canvas.drawCircle(
-      Offset(plateRect.left + 7, plateRect.center.dy),
-      isMine ? 2.8 : 2.3,
-      Paint()..color = sideColor.withValues(alpha: isMine ? 0.92 : 0.74),
-    );
-    if (isMine) {
-      _paintCenteredText(
-        canvas,
-        '${player.hp.ceil()}/${player.maxHp.ceil()}',
-        Offset(plateRect.center.dx + 5, plateRect.center.dy),
-        const TextStyle(
-          color: AutoBattlePalette.ink,
-          fontSize: 10,
-          fontWeight: FontWeight.w900,
-        ),
-      );
-    }
   }
 
-  void _paintCenteredText(
+  void _renderHitSparks(
     Canvas canvas,
-    String text,
     Offset center,
-    TextStyle style,
+    double radius,
+    Color color,
+    double life,
+    int seed,
   ) {
-    final painter = TextPainter(
-      text: TextSpan(text: text, style: style),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    painter.paint(
-      canvas,
-      center - Offset(painter.width / 2, painter.height / 2),
-    );
+    final rand = math.Random(seed);
+    final paint = Paint()
+      ..color = color.withValues(alpha: 0.82 * life)
+      ..strokeWidth = 2.4 * life
+      ..strokeCap = StrokeCap.round;
+
+    for (var i = 0; i < 7; i++) {
+      final angle = i * math.pi * 2 / 7 + rand.nextDouble() * 0.35;
+      final start = center +
+          Offset(
+            math.cos(angle) * radius * (0.72 + (1 - life) * 0.18),
+            math.sin(angle) * radius * (0.72 + (1 - life) * 0.18),
+          );
+      final end = center +
+          Offset(
+            math.cos(angle) * radius * (1.08 + (1 - life) * 0.52),
+            math.sin(angle) * radius * (1.08 + (1 - life) * 0.52),
+          );
+      canvas.drawLine(start, end, paint);
+    }
   }
 
   void _renderWeaponDecoration(
@@ -888,9 +907,51 @@ class AutoBattleGame extends FlameGame {
   }
 
   void _renderVFX(Canvas canvas) {
+    for (final impact in _hitImpacts) {
+      final pos = _toScreen(impact.pos.dx, impact.pos.dy);
+      final progress = 1 - impact.life;
+      final radius =
+          (impact.isCritical ? 34.0 : 24.0) * _arenaScale * (0.55 + progress);
+      final stroke = (impact.isCritical ? 4.4 : 3.2) * _arenaScale;
+      final alpha = impact.life.clamp(0.0, 1.0);
+
+      canvas.drawCircle(
+        pos,
+        radius,
+        Paint()
+          ..color = impact.color.withValues(alpha: 0.28 * alpha)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = stroke,
+      );
+
+      final burstPaint = Paint()
+        ..color = (impact.isTaken ? Colors.white : AutoBattlePalette.ink)
+            .withValues(alpha: 0.78 * alpha)
+        ..strokeWidth = 2.2 * _arenaScale
+        ..strokeCap = StrokeCap.round;
+      for (var i = 0; i < (impact.isCritical ? 10 : 7); i++) {
+        final angle = i * math.pi * 2 / (impact.isCritical ? 10 : 7) +
+            impact.seed * 0.001;
+        canvas.drawLine(
+          pos +
+              Offset(
+                math.cos(angle) * radius * 0.55,
+                math.sin(angle) * radius * 0.55,
+              ),
+          pos +
+              Offset(
+                math.cos(angle) * radius * 0.95,
+                math.sin(angle) * radius * 0.95,
+              ),
+          burstPaint,
+        );
+      }
+    }
+
     for (final d in _damageNumbers) {
       final pos = _toScreen(d.pos.dx, d.pos.dy);
       final scale = d.isTaken ? 1.12 : 1.0;
+      final emphasis = d.isCritical ? 1.24 : 1.0;
       final badgeStyle = TextStyle(
         color: d.isTaken ? Colors.white : d.color,
         fontSize: 13.5 * _arenaScale * scale,
@@ -908,7 +969,11 @@ class AutoBattleGame extends FlameGame {
               text: d.text,
               style: TextStyle(
                 color: d.isTaken ? Colors.white : d.color,
-                fontSize: 20 * _arenaScale * scale * (1 + (1 - d.life) * 0.34),
+                fontSize: 20 *
+                    _arenaScale *
+                    scale *
+                    emphasis *
+                    (1 + (1 - d.life) * 0.34),
                 fontWeight: FontWeight.w900,
               ),
             ),
@@ -929,10 +994,12 @@ class AutoBattleGame extends FlameGame {
       );
       final fillColor = d.isTaken
           ? const Color(0xFFE11D48).withValues(alpha: 0.88 * d.life)
-          : Colors.white.withValues(alpha: 0.92 * d.life);
+          : d.isCritical
+              ? const Color(0xFFFFF1A8).withValues(alpha: 0.96 * d.life)
+              : Colors.white.withValues(alpha: 0.92 * d.life);
       final strokeColor = d.isTaken
           ? Colors.white.withValues(alpha: 0.85 * d.life)
-          : d.color.withValues(alpha: 0.7 * d.life);
+          : AutoBattlePalette.ink.withValues(alpha: 0.76 * d.life);
 
       canvas.drawRRect(
         bubbleRect.shift(const Offset(2, 3)),
@@ -944,7 +1011,7 @@ class AutoBattleGame extends FlameGame {
         Paint()
           ..color = strokeColor
           ..style = PaintingStyle.stroke
-          ..strokeWidth = 1.6,
+          ..strokeWidth = d.isCritical ? 2.5 : 1.8,
       );
       painter.paint(canvas, textOffset);
     }
@@ -979,5 +1046,27 @@ class _DamageNumber {
   void update(double dt) {
     pos += const Offset(0, -50) * dt;
     life -= dt * 1.5;
+  }
+}
+
+class _HitImpact {
+  Offset pos;
+  Color color;
+  bool isTaken;
+  bool isCritical;
+  double life = 1.0;
+  late final int seed;
+
+  _HitImpact({
+    required this.pos,
+    required this.color,
+    required this.isTaken,
+    required this.isCritical,
+  }) {
+    seed = Object.hash(pos.dx.round(), pos.dy.round(), color.toARGB32());
+  }
+
+  void update(double dt) {
+    life -= dt * (isCritical ? 1.35 : 1.65);
   }
 }
