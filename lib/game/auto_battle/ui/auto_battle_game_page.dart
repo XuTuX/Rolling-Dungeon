@@ -1088,29 +1088,9 @@ class _PlayerSidebarCard extends StatelessWidget {
         final preview = SizedBox(
           width: stacked ? double.infinity : (compact ? 46 : 72),
           child: Center(
-            child: Stack(
-              alignment: Alignment.center,
-              children: [
-                Transform.rotate(
-                  angle: -0.12,
-                  child: Container(
-                    width: compact ? 42 : 66,
-                    height: compact ? 42 : 66,
-                    decoration: BoxDecoration(
-                      color: AutoBattlePalette.gold,
-                      border: Border.all(
-                        color: AutoBattlePalette.ink,
-                        width: 3,
-                      ),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-                CharacterBallPreview(
-                  info: info,
-                  size: compact ? 44 : 68,
-                ),
-              ],
+            child: CharacterBallPreview(
+              info: info,
+              size: compact ? 44 : 68,
             ),
           ),
         );
