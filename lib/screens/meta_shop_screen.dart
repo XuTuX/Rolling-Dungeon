@@ -4,8 +4,6 @@ import 'package:circle_war/game/auto_battle/ui/character_display.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
-/// Persistent meta-shop accessible from HomeScreen.
-/// Buy weapons & view achievements using currency earned from achievements.
 class MetaShopScreen extends StatefulWidget {
   const MetaShopScreen({super.key});
 
@@ -38,84 +36,23 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
           builder: (context, constraints) {
             final w = constraints.maxWidth;
             final h = constraints.maxHeight;
-            final isNarrow = w < 560;
-            final isCompact = h < 560 || w < 760;
-            final sidebarWidth = w < 420 ? 82.0 : (isCompact ? 96.0 : 112.0);
-            final pagePadding = w < 420 ? 8.0 : (isCompact ? 12.0 : 18.0);
+            final isCompact = h < 600 || w < 760;
+            final pagePadding = w < 420 ? 12.0 : 20.0;
 
-            return Row(
+            return Column(
               children: [
-                // ── Sidebar Navigation ──
-                Container(
-                  width: sidebarWidth,
-                  decoration: const BoxDecoration(
-                    border: Border(
-                      right: BorderSide(color: AutoBattlePalette.ink, width: 4),
-                    ),
-                  ),
-                  child: Column(
-                    children: [
-                      Padding(
-                        padding: EdgeInsets.only(top: isCompact ? 8 : 12),
-                        child: _SidebarIconButton(
-                          onTap: () => Get.back(),
-                          icon: Icons.arrow_back,
-                          color: AutoBattlePalette.ink,
-                          size: isCompact ? 40 : 54,
-                        ),
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.fromLTRB(8, 10, 8, 10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: List.generate(_tabs.length, (index) {
-                              final tab = _tabs[index];
-                              final isSelected = _currentTab == index;
-                              return Expanded(
-                                child: Padding(
-                                  padding:
-                                      const EdgeInsets.symmetric(vertical: 5),
-                                  child: _SidebarTabButton(
-                                    isSelected: isSelected,
-                                    icon: tab.icon,
-                                    label: tab.title,
-                                    accentColor: tab.color,
-                                    onTap: () =>
-                                        setState(() => _currentTab = index),
-                                    isCompact: isCompact,
-                                  ),
-                                ),
-                              );
-                            }),
-                          ),
-                        ),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                        child: Obx(() => _CurrencyBox(
-                            amount: ctrl.currency.value, isCompact: isCompact)),
-                      ),
-                    ],
-                  ),
+                _ShopTopBar(
+                  tabs: _tabs,
+                  currentTab: _currentTab,
+                  onTabChanged: (index) => setState(() => _currentTab = index),
+                  isCompact: isCompact,
                 ),
-
-                // ── Main Content Area ──
                 Expanded(
-                  child: Column(
-                    children: [
-                      _ShopHeader(
-                        title: _tabs[_currentTab].title,
-                        isCompact: isCompact,
-                      ),
-                      Expanded(
-                        child: Padding(
-                          padding: EdgeInsets.fromLTRB(
-                              pagePadding, 0, pagePadding, pagePadding),
-                          child: _buildCurrentTab(ctrl, isCompact, isNarrow),
-                        ),
-                      ),
-                    ],
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(pagePadding, 0, pagePadding, pagePadding),
+                    child: _ShopContentWrapper(
+                      child: _buildCurrentTab(ctrl, isCompact, w < 500),
+                    ),
                   ),
                 ),
               ],
@@ -128,6 +65,13 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
 
   Widget _buildCurrentTab(
       MetaProgressController ctrl, bool isCompact, bool isNarrow) {
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 300),
+      child: _buildTabContent(ctrl, isCompact, isNarrow),
+    );
+  }
+
+  Widget _buildTabContent(MetaProgressController ctrl, bool isCompact, bool isNarrow) {
     switch (_currentTab) {
       case 0:
         return _CharacterShopTab(
@@ -153,6 +97,43 @@ class _MetaShopScreenState extends State<MetaShopScreen> {
   }
 }
 
+class _ShopContentWrapper extends StatelessWidget {
+  final Widget child;
+  const _ShopContentWrapper({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        // Hard offset shadow for the whole board
+        Positioned.fill(
+          child: Container(
+            margin: const EdgeInsets.only(left: 8, top: 8),
+            decoration: const BoxDecoration(color: AutoBattlePalette.ink),
+          ),
+        ),
+        Container(
+          decoration: const BoxDecoration(color: Colors.white),
+          child: CustomPaint(
+            painter: _SketchyBorderPainter(color: AutoBattlePalette.ink, width: 4),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Opacity(
+                    opacity: 0.05,
+                    child: CustomPaint(painter: _NotebookLinesPainter()),
+                  ),
+                ),
+                child,
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _ShopTabDef {
   final String title;
   final IconData icon;
@@ -160,53 +141,91 @@ class _ShopTabDef {
   _ShopTabDef({required this.title, required this.icon, required this.color});
 }
 
-class _SidebarIconButton extends StatelessWidget {
-  final VoidCallback onTap;
-  final IconData icon;
-  final Color color;
-  final double size;
+class _ShopTopBar extends StatelessWidget {
+  final List<_ShopTabDef> tabs;
+  final int currentTab;
+  final ValueChanged<int> onTabChanged;
+  final bool isCompact;
 
-  const _SidebarIconButton({
-    required this.onTap,
-    required this.icon,
-    required this.color,
-    this.size = 54,
+  const _ShopTopBar({
+    required this.tabs,
+    required this.currentTab,
+    required this.onTabChanged,
+    required this.isCompact,
   });
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: size,
-        height: size,
-        decoration: BoxDecoration(
-          color: Colors.white,
-          border: Border.all(color: AutoBattlePalette.ink, width: 3),
-          boxShadow: const [
-            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
-          ],
-        ),
-        child: Icon(icon, color: color, size: size * 0.5),
+    final ctrl = Get.find<MetaProgressController>();
+
+    return Padding(
+      padding: EdgeInsets.all(isCompact ? 12 : 20),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              _SketchIconButton(
+                onTap: () => Get.back(),
+                icon: Icons.close,
+                isCompact: isCompact,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'BATTLE SHOP',
+                  style: TextStyle(
+                    color: AutoBattlePalette.ink,
+                    fontSize: isCompact ? 24 : 32,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -1,
+                  ),
+                ),
+              ),
+              Obx(() => _TopCurrencyBox(
+                    amount: ctrl.currency.value,
+                    isCompact: isCompact,
+                  )),
+            ],
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: List.generate(tabs.length, (index) {
+              final tab = tabs[index];
+              final isSelected = currentTab == index;
+              return Expanded(
+                child: Padding(
+                  padding: EdgeInsets.only(right: index == tabs.length - 1 ? 0 : 8),
+                  child: _TopTabButton(
+                    label: tab.title,
+                    icon: tab.icon,
+                    color: tab.color,
+                    isSelected: isSelected,
+                    onTap: () => onTabChanged(index),
+                    isCompact: isCompact,
+                  ),
+                ),
+              );
+            }),
+          ),
+        ],
       ),
     );
   }
 }
 
-class _SidebarTabButton extends StatelessWidget {
-  final bool isSelected;
-  final IconData icon;
+class _TopTabButton extends StatelessWidget {
   final String label;
-  final Color accentColor;
+  final IconData icon;
+  final Color color;
+  final bool isSelected;
   final VoidCallback onTap;
-
   final bool isCompact;
 
-  const _SidebarTabButton({
-    required this.isSelected,
-    required this.icon,
+  const _TopTabButton({
     required this.label,
-    required this.accentColor,
+    required this.icon,
+    required this.color,
+    required this.isSelected,
     required this.onTap,
     required this.isCompact,
   });
@@ -215,85 +234,78 @@ class _SidebarTabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onTap,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        width: double.infinity,
-        padding: EdgeInsets.symmetric(vertical: isCompact ? 10 : 16),
-        decoration: BoxDecoration(
-          color: isSelected ? accentColor : Colors.white,
-          border: Border.all(
-              color: AutoBattlePalette.ink, width: isCompact ? 2.5 : 3),
-          boxShadow: isSelected
-              ? null
-              : [
-                  BoxShadow(
-                      color: AutoBattlePalette.ink,
-                      offset: Offset(isCompact ? 2 : 4, isCompact ? 2 : 4))
-                ],
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.white : AutoBattlePalette.ink,
-              size: isCompact ? 28 : 32,
+      child: Transform.rotate(
+        angle: isSelected ? 0 : (label.length % 2 == 0 ? 0.02 : -0.02),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 12),
+          decoration: BoxDecoration(
+            color: isSelected ? color : Colors.white,
+            boxShadow: isSelected
+                ? null
+                : const [
+                    BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4)),
+                  ],
+          ),
+          child: CustomPaint(
+            painter: _SketchyBorderPainter(
+              color: AutoBattlePalette.ink,
+              width: 3,
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: isSelected ? Colors.white : AutoBattlePalette.ink,
-                fontSize: isCompact ? 11 : 13,
-                fontWeight: FontWeight.w900,
-              ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  icon,
+                  color: isSelected ? Colors.white : AutoBattlePalette.ink,
+                  size: isCompact ? 16 : 20,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: isSelected ? Colors.white : AutoBattlePalette.ink,
+                    fontSize: isCompact ? 13 : 16,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _CurrencyBox extends StatelessWidget {
+class _TopCurrencyBox extends StatelessWidget {
   final int amount;
   final bool isCompact;
-  const _CurrencyBox({required this.amount, required this.isCompact});
+
+  const _TopCurrencyBox({required this.amount, required this.isCompact});
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.symmetric(horizontal: 8),
-      padding: EdgeInsets.symmetric(vertical: isCompact ? 8 : 12),
+      padding: EdgeInsets.symmetric(horizontal: 12, vertical: isCompact ? 6 : 8),
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-        boxShadow: [
-          BoxShadow(
-              color: AutoBattlePalette.ink,
-              offset: Offset(isCompact ? 2 : 3, isCompact ? 2 : 3)),
+        color: AutoBattlePalette.gold,
+        border: Border.all(color: AutoBattlePalette.ink, width: 3),
+        boxShadow: const [
+          BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
         ],
       ),
       child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Text('💎', style: TextStyle(fontSize: isCompact ? 14 : 18)),
+          const Text('💎', style: TextStyle(fontSize: 16)),
           const SizedBox(width: 6),
-          Flexible(
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                amount.toString(),
-                style: TextStyle(
-                  color: AutoBattlePalette.ink,
-                  fontSize: isCompact ? 14 : 18,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
+          Text(
+            amount.toString(),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: isCompact ? 16 : 20,
+              fontWeight: FontWeight.w900,
             ),
           ),
         ],
@@ -302,9 +314,38 @@ class _CurrencyBox extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────
-//  Character Shop Tab
-// ─────────────────────────────────────────────
+class _SketchIconButton extends StatelessWidget {
+  final VoidCallback onTap;
+  final IconData icon;
+  final bool isCompact;
+
+  const _SketchIconButton({
+    required this.onTap,
+    required this.icon,
+    this.isCompact = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          border: Border.all(color: AutoBattlePalette.ink, width: 3),
+          boxShadow: const [
+            BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
+          ],
+        ),
+        child: Icon(icon, color: AutoBattlePalette.ink, size: isCompact ? 20 : 24),
+      ),
+    );
+  }
+}
+
+// (Duplicate removed)
+
 class _CharacterShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
   final bool isCompact;
@@ -331,8 +372,7 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
       final isSelected = ctrl.selectedCharacter.value == selected.id;
       final canAfford = ctrl.currency.value >= selected.price;
 
-      return _ShopPage(
-        isCompact: widget.isCompact,
+      return _ShopContentWrapper(
         child: LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = widget.isNarrowPage || constraints.maxWidth < 420;
@@ -356,8 +396,7 @@ class _CharacterShopTabState extends State<_CharacterShopTab> {
             if (isNarrow) {
               return Column(
                 children: [
-                  SizedBox(
-                      height: widget.isCompact ? 124 : 144, child: selector),
+                  SizedBox(height: widget.isCompact ? 124 : 144, child: selector),
                   const SizedBox(height: 10),
                   Expanded(child: detail),
                 ],
@@ -399,31 +438,19 @@ class _CharacterSelectorPanel extends StatelessWidget {
       padding: EdgeInsets.all(isNarrow ? 8 : 12),
       decoration: BoxDecoration(
         border: Border(
-          right: isNarrow
-              ? BorderSide.none
-              : const BorderSide(color: AutoBattlePalette.ink, width: 2),
-          bottom: isNarrow
-              ? const BorderSide(color: AutoBattlePalette.ink, width: 2)
-              : BorderSide.none,
+          right: isNarrow ? BorderSide.none : const BorderSide(color: AutoBattlePalette.ink, width: 2),
+          bottom: isNarrow ? const BorderSide(color: AutoBattlePalette.ink, width: 2) : BorderSide.none,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (!isNarrow) ...[
-            Text(
-              'SELECT CHARACTER',
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: isCompact ? 14 : 16,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
+            Text('SELECT', style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 14 : 16, fontWeight: FontWeight.w900)),
             const SizedBox(height: 12),
           ],
           Expanded(
             child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
               gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                 crossAxisCount: isNarrow ? 4 : 2,
                 crossAxisSpacing: 8,
@@ -442,53 +469,15 @@ class _CharacterSelectorPanel extends StatelessWidget {
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
                     decoration: BoxDecoration(
-                      color: viewing
-                          ? AutoBattlePalette.surfaceLight
-                          : Colors.white,
-                      border: Border.all(
-                        color: viewing
-                            ? AutoBattlePalette.primary
-                            : AutoBattlePalette.ink,
-                        width: viewing ? 3 : 2,
-                      ),
-                      boxShadow: viewing
-                          ? null
-                          : const [
-                              BoxShadow(
-                                  color: AutoBattlePalette.ink,
-                                  offset: Offset(2, 2))
-                            ],
+                      color: viewing ? AutoBattlePalette.surfaceLight : Colors.white,
+                      border: Border.all(color: viewing ? AutoBattlePalette.primary : AutoBattlePalette.ink, width: viewing ? 3 : 2),
+                      boxShadow: viewing ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))],
                     ),
                     child: Stack(
                       children: [
-                        Center(
-                          child: CharacterBallPreview(
-                            info: charDisplayInfoMap[char.shape] ??
-                                charDisplayInfoMap['circle']!,
-                            size: isNarrow ? 28 : (isCompact ? 32 : 44),
-                          ),
-                        ),
-                        if (active)
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                  color: Color(0xFF4CAF50),
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.check,
-                                  color: Colors.white, size: 8),
-                            ),
-                          ),
-                        if (!unlocked)
-                          Container(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            child: const Center(
-                              child: Icon(Icons.lock,
-                                  color: AutoBattlePalette.inkSubtle, size: 16),
-                            ),
-                          ),
+                        Center(child: CharacterBallPreview(info: charDisplayInfoMap[char.shape] ?? charDisplayInfoMap['circle']!, size: isNarrow ? 28 : (isCompact ? 32 : 44))),
+                        if (active) Positioned(top: 4, right: 4, child: Container(padding: const EdgeInsets.all(2), decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle), child: const Icon(Icons.check, color: Colors.white, size: 8))),
+                        if (!unlocked) Container(color: Colors.black.withValues(alpha: 0.05), child: const Center(child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 16))),
                       ],
                     ),
                   ),
@@ -511,93 +500,70 @@ class _CharacterDetailPanel extends StatelessWidget {
   final bool isCompact;
   final bool isNarrow;
 
-  const _CharacterDetailPanel({
-    required this.ctrl,
-    required this.character,
-    required this.isUnlocked,
-    required this.isSelected,
-    required this.canAfford,
-    required this.isCompact,
-    required this.isNarrow,
-  });
+  const _CharacterDetailPanel({required this.ctrl, required this.character, required this.isUnlocked, required this.isSelected, required this.canAfford, required this.isCompact, required this.isNarrow});
 
   @override
   Widget build(BuildContext context) {
     final previewSize = isNarrow ? 46.0 : (isCompact ? 50.0 : 80.0);
 
     return Container(
-      padding: EdgeInsets.all(isNarrow ? 8 : (isCompact ? 10 : 20)),
+      padding: EdgeInsets.all(isNarrow ? 12 : (isCompact ? 16 : 24)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                width: previewSize,
-                height: previewSize,
-                decoration: BoxDecoration(
-                  color: AutoBattlePalette.surfaceLight,
-                  border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-                ),
-                child: Center(
-                  child: CharacterBallPreview(
-                    info: charDisplayInfoMap[character.shape] ??
-                        charDisplayInfoMap['circle']!,
-                    size: previewSize * 0.82,
+          // ── Character Card ──
+          Expanded(
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 6, top: 6),
+                    decoration: const BoxDecoration(color: AutoBattlePalette.ink),
                   ),
                 ),
-              ),
-              SizedBox(width: isNarrow ? 10 : 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      character.title,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        color: AutoBattlePalette.ink,
-                        fontSize: isNarrow ? 16 : (isCompact ? 18 : 24),
-                        fontWeight: FontWeight.w900,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isNarrow ? 8 : 10),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(
-                  child: Container(
-                    width: double.infinity,
-                    padding: EdgeInsets.all(isNarrow ? 10 : 12),
-                    decoration: BoxDecoration(
-                      color:
-                          AutoBattlePalette.background.withValues(alpha: 0.5),
-                      border:
-                          Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
+                Container(
+                  decoration: const BoxDecoration(color: AutoBattlePalette.background),
+                  child: CustomPaint(
+                    painter: const _SketchyBorderPainter(color: AutoBattlePalette.ink, width: 3),
+                    child: Stack(
                       children: [
-                        _ShopSummaryPanel(
-                          icon: Icons.analytics,
-                          summary: character.shopSummary,
-                          isCompact: isCompact,
-                          accentColor: AutoBattlePalette.primary,
+                        Positioned(
+                          top: 10,
+                          right: 10,
+                          child: Icon(Icons.auto_awesome, color: AutoBattlePalette.ink.withValues(alpha: 0.1), size: 40),
                         ),
-                        const Spacer(),
-                        _CharacterStatusRow(
-                          isUnlocked: isUnlocked,
-                          isSelected: isSelected,
-                          canAfford: canAfford,
-                          price: character.price,
-                          isCompact: isCompact,
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Center(
+                                  child: Hero(
+                                    tag: 'char_${character.id}',
+                                    child: Transform.scale(
+                                      scale: 1.2,
+                                      child: CharacterBallPreview(
+                                        info: charDisplayInfoMap[character.shape] ??
+                                            charDisplayInfoMap['circle']!,
+                                        size: previewSize * 1.5,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                character.title,
+                                style: TextStyle(
+                                  color: AutoBattlePalette.ink,
+                                  fontSize: isCompact ? 22 : 28,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              _BattleRatingBadge(rating: character.price ~/ 10),
+                            ],
+                          ),
                         ),
                       ],
                     ),
@@ -606,12 +572,24 @@ class _CharacterDetailPanel extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 20),
+          // ── Stats card ──
+          _InfoCard(
+            child: _ShopSummaryPanel(
+              icon: Icons.flash_on,
+              summary: character.shopSummary,
+              isCompact: isCompact,
+              accentColor: AutoBattlePalette.secondary,
+            ),
+          ),
+          const SizedBox(height: 20),
+          // ── Action Button ──
           _SketchButton(
             onTap: isUnlocked
                 ? (isSelected ? null : () => ctrl.selectCharacter(character.id))
                 : (canAfford ? () => ctrl.buyCharacter(character) : null),
-            isCompact: true,
+            isCompact: false,
+            height: 64,
             color: isUnlocked
                 ? (isSelected
                     ? const Color(0xFF4CAF50)
@@ -619,178 +597,48 @@ class _CharacterDetailPanel extends StatelessWidget {
                 : (canAfford
                     ? AutoBattlePalette.gold
                     : const Color(0xFF9CA3AF)),
-            child: FittedBox(
-              fit: BoxFit.scaleDown,
-              child: Text(
-                isUnlocked
-                    ? (isSelected ? 'EQUIPPED' : 'SELECT')
-                    : '💎 ${character.price} BUY',
-                style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _CharacterStatusRow extends StatelessWidget {
-  final bool isUnlocked;
-  final bool isSelected;
-  final bool canAfford;
-  final int price;
-  final bool isCompact;
-
-  const _CharacterStatusRow({
-    required this.isUnlocked,
-    required this.isSelected,
-    required this.canAfford,
-    required this.price,
-    required this.isCompact,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final label = isUnlocked
-        ? (isSelected ? '현재 선택됨' : '보유 중')
-        : (canAfford ? '구매 가능' : '재화 부족');
-    final value = isUnlocked ? 'READY' : '💎 $price';
-    final color = isUnlocked
-        ? AutoBattlePalette.secondary
-        : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF));
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 8 : 10, vertical: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Expanded(
             child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: isCompact ? 10 : 11,
+              isUnlocked
+                  ? (isSelected ? 'EQUIPPED' : 'SELECT CHARACTER')
+                  : '💎 ${character.price} PURCHASE',
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: isCompact ? 10 : 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
         ],
       ),
     );
   }
 }
 
-class _ShopSummaryPanel extends StatelessWidget {
-  final IconData icon;
-  final String summary;
-  final bool isCompact;
-  final int maxChips;
-  final Color accentColor;
-
-  const _ShopSummaryPanel({
-    required this.icon,
-    required this.summary,
-    required this.isCompact,
-    this.maxChips = 3,
-    this.accentColor = AutoBattlePalette.secondary,
-  });
+class _BattleRatingBadge extends StatelessWidget {
+  final int rating;
+  const _BattleRatingBadge({required this.rating});
 
   @override
   Widget build(BuildContext context) {
-    final lines = summary.split('\n');
-    final power = lines.first.replaceFirst('전투력 ', '');
-    final chips = lines.length > 1 ? lines[1].split(' · ') : const <String>[];
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Flexible(
-              child: Container(
-                padding: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 6 : 8,
-                  vertical: isCompact ? 3 : 5,
-                ),
-                decoration: BoxDecoration(
-                  color: accentColor,
-                  border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(icon, color: Colors.white, size: isCompact ? 12 : 15),
-                    SizedBox(width: isCompact ? 3 : 5),
-                    Flexible(
-                      child: Text(
-                        power,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: isCompact ? 12 : 14,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+      decoration: BoxDecoration(
+        color: AutoBattlePalette.primary.withValues(alpha: 0.1),
+      ),
+      child: CustomPaint(
+        painter: _SketchyBorderPainter(color: AutoBattlePalette.primary, width: 2),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+          child: Text(
+            'BATTLE RATING: $rating',
+            style: const TextStyle(
+              color: AutoBattlePalette.primary,
+              fontSize: 12,
+              fontWeight: FontWeight.w900,
             ),
-          ],
-        ),
-        if (chips.isNotEmpty) ...[
-          SizedBox(height: isCompact ? 4 : 7),
-          Wrap(
-            spacing: isCompact ? 3 : 5,
-            runSpacing: isCompact ? 3 : 5,
-            children: [
-              for (final chip in chips.take(maxChips))
-                Container(
-                  padding: EdgeInsets.symmetric(
-                    horizontal: isCompact ? 5 : 7,
-                    vertical: isCompact ? 2 : 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: accentColor.withValues(alpha: 0.10),
-                    border: Border.all(
-                      color: accentColor.withValues(alpha: 0.45),
-                      width: 1,
-                    ),
-                  ),
-                  child: Text(
-                    chip,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: AutoBattlePalette.ink,
-                      fontSize: isCompact ? 9 : 11,
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-            ],
           ),
-        ],
-      ],
+        ),
+      ),
     );
   }
 }
@@ -799,11 +647,7 @@ class _EquipmentShopTab extends StatefulWidget {
   final MetaProgressController ctrl;
   final bool isCompact;
   final bool isNarrowPage;
-  const _EquipmentShopTab(
-      {super.key,
-      required this.ctrl,
-      required this.isCompact,
-      required this.isNarrowPage});
+  const _EquipmentShopTab({super.key, required this.ctrl, required this.isCompact, required this.isNarrowPage});
 
   @override
   State<_EquipmentShopTab> createState() => _EquipmentShopTabState();
@@ -816,85 +660,24 @@ class _EquipmentShopTabState extends State<_EquipmentShopTab> {
   @override
   Widget build(BuildContext context) {
     final grouped = <String, List<EquipmentShopDef>>{};
-    for (final equipment in kAllEquipment) {
-      grouped.putIfAbsent(equipment.slot, () => []).add(equipment);
-    }
-
-    return _ShopPage(
-      isCompact: widget.isCompact,
+    for (final equipment in kAllEquipment) { grouped.putIfAbsent(equipment.slot, () => []).add(equipment); }
+    return _ShopContentWrapper(
       child: Obx(() {
-        widget.ctrl.unlockedEquipment.length;
-        widget.ctrl.currency.value;
-
         final items = grouped[_selectedSlot] ?? const <EquipmentShopDef>[];
-        if (items.isEmpty) {
-          return const Center(
-            child: Text(
-              '항목이 없습니다.',
-              style: TextStyle(
-                  color: AutoBattlePalette.inkSubtle,
-                  fontWeight: FontWeight.w900),
-            ),
-          );
-        }
-
-        final selectedIndex = (_selectedIndexBySlot[_selectedSlot] ?? 0)
-            .clamp(0, items.length - 1);
+        if (items.isEmpty) return const SizedBox.shrink();
+        final selectedIndex = (_selectedIndexBySlot[_selectedSlot] ?? 0).clamp(0, items.length - 1);
         final selected = items[selectedIndex];
         final unlocked = widget.ctrl.unlockedEquipment.contains(selected.id);
-        final equipped =
-            widget.ctrl.equippedEquipment[selected.slot] == selected.id;
+        final equipped = widget.ctrl.equippedEquipment[selected.slot] == selected.id;
         final canAfford = widget.ctrl.currency.value >= selected.price;
 
         return LayoutBuilder(
           builder: (context, constraints) {
             final isNarrow = widget.isNarrowPage || constraints.maxWidth < 420;
-            final selector = _EquipmentSelectorPanel(
-              items: items,
-              ctrl: widget.ctrl,
-              selectedIndex: selectedIndex,
-              selectedSlot: _selectedSlot,
-              isCompact: widget.isCompact,
-              isNarrow: isNarrow,
-              onSelected: (index) =>
-                  setState(() => _selectedIndexBySlot[_selectedSlot] = index),
-              onSlotChanged: (slot) => setState(() => _selectedSlot = slot),
-            );
-            final detail = _EquipmentDetailPanel(
-              equipment: selected,
-              ctrl: widget.ctrl,
-              unlocked: unlocked,
-              equipped: equipped,
-              canAfford: canAfford,
-              isCompact: widget.isCompact,
-              isNarrow: isNarrow,
-              onTap: () {
-                if (unlocked) {
-                  widget.ctrl.equipEquipment(selected);
-                } else {
-                  widget.ctrl.buyEquipment(selected);
-                }
-              },
-            );
-
-            if (isNarrow) {
-              return Column(
-                children: [
-                  SizedBox(
-                      height: widget.isCompact ? 172 : 196, child: selector),
-                  const SizedBox(height: 10),
-                  Expanded(child: detail),
-                ],
-              );
-            }
-
-            return Row(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Expanded(flex: 2, child: selector),
-                Expanded(flex: 3, child: detail),
-              ],
-            );
+            final selector = _EquipmentSelectorPanel(items: items, ctrl: widget.ctrl, selectedIndex: selectedIndex, selectedSlot: _selectedSlot, isCompact: widget.isCompact, isNarrow: isNarrow, onSelected: (index) => setState(() => _selectedIndexBySlot[_selectedSlot] = index), onSlotChanged: (slot) => setState(() => _selectedSlot = slot));
+            final detail = _EquipmentDetailPanel(equipment: selected, ctrl: widget.ctrl, unlocked: unlocked, equipped: equipped, canAfford: canAfford, isCompact: widget.isCompact, isNarrow: isNarrow, onTap: () { if (unlocked) { widget.ctrl.equipEquipment(selected); } else { widget.ctrl.buyEquipment(selected); } });
+            if (isNarrow) { return Column(children: [SizedBox(height: widget.isCompact ? 172 : 196, child: selector), const SizedBox(height: 10), Expanded(child: detail)]); }
+            return Row(crossAxisAlignment: CrossAxisAlignment.stretch, children: [Expanded(flex: 2, child: selector), Expanded(flex: 3, child: detail)]);
           },
         );
       }),
@@ -912,31 +695,13 @@ class _EquipmentSelectorPanel extends StatelessWidget {
   final ValueChanged<int> onSelected;
   final ValueChanged<String> onSlotChanged;
 
-  const _EquipmentSelectorPanel({
-    required this.items,
-    required this.ctrl,
-    required this.selectedIndex,
-    required this.selectedSlot,
-    required this.isCompact,
-    required this.isNarrow,
-    required this.onSelected,
-    required this.onSlotChanged,
-  });
+  const _EquipmentSelectorPanel({required this.items, required this.ctrl, required this.selectedIndex, required this.selectedSlot, required this.isCompact, required this.isNarrow, required this.onSelected, required this.onSlotChanged});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: EdgeInsets.all(isNarrow ? 8 : 12),
-      decoration: BoxDecoration(
-        border: Border(
-          right: isNarrow
-              ? BorderSide.none
-              : const BorderSide(color: AutoBattlePalette.ink, width: 2),
-          bottom: isNarrow
-              ? const BorderSide(color: AutoBattlePalette.ink, width: 2)
-              : BorderSide.none,
-        ),
-      ),
+      decoration: BoxDecoration(border: Border(right: isNarrow ? BorderSide.none : const BorderSide(color: AutoBattlePalette.ink, width: 2), bottom: isNarrow ? const BorderSide(color: AutoBattlePalette.ink, width: 2) : BorderSide.none)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -945,7 +710,6 @@ class _EquipmentSelectorPanel extends StatelessWidget {
             child: ListView(
               scrollDirection: Axis.horizontal,
               children: kEquipmentSlotLabels.keys.map((slotKey) {
-                final slotLabel = kEquipmentSlotLabels[slotKey]!;
                 final isSelected = selectedSlot == slotKey;
                 return GestureDetector(
                   onTap: () => onSlotChanged(slotKey),
@@ -953,98 +717,33 @@ class _EquipmentSelectorPanel extends StatelessWidget {
                     duration: const Duration(milliseconds: 200),
                     margin: const EdgeInsets.only(right: 6),
                     padding: const EdgeInsets.symmetric(horizontal: 12),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AutoBattlePalette.secondary
-                          : Colors.white,
-                      border:
-                          Border.all(color: AutoBattlePalette.ink, width: 2),
-                    ),
-                    child: Center(
-                      child: Text(
-                        slotLabel.split('/').first,
-                        style: TextStyle(
-                          color:
-                              isSelected ? Colors.white : AutoBattlePalette.ink,
-                          fontSize: isCompact ? 10 : 12,
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ),
+                    decoration: BoxDecoration(color: isSelected ? AutoBattlePalette.secondary : Colors.white, border: Border.all(color: AutoBattlePalette.ink, width: 2)),
+                    child: Center(child: Text(kEquipmentSlotLabels[slotKey]!.split('/').first, style: TextStyle(color: isSelected ? Colors.white : AutoBattlePalette.ink, fontSize: isCompact ? 10 : 12, fontWeight: FontWeight.w900))),
                   ),
                 );
               }).toList(),
             ),
           ),
-          SizedBox(height: isNarrow ? 8 : 12),
+          const SizedBox(height: 12),
           Expanded(
             child: GridView.builder(
-              physics: const NeverScrollableScrollPhysics(),
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: isNarrow ? 4 : 2,
-                crossAxisSpacing: 8,
-                mainAxisSpacing: 8,
-                childAspectRatio: isNarrow ? 1 : (isCompact ? 1.05 : 1.18),
-              ),
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: isNarrow ? 4 : 2, crossAxisSpacing: 8, mainAxisSpacing: 8, childAspectRatio: isNarrow ? 1 : (isCompact ? 1.05 : 1.18)),
               itemCount: items.length,
               itemBuilder: (context, index) {
                 final equipment = items[index];
                 final viewing = index == selectedIndex;
                 final unlocked = ctrl.unlockedEquipment.contains(equipment.id);
-                final active =
-                    ctrl.equippedEquipment[equipment.slot] == equipment.id;
-
+                final active = ctrl.equippedEquipment[equipment.slot] == equipment.id;
                 return GestureDetector(
                   onTap: () => onSelected(index),
                   child: AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    decoration: BoxDecoration(
-                      color: viewing
-                          ? AutoBattlePalette.surfaceLight
-                          : Colors.white,
-                      border: Border.all(
-                        color: viewing
-                            ? AutoBattlePalette.secondary
-                            : AutoBattlePalette.ink,
-                        width: viewing ? 3 : 2,
-                      ),
-                      boxShadow: viewing
-                          ? null
-                          : const [
-                              BoxShadow(
-                                  color: AutoBattlePalette.ink,
-                                  offset: Offset(2, 2))
-                            ],
-                    ),
+                    decoration: BoxDecoration(color: viewing ? AutoBattlePalette.surfaceLight : Colors.white, border: Border.all(color: viewing ? AutoBattlePalette.secondary : AutoBattlePalette.ink, width: viewing ? 3 : 2), boxShadow: viewing ? null : const [BoxShadow(color: AutoBattlePalette.ink, offset: Offset(2, 2))]),
                     child: Stack(
                       children: [
-                        Center(
-                          child: Text(
-                            equipment.icon,
-                            style: TextStyle(fontSize: isNarrow ? 26 : 34),
-                          ),
-                        ),
-                        if (active)
-                          Positioned(
-                            top: 4,
-                            right: 4,
-                            child: Container(
-                              padding: const EdgeInsets.all(2),
-                              decoration: const BoxDecoration(
-                                  color: Color(0xFF4CAF50),
-                                  shape: BoxShape.circle),
-                              child: const Icon(Icons.check,
-                                  color: Colors.white, size: 8),
-                            ),
-                          ),
-                        if (!unlocked)
-                          Container(
-                            color: Colors.black.withValues(alpha: 0.05),
-                            child: const Center(
-                              child: Icon(Icons.lock,
-                                  color: AutoBattlePalette.inkSubtle, size: 16),
-                            ),
-                          ),
+                        Center(child: Text(equipment.icon, style: TextStyle(fontSize: isNarrow ? 26 : 34))),
+                        if (active) Positioned(top: 4, right: 4, child: Container(padding: const EdgeInsets.all(2), decoration: const BoxDecoration(color: Color(0xFF4CAF50), shape: BoxShape.circle), child: const Icon(Icons.check, color: Colors.white, size: 8))),
+                        if (!unlocked) Container(color: Colors.black.withValues(alpha: 0.05), child: const Center(child: Icon(Icons.lock, color: AutoBattlePalette.inkSubtle, size: 16))),
                       ],
                     ),
                   ),
@@ -1068,16 +767,7 @@ class _EquipmentDetailPanel extends StatelessWidget {
   final bool isNarrow;
   final VoidCallback onTap;
 
-  const _EquipmentDetailPanel({
-    required this.equipment,
-    required this.ctrl,
-    required this.unlocked,
-    required this.equipped,
-    required this.canAfford,
-    required this.isCompact,
-    required this.isNarrow,
-    required this.onTap,
-  });
+  const _EquipmentDetailPanel({required this.equipment, required this.ctrl, required this.unlocked, required this.equipped, required this.canAfford, required this.isCompact, required this.isNarrow, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
@@ -1086,485 +776,361 @@ class _EquipmentDetailPanel extends StatelessWidget {
         : (equipment.slot == 'hand'
             ? AutoBattlePalette.secondary
             : AutoBattlePalette.gold);
-    final previewSize = isNarrow ? 46.0 : (isCompact ? 50.0 : 80.0);
 
     return Container(
-      padding: EdgeInsets.all(isNarrow ? 8 : (isCompact ? 10 : 20)),
+      padding: EdgeInsets.all(isNarrow ? 12 : (isCompact ? 16 : 24)),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            children: [
-              Container(
-                width: previewSize,
-                height: previewSize,
-                decoration: BoxDecoration(
-                  color: accentColor.withValues(alpha: 0.14),
-                  border: Border.all(color: AutoBattlePalette.ink, width: 2.5),
-                ),
-                child: Center(
-                  child: Text(
-                    equipment.icon,
-                    style: TextStyle(fontSize: isCompact ? 24 : 34),
-                  ),
-                ),
-              ),
-              SizedBox(width: isNarrow ? 10 : 16),
-              Expanded(
-                child: Text(
-                  equipment.title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    color: AutoBattlePalette.ink,
-                    fontSize: isNarrow ? 16 : (isCompact ? 18 : 24),
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: isNarrow ? 8 : 10),
+          // ── Equipment Card ──
           Expanded(
-            child: Container(
-              width: double.infinity,
-              padding: EdgeInsets.all(isNarrow ? 10 : 12),
-              decoration: BoxDecoration(
-                color: AutoBattlePalette.background.withValues(alpha: 0.5),
-                border: Border.all(color: AutoBattlePalette.ink, width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _ShopSummaryPanel(
-                    icon: Icons.bolt,
-                    summary: equipment.statSummary,
-                    isCompact: isCompact,
-                    maxChips: 3,
-                    accentColor: accentColor,
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 6, top: 6),
+                    decoration: const BoxDecoration(color: AutoBattlePalette.ink),
                   ),
-                  const Spacer(),
-                  _EquipmentStatusRow(
-                    unlocked: unlocked,
-                    equipped: equipped,
-                    canAfford: canAfford,
-                    price: equipment.price,
-                    isCompact: isCompact,
-                    accentColor: accentColor,
+                ),
+                Container(
+                  decoration: BoxDecoration(
+                    color: accentColor.withValues(alpha: 0.05),
                   ),
-                  if (unlocked && equipment.weaponType != null) ...[
-                    const SizedBox(height: 8),
-                    _EquipmentUpgradeRow(
-                        equipment: equipment, ctrl: ctrl, isCompact: isCompact),
-                  ],
-                ],
-              ),
+                  child: CustomPaint(
+                    painter: const _SketchyBorderPainter(color: AutoBattlePalette.ink, width: 3),
+                    child: Stack(
+                      children: [
+                        Positioned(
+                          top: 10,
+                          left: 10,
+                          child: Text(
+                            equipment.slot.toUpperCase(),
+                            style: TextStyle(
+                              color: AutoBattlePalette.ink.withValues(alpha: 0.1),
+                              fontSize: 24,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ),
+                        Padding(
+                          padding: const EdgeInsets.all(16.0),
+                          child: Column(
+                            children: [
+                              Expanded(
+                                child: Center(
+                                  child: Hero(
+                                    tag: 'equip_${equipment.id}',
+                                    child: Text(
+                                      equipment.icon,
+                                      style: TextStyle(fontSize: isCompact ? 60 : 80),
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                equipment.title,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: AutoBattlePalette.ink,
+                                  fontSize: isCompact ? 20 : 26,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
-        ],
-      ),
-    );
-  }
-}
-
-class _EquipmentStatusRow extends StatelessWidget {
-  final bool unlocked;
-  final bool equipped;
-  final bool canAfford;
-  final int price;
-  final bool isCompact;
-  final Color accentColor;
-
-  const _EquipmentStatusRow({
-    required this.unlocked,
-    required this.equipped,
-    required this.canAfford,
-    required this.price,
-    required this.isCompact,
-    required this.accentColor,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final label = equipped
-        ? '현재 장착됨'
-        : (unlocked ? '보유 중' : (canAfford ? '구매 가능' : '재화 부족'));
-    final value = unlocked ? 'READY' : '💎 $price';
-    final color = equipped
-        ? const Color(0xFF4CAF50)
-        : (unlocked
-            ? accentColor
-            : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF)));
-
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 8 : 10, vertical: isCompact ? 6 : 8),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        border: Border.all(color: color, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Expanded(
+          const SizedBox(height: 16),
+          // ── Stats card ──
+          _InfoCard(
+            child: _ShopSummaryPanel(
+              icon: Icons.bolt,
+              summary: equipment.statSummary,
+              isCompact: isCompact,
+              accentColor: accentColor,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // ── Action Button ──
+          _SketchButton(
+            onTap: onTap,
+            height: 64,
+            color: equipped
+                ? const Color(0xFF4CAF50)
+                : (unlocked
+                    ? accentColor
+                    : (canAfford ? AutoBattlePalette.gold : const Color(0xFF9CA3AF))),
             child: Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: isCompact ? 10 : 11,
+              equipped
+                  ? 'EQUIPPED'
+                  : (unlocked ? 'EQUIP ITEM' : '💎 ${equipment.price} PURCHASE'),
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 18,
                 fontWeight: FontWeight.w900,
               ),
             ),
           ),
-          Text(
-            value,
-            style: TextStyle(
-              color: color,
-              fontSize: isCompact ? 10 : 12,
-              fontWeight: FontWeight.w900,
-            ),
-          ),
+          if (unlocked && equipment.weaponType != null) ...[
+            const SizedBox(height: 12),
+            _EquipmentUpgradeRow(
+                equipment: equipment, ctrl: ctrl, isCompact: isCompact),
+          ],
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────
-//  Stat Upgrade Tab
-// ─────────────────────────────────────────────
 class _StatUpgradeTab extends StatelessWidget {
   final MetaProgressController ctrl;
   final bool isCompact;
   final bool isNarrowPage;
-  const _StatUpgradeTab(
-      {super.key,
-      required this.ctrl,
-      required this.isCompact,
-      required this.isNarrowPage});
+  const _StatUpgradeTab({super.key, required this.ctrl, required this.isCompact, required this.isNarrowPage});
 
   @override
   Widget build(BuildContext context) {
-    return _ShopPage(
-      isCompact: isCompact,
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final oneColumn = isNarrowPage || constraints.maxWidth < 390;
-          final crossAxisCount = oneColumn ? 1 : 2;
-          final rowCount = (kAllStatUpgrades.length / crossAxisCount).ceil();
-          const spacing = 12.0;
-          final verticalPadding = isCompact ? 24.0 : 32.0;
-          final itemExtent = ((constraints.maxHeight -
-                      verticalPadding -
-                      (spacing * (rowCount - 1))) /
-                  rowCount)
-              .clamp(oneColumn ? 70.0 : 82.0, oneColumn ? 90.0 : 116.0);
+    return ListView.builder(
+      padding: EdgeInsets.all(isCompact ? 12 : 20),
+      itemCount: kAllStatUpgrades.length,
+      itemBuilder: (context, index) {
+        final def = kAllStatUpgrades[index];
+        return Obx(() {
+          final level = ctrl.getStatLevel(def.statType);
+          final cost = ctrl.getStatUpgradeCost(def);
+          final canAfford = ctrl.currency.value >= cost;
+          final gain = ShopStatPresenter.statUpgradeGain(def);
+          final summary = ShopStatPresenter.statUpgradeSummary(def);
 
-          return GridView.builder(
-            padding: EdgeInsets.fromLTRB(12, 12, 12, isCompact ? 12 : 20),
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: crossAxisCount,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-              mainAxisExtent: itemExtent,
-            ),
-            itemCount: kAllStatUpgrades.length,
-            itemBuilder: (context, index) {
-              final def = kAllStatUpgrades[index];
-              return Obx(() {
-                final level = ctrl.getStatLevel(def.statType);
-                final cost = ctrl.getStatUpgradeCost(def);
-                final canAfford = ctrl.currency.value >= cost;
-                final gain = ShopStatPresenter.statUpgradeGain(def);
-                final summary = ShopStatPresenter.statUpgradeSummary(def);
-
-                return Container(
-                  padding: EdgeInsets.all(isCompact ? 8 : 12),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    border: Border.all(color: AutoBattlePalette.ink, width: 2),
-                    boxShadow: [
-                      BoxShadow(
-                          color: AutoBattlePalette.ink,
-                          offset: Offset(isCompact ? 2 : 3, isCompact ? 2 : 3)),
-                    ],
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: Container(
+                    margin: const EdgeInsets.only(left: 4, top: 4),
+                    decoration: const BoxDecoration(color: AutoBattlePalette.ink),
                   ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: isCompact ? 34 : 44,
-                        height: isCompact ? 34 : 44,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          color: AutoBattlePalette.surfaceLight,
-                          border: Border.all(
-                              color: AutoBattlePalette.ink, width: 1.5),
-                          shape: BoxShape.circle,
+                ),
+                Container(
+                  padding: EdgeInsets.all(isCompact ? 12 : 16),
+                  decoration: const BoxDecoration(color: Colors.white),
+                  child: CustomPaint(
+                    painter: const _SketchyBorderPainter(color: AutoBattlePalette.ink, width: 2),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: isCompact ? 44 : 54,
+                          height: isCompact ? 44 : 54,
+                          alignment: Alignment.center,
+                          decoration: BoxDecoration(
+                            color: AutoBattlePalette.gold.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: CustomPaint(
+                            painter: _SketchyBorderPainter(color: AutoBattlePalette.ink, width: 1.5),
+                            child: Center(
+                              child: Text(def.icon, style: TextStyle(fontSize: isCompact ? 22 : 28)),
+                            ),
+                          ),
                         ),
-                        child: Text(def.icon,
-                            style: TextStyle(fontSize: isCompact ? 17 : 22)),
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              def.title,
-                              style: TextStyle(
-                                  color: AutoBattlePalette.ink,
-                                  fontSize: isCompact ? 11 : 13,
-                                  fontWeight: FontWeight.w900),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              'LV.$level · $gain',
-                              style: TextStyle(
-                                  color: AutoBattlePalette.inkSubtle,
-                                  fontSize: isCompact ? 9 : 11,
-                                  fontWeight: FontWeight.w700),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            Text(
-                              summary,
-                              style: TextStyle(
-                                  color: AutoBattlePalette.secondary,
-                                  fontSize: isCompact ? 8 : 10,
-                                  fontWeight: FontWeight.w900),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ],
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                def.title,
+                                style: TextStyle(
+                                    color: AutoBattlePalette.ink,
+                                    fontSize: isCompact ? 16 : 18,
+                                    fontWeight: FontWeight.w900),
+                              ),
+                              Text(
+                                'LEVEL $level · $gain',
+                                style: TextStyle(
+                                    color: AutoBattlePalette.primary,
+                                    fontSize: isCompact ? 12 : 14,
+                                    fontWeight: FontWeight.w900),
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                summary,
+                                style: TextStyle(
+                                    color: AutoBattlePalette.inkSubtle,
+                                    fontSize: isCompact ? 11 : 13,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      _SketchButton(
-                        onTap: () => ctrl.upgradeStat(def),
-                        width: isCompact ? 52 : 62,
-                        height: isCompact ? 34 : 42,
-                        isCompact: isCompact,
-                        color: canAfford
-                            ? AutoBattlePalette.gold
-                            : const Color(0xFFE5E7EB),
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
+                        const SizedBox(width: 12),
+                        _SketchButton(
+                          onTap: () => ctrl.upgradeStat(def),
+                          width: isCompact ? 80 : 100,
+                          height: isCompact ? 50 : 60,
+                          color: canAfford ? AutoBattlePalette.gold : const Color(0xFFE5E7EB),
                           child: Column(
                             mainAxisAlignment: MainAxisAlignment.center,
                             children: [
-                              Text('UP',
+                              Text('UPGRADE',
                                   style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: isCompact ? 9 : 11,
+                                      fontSize: isCompact ? 10 : 12,
                                       fontWeight: FontWeight.w900)),
                               Text('💎$cost',
                                   style: TextStyle(
                                       color: Colors.white,
-                                      fontSize: isCompact ? 8 : 10,
-                                      fontWeight: FontWeight.w700)),
+                                      fontSize: isCompact ? 12 : 14,
+                                      fontWeight: FontWeight.w900)),
                             ],
                           ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                );
-              });
-            },
+                ),
+              ],
+            ),
           );
-        },
-      ),
+        });
+      },
     );
   }
 }
 
-// ─────────────────────────────────────────────
-//  Equipment Upgrade Row (Inside Equipment Tab for Weapons)
-// ─────────────────────────────────────────────
 class _EquipmentUpgradeRow extends StatelessWidget {
   final EquipmentShopDef equipment;
   final MetaProgressController ctrl;
   final bool isCompact;
-
-  const _EquipmentUpgradeRow({
-    required this.equipment,
-    required this.ctrl,
-    required this.isCompact,
-  });
+  const _EquipmentUpgradeRow({required this.equipment, required this.ctrl, required this.isCompact});
 
   @override
   Widget build(BuildContext context) {
     if (equipment.weaponType == null) return const SizedBox.shrink();
-
     final level = ctrl.getWeaponLevel(equipment.weaponType!);
     final cost = ctrl.getWeaponUpgradeCost(equipment.weaponType!);
     final canAfford = ctrl.currency.value >= cost;
-
     return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 6 : 10, vertical: isCompact ? 3 : 6),
+      padding: EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       margin: const EdgeInsets.only(top: 2),
-      decoration: BoxDecoration(
-        color: AutoBattlePalette.background.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(4),
-      ),
+      decoration: BoxDecoration(color: AutoBattlePalette.background.withValues(alpha: 0.5), borderRadius: BorderRadius.circular(4)),
       child: Row(
         children: [
-          Expanded(
-            child: Text(
-              'LV.$level 강화',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: AutoBattlePalette.ink,
-                fontSize: isCompact ? 8.5 : 10.5,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 6),
-          _SketchButton(
-            onTap: canAfford
-                ? () => ctrl.upgradeWeapon(equipment.weaponType!)
-                : null,
-            width: isCompact ? 56 : 64,
-            height: isCompact ? 24 : 30,
-            isCompact: true,
-            color: canAfford ? AutoBattlePalette.primary : Colors.grey,
-            child: Text(
-              '💎$cost',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: isCompact ? 8 : 10,
-                fontWeight: FontWeight.w900,
-              ),
-            ),
-          ),
+          Expanded(child: Text('LV.$level 강화', style: TextStyle(color: AutoBattlePalette.ink, fontSize: 12, fontWeight: FontWeight.w800))),
+          _SketchButton(onTap: canAfford ? () => ctrl.upgradeWeapon(equipment.weaponType!) : null, width: isCompact ? 56 : 64, height: isCompact ? 28 : 34, isCompact: true, color: canAfford ? AutoBattlePalette.primary : Colors.grey, child: Text('💎$cost', style: TextStyle(color: Colors.white, fontSize: isCompact ? 9 : 11, fontWeight: FontWeight.w900))),
         ],
       ),
     );
   }
 }
 
-class _ShopHeader extends StatelessWidget {
-  final String title;
+class _ShopSummaryPanel extends StatelessWidget {
+  final IconData icon;
+  final String summary;
   final bool isCompact;
-  const _ShopHeader({required this.title, required this.isCompact});
+  final Color accentColor;
+  const _ShopSummaryPanel({required this.icon, required this.summary, required this.isCompact, required this.accentColor});
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-          horizontal: isCompact ? 12 : 20, vertical: isCompact ? 8 : 16),
-      child: Row(
-        children: [
-          Transform.rotate(
-            angle: -0.02, // Slight tilt for sketchy look
-            child: Container(
-              padding: EdgeInsets.symmetric(
-                  horizontal: isCompact ? 16 : 24,
-                  vertical: isCompact ? 6 : 12),
-              decoration: BoxDecoration(
-                color: AutoBattlePalette.primary,
-                border: Border.all(color: AutoBattlePalette.ink, width: 3),
-                boxShadow: const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(3, 3)),
-                ],
-              ),
-              child: Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: isCompact ? 17 : 22,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.2,
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
-        ],
-      ),
-    );
-  }
-}
-
-// ── Shared Sketchbook Page for Shop Tabs ──
-class _ShopPage extends StatelessWidget {
-  final Widget child;
-  final bool isCompact;
-  const _ShopPage({required this.child, required this.isCompact});
-
-  @override
-  Widget build(BuildContext context) {
-    return Stack(
-      clipBehavior: Clip.none,
+    final lines = summary.split('\n');
+    final power = lines.first;
+    final chips = lines.length > 1 ? lines[1].split(' · ') : const <String>[];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            border: Border.all(color: AutoBattlePalette.ink, width: 3),
-            boxShadow: const [
-              BoxShadow(color: AutoBattlePalette.ink, offset: Offset(5, 5)),
-            ],
-          ),
-          child: Stack(
-            children: [
-              // Subtle notebook lines
-              Positioned.fill(
-                child: Opacity(
-                  opacity: 0.1,
-                  child: CustomPaint(painter: _NotebookLinesPainter()),
-                ),
-              ),
-              child,
-            ],
-          ),
-        ),
-
-        // Decorative "Tape" effect
-        Positioned(
-          top: -10,
-          left: 40,
-          child: Transform.rotate(
-            angle: -0.1,
-            child: Container(
-              width: 50,
-              height: 20,
-              decoration: BoxDecoration(
-                color: const Color(0xAAFFFFFF),
-                border: Border.all(
-                    color: AutoBattlePalette.ink.withValues(alpha: 0.1),
-                    width: 1),
-                boxShadow: [
-                  BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      offset: const Offset(1, 1)),
-                ],
-              ),
-            ),
-          ),
-        ),
+        Row(children: [Icon(icon, color: accentColor, size: isCompact ? 16 : 20), const SizedBox(width: 8), Text(power, style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 14 : 16, fontWeight: FontWeight.w900))]),
+        if (chips.isNotEmpty) ...[const SizedBox(height: 8), Wrap(spacing: 6, runSpacing: 6, children: chips.map((chip) => Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: accentColor.withValues(alpha: 0.1), border: Border.all(color: accentColor.withValues(alpha: 0.3), width: 1)), child: Text(chip, style: TextStyle(color: AutoBattlePalette.ink, fontSize: isCompact ? 10 : 12, fontWeight: FontWeight.w700)))).toList())],
       ],
     );
   }
+}
+
+class _InfoCard extends StatelessWidget {
+  final Widget child;
+  const _InfoCard({required this.child});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: const BoxDecoration(color: Colors.white),
+      child: CustomPaint(
+        painter: _SketchyBorderPainter(color: AutoBattlePalette.ink, width: 2),
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: child,
+        ),
+      ),
+    );
+  }
+}
+
+// (Removed redundant _ShopPage)
+
+// ─────────────────────────────────────────────
+//  Sketchy UI Components
+// ─────────────────────────────────────────────
+
+class _SketchyBorderPainter extends CustomPainter {
+  final Color color;
+  final double width;
+
+  const _SketchyBorderPainter({required this.color, required this.width});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = color
+      ..strokeWidth = width
+      ..style = PaintingStyle.stroke
+      ..strokeJoin = StrokeJoin.round
+      ..strokeCap = StrokeCap.round;
+
+    final path = Path();
+    const step = 20.0;
+    
+    // Hand-drawn organic line helper
+    void drawWavyLine(Offset start, Offset end) {
+      path.moveTo(start.dx, start.dy);
+      final dist = (end - start).distance;
+      final points = (dist / step).ceil();
+      for (int i = 1; i <= points; i++) {
+        final t = i / points;
+        final p = Offset.lerp(start, end, t)!;
+        // Random jitter for sketchy feel
+        final jitterX = (i == points) ? 0.0 : (DateTime.now().millisecond % 3 - 1.5) * 0.8;
+        final jitterY = (i == points) ? 0.0 : (DateTime.now().millisecond % 5 - 2.5) * 0.8;
+        path.lineTo(p.dx + jitterX, p.dy + jitterY);
+      }
+    }
+
+    drawWavyLine(Offset.zero, Offset(size.width, 0));
+    drawWavyLine(Offset(size.width, 0), Offset(size.width, size.height));
+    drawWavyLine(Offset(size.width, size.height), Offset(0, size.height));
+    drawWavyLine(Offset(0, size.height), Offset.zero);
+
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
 class _NotebookLinesPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final paint = Paint()
-      ..color = AutoBattlePalette.ink.withValues(alpha: 0.2)
-      ..strokeWidth = 1;
-    for (double y = 40; y < size.height; y += 30) {
+      ..color = AutoBattlePalette.ink.withValues(alpha: 0.15)
+      ..strokeWidth = 1.2;
+    for (double y = 40; y < size.height; y += 28) {
       canvas.drawLine(Offset(0, y), Offset(size.width, y), paint);
     }
   }
@@ -1573,9 +1139,6 @@ class _NotebookLinesPainter extends CustomPainter {
   bool shouldRepaint(CustomPainter oldDelegate) => false;
 }
 
-// ─────────────────────────────────────────────
-//  Reusable Sketch Button (Animated)
-// ─────────────────────────────────────────────
 class _SketchButton extends StatefulWidget {
   final Color color;
   final Widget child;
@@ -1598,41 +1161,45 @@ class _SketchButton extends StatefulWidget {
 }
 
 class _SketchButtonState extends State<_SketchButton> {
-  bool _pressed = false;
+  bool _isPressed = false;
 
   @override
   Widget build(BuildContext context) {
-    final bool disabled = widget.onTap == null;
+    final disabled = widget.onTap == null;
+    final color = disabled ? const Color(0xFFE5E7EB) : widget.color;
+    final shadowOffset = _isPressed ? const Offset(1, 1) : const Offset(4, 4);
+
     return GestureDetector(
-      onTapDown: disabled ? null : (_) => setState(() => _pressed = true),
-      onTapUp: disabled ? null : (_) => setState(() => _pressed = false),
-      onTapCancel: disabled ? null : () => setState(() => _pressed = false),
+      onTapDown: (_) => setState(() => _isPressed = true),
+      onTapUp: (_) => setState(() => _isPressed = false),
+      onTapCancel: () => setState(() => _isPressed = false),
       onTap: widget.onTap,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 50),
+        duration: const Duration(milliseconds: 100),
         width: widget.width,
-        height: widget.height ?? (widget.isCompact ? 44 : 54),
-        transform:
-            _pressed ? Matrix4.translationValues(2, 2, 0) : Matrix4.identity(),
+        height: widget.height,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         decoration: BoxDecoration(
-          color: disabled ? Colors.grey.shade300 : widget.color,
+          color: color,
           border: Border.all(color: AutoBattlePalette.ink, width: 3),
-          boxShadow: (disabled || _pressed)
-              ? null
-              : const [
-                  BoxShadow(color: AutoBattlePalette.ink, offset: Offset(4, 4))
-                ],
+          boxShadow: [
+            BoxShadow(
+              color: AutoBattlePalette.ink,
+              offset: shadowOffset,
+            ),
+          ],
         ),
-        child: Center(child: widget.child),
+        child: Center(
+          child: DefaultTextStyle(
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+            child: widget.child,
+          ),
+        ),
       ),
     );
   }
 }
-
-// ─────────────────────────────────────────────
-//  Achievement Category Info
-// ─────────────────────────────────────────────
-
-// ─────────────────────────────────────────────
-//  Shop Background Painter
-// ─────────────────────────────────────────────
